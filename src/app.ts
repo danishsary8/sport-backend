@@ -16,6 +16,8 @@ import {
 import { requestId } from './middleware/requestId.js';
 import { accountRouter } from './modules/account/router.js';
 import { authRouter } from './modules/auth/router.js';
+import { branchesRouter } from './modules/branches/router.js';
+import { geoRouter } from './modules/geo/router.js';
 import { healthRouter } from './modules/health/router.js';
 import type { BootstrapAdmins } from './modules/users/repo.js';
 
@@ -85,6 +87,8 @@ export function createApp(deps: AppDeps): express.Express {
   });
   v1.use(authRouter(ctx));
   v1.use(accountRouter(ctx));
+  v1.use(geoRouter(ctx));
+  v1.use(branchesRouter(ctx));
   app.use('/v1', v1);
 
   app.use(notFoundHandler);

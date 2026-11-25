@@ -257,6 +257,8 @@ export const loyaltyLedger = pgTable(
     reason: text('reason').$type<'order_paid' | 'rma_reversal' | 'order_cancelled' | 'admin'>().notNull(),
     orderId: uuid('order_id').references(() => orders.id, { onDelete: 'set null' }),
     note: text('note'),
+    /** Staff member who made an admin adjustment. */
+    actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [

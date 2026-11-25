@@ -1,0 +1,2 @@
+ALTER TABLE "loyalty_ledger" ADD COLUMN "actor_user_id" uuid;--> statement-breakpoint
+ALTER TABLE "loyalty_ledger" ADD CONSTRAINT "loyalty_ledger_actor_user_id_users_id_fk" FOREIGN KEY ("actor_user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;

@@ -28,6 +28,7 @@ import { orderPaymentsRouter, WEBHOOK_BODY_LIMIT, webhookRouter } from './module
 import { customerOrdersRouter } from './modules/orders/customerRouter.js';
 import { adminOrdersRouter } from './modules/orders/adminRouter.js';
 import { rmaRouter } from './modules/rma/router.js';
+import { loyaltyRouter } from './modules/loyalty/router.js';
 import { devPaymentsRouter } from './modules/payments/devRouter.js';
 import { geoRouter } from './modules/geo/router.js';
 import { wishlistRouter } from './modules/wishlist/router.js';
@@ -129,6 +130,7 @@ export function createApp(deps: AppDeps): express.Express {
   v1.use(adminPricingRouter(ctx));
   v1.use(adminOrdersRouter(ctx));
   v1.use(rmaRouter(ctx));
+  v1.use(loyaltyRouter(ctx));
   // Payment webhooks are signature-checked and re-verified, so they skip the per-IP limiter.
   app.use('/v1', unlimited);
   app.use('/v1', v1);

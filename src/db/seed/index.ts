@@ -1,6 +1,18 @@
 import { sql } from 'drizzle-orm';
 import type { Db } from '../client.js';
-import { branches, categories, collections, geoCommunes, geoDistricts, geoProvinces, homeSections, settings } from '../schema/index.js';
+import {
+  branches,
+  categories,
+  collections,
+  geoCommunes,
+  geoDistricts,
+  geoProvinces,
+  homeSections,
+  promotions,
+  settings,
+  shippingMethods,
+  shippingRates,
+} from '../schema/index.js';
 import collectionData from './data/collections.json' with { type: 'json' };
 import branchData from './data/branches.json' with { type: 'json' };
 import communeData from './data/communes.json' with { type: 'json' };
@@ -39,6 +51,46 @@ const DEFAULT_HOME_SECTIONS = [
 
 const DEFAULT_SETTINGS: { key: string; value: Record<string, unknown> }[] = [
   { key: 'online_safety_buffer', value: { units: 1 } },
+  { key: 'khr_rate', value: { rate: 4100 } },
+  {
+    key: 'custom_print_fees',
+    value: { baseCents: 800, patches: { none: 0, ucl: 500, cpl: 400, aff: 400, champions: 500, 'f1-paddock': 500 } },
+  },
+  { key: 'team_discount_rule', value: { minItems: 5, percent: 10, categories: ['jerseys', 'f1'] } },
+  {
+    key: 'loyalty_rules',
+    value: {
+      pointsPerUsd: 10,
+      tiers: [
+        { id: 'bronze', minSpendCents: 0 },
+        { id: 'silver', minSpendCents: 15000 },
+        { id: 'gold', minSpendCents: 30000 },
+        { id: 'pro', minSpendCents: 50000 },
+      ],
+      memberDiscount: { fromTier: 'silver', percent: 10, categories: ['boots', 'jerseys', 'f1', 'balls', 'essentials'] },
+      freeDelivery: { fromTier: 'gold', methods: ['pp_rider'] },
+      freePrinting: { fromTier: 'pro' },
+    },
+  },
+];
+
+const SHIPPING_METHODS = [
+  { id: 'pp_rider', nameI18n: { en: 'Phnom Penh rider delivery' }, sort: 1 },
+  { id: 'province_courier', nameI18n: { en: 'Province courier' }, sort: 2 },
+  { id: 'pickup', nameI18n: { en: 'Pick up in store' }, sort: 3 },
+];
+
+/** Starting rates; inserted only when missing so admin changes survive re-seeding. */
+const SHIPPING_RATES = [
+  { methodId: 'pp_rider', provinceCode: '12', feeCents: 250, freeOverCents: 5000, etaI18n: { en: 'Same or next day' }, needsReview: false },
+  // Placeholder until the owner confirms the courier price.
+  { methodId: 'province_courier', provinceCode: null, feeCents: 300, freeOverCents: null, etaI18n: { en: '2–3 days' }, needsReview: true },
+  { methodId: 'pickup', provinceCode: null, feeCents: 0, freeOverCents: null, etaI18n: { en: 'Ready the same day' }, needsReview: false },
+];
+
+const PROMOTIONS = [
+  { code: 'CASTLE10', name: '10% off', type: 'percent' as const, value: 10, scope: {} },
+  { code: 'PPFREE', name: 'Free Phnom Penh delivery', type: 'free_shipping' as const, value: 0, scope: { methods: ['pp_rider'] } },
 ];
 
 export const provinceOfDistrict = (code: string): string => code.slice(0, -2).padStart(2, '0');
@@ -89,6 +141,13 @@ export async function seed(db: Db): Promise<{ branches: number; provinces: numbe
       .values(CATEGORY_SEED)
       .onConflictDoUpdate({ target: categories.slug, set: { nameI18n: sql`excluded.name_i18n`, sort: sql`excluded.sort` } });
     await tx.insert(settings).values(DEFAULT_SETTINGS).onConflictDoNothing();
+    await tx
+      .insert(shippingMethods)
+      .values(SHIPPING_METHODS)
+      .onConflictDoUpdate({ target: shippingMethods.id, set: { nameI18n: sql`excluded.name_i18n`, sort: sql`excluded.sort` } });
+    const existingRates = await tx.select({ id: shippingRates.id }).from(shippingRates).limit(1);
+    if (existingRates.length === 0) await tx.insert(shippingRates).values(SHIPPING_RATES);
+    await tx.insert(promotions).values(PROMOTIONS).onConflictDoNothing();
 
     await tx
       .insert(collections)

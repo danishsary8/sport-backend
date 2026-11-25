@@ -1,6 +1,7 @@
 export * from './addresses.js';
 export * from './branches.js';
 export * from './catalog.js';
+export * from './commerce.js';
 export * from './engagement.js';
 export * from './geo.js';
 export * from './settings.js';

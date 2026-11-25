@@ -10,7 +10,7 @@ let database: Database;
 beforeAll(async () => {
   database = createDb({ databaseUrl: TEST_DATABASE_URL, databaseSsl: false });
   await runMigrations(database.db);
-  await database.db.delete(settings);
+  await database.db.delete(settings).where(eq(settings.key, 'test_jsonb_round_trip'));
 });
 
 afterAll(async () => {
@@ -23,9 +23,9 @@ describe('database client', () => {
   });
 
   it('round-trips jsonb settings', async () => {
-    await database.db.insert(settings).values({ key: 'khr_rate', value: { khr_rate: 4100 } });
-    const [row] = await database.db.select().from(settings).where(eq(settings.key, 'khr_rate'));
-    expect(row?.value).toEqual({ khr_rate: 4100 });
+    await database.db.insert(settings).values({ key: 'test_jsonb_round_trip', value: { nested: { n: 4100 } } });
+    const [row] = await database.db.select().from(settings).where(eq(settings.key, 'test_jsonb_round_trip'));
+    expect(row?.value).toEqual({ nested: { n: 4100 } });
   });
 
   it('fails a ping to an unreachable database within 3.5s', async () => {

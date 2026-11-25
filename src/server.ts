@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { createApp } from './app.js';
 import { ConfigError, loadConfig } from './config/env.js';
 import { createDb } from './db/client.js';
+import { createFirebaseIdentity, createUnconfiguredIdentity } from './lib/identity.js';
 import { createLogger } from './lib/logger.js';
 
 const SHUTDOWN_GRACE_MS = 10_000;
@@ -19,7 +20,13 @@ export async function start(env: NodeJS.ProcessEnv = process.env): Promise<Runni
   const config = loadConfig(env);
   const logger = createLogger(config);
   const database = createDb(config, (err) => logger.error({ err }, 'Postgres pool error'));
-  const app = createApp({ config, logger, db: database });
+  let identity = createUnconfiguredIdentity();
+  if (config.firebaseProjectId) {
+    identity = createFirebaseIdentity({ projectId: config.firebaseProjectId, serviceAccount: config.firebaseServiceAccount });
+  } else {
+    logger.warn('FIREBASE_PROJECT_ID is not set: sign-in endpoints will answer 503 auth_unavailable');
+  }
+  const app = createApp({ config, logger, db: database, identity });
 
   const server = app.listen(config.port, '0.0.0.0');
   await new Promise<void>((resolve, reject) => {

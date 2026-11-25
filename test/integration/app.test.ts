@@ -1,14 +1,27 @@
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp, type AppDeps } from '../../src/app.js';
 import { createLogger } from '../../src/lib/logger.js';
+import type { Database } from '../../src/db/client.js';
+import { closeTestDb, testDb } from '../helpers/db.js';
+import { fakeIdentity } from '../helpers/fakeIdentity.js';
 import { testConfig } from '../helpers/testConfig.js';
+
+let database: Database;
+beforeAll(async () => {
+  database = await testDb();
+});
+afterAll(closeTestDb);
+
+/** The real test database with ping replaced, to simulate outages. */
+const withPing = (ping: () => Promise<void>): Database => ({ ...database, ping });
 
 function buildApp(overrides: Partial<AppDeps> = {}) {
   return createApp({
     config: testConfig(),
     logger: createLogger({ logLevel: 'fatal', nodeEnv: 'test' }),
-    db: { ping: async () => {} },
+    db: database,
+    identity: fakeIdentity().provider,
     ...overrides,
   });
 }
@@ -64,14 +77,14 @@ describe('health probes', () => {
   });
 
   it('reports unavailable when the database fails', async () => {
-    const res = await request(buildApp({ db: { ping: async () => Promise.reject(new Error('down')) } })).get('/ready');
+    const res = await request(buildApp({ db: withPing(async () => Promise.reject(new Error('down'))) })).get('/ready');
     expect(res.status).toBe(503);
     expect(res.body).toEqual({ status: 'unavailable' });
   });
 
   it('gives up on a hung database within the 3s timeout', async () => {
     const started = Date.now();
-    const res = await request(buildApp({ db: { ping: () => new Promise<void>(() => {}) } })).get('/ready');
+    const res = await request(buildApp({ db: withPing(() => new Promise<void>(() => {})) })).get('/ready');
     expect(res.status).toBe(503);
     expect(Date.now() - started).toBeLessThan(3500);
   }, 6000);

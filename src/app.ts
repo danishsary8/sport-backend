@@ -3,6 +3,9 @@ import express, { Router } from 'express';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 import type { Config } from './config/env.js';
+import { createContext } from './context.js';
+import type { Database } from './db/client.js';
+import type { IdentityProvider } from './lib/identity.js';
 import { errorHandler, notFoundHandler } from './lib/errors.js';
 import type { Logger } from './lib/logger.js';
 import {
@@ -11,12 +14,17 @@ import {
   DEFAULT_RATE_LIMIT_WINDOW_MS,
 } from './middleware/rateLimit.js';
 import { requestId } from './middleware/requestId.js';
+import { accountRouter } from './modules/account/router.js';
+import { authRouter } from './modules/auth/router.js';
 import { healthRouter } from './modules/health/router.js';
+import type { BootstrapAdmins } from './modules/users/repo.js';
 
 export interface AppDeps {
   config: Config;
   logger: Logger;
-  db: { ping(): Promise<void> };
+  db: Database;
+  identity: IdentityProvider;
+  bootstrapAdmins?: BootstrapAdmins;
   rateLimit?: { enabled: boolean; generalMax?: number };
 }
 
@@ -68,7 +76,15 @@ export function createApp(deps: AppDeps): express.Express {
       }),
     );
   }
-  // Feature routers are mounted on v1 from phase 2 onwards.
+  const ctx = createContext({
+    config,
+    logger,
+    database: deps.db,
+    identity: deps.identity,
+    bootstrapAdmins: deps.bootstrapAdmins ?? { phones: config.bootstrapAdminPhones, emails: config.bootstrapAdminEmails },
+  });
+  v1.use(authRouter(ctx));
+  v1.use(accountRouter(ctx));
   app.use('/v1', v1);
 
   app.use(notFoundHandler);

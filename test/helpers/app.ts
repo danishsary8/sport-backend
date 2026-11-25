@@ -10,7 +10,7 @@ import { testConfig } from './testConfig.js';
 export function memberApp(
   database: Database,
   fake = fakeIdentity(),
-  opts: { payments?: FakePaymentProvider; logger?: Logger; config?: Partial<Config> } = {},
+  opts: { payments?: FakePaymentProvider; logger?: Logger; config?: Partial<Config>; routeLimits?: boolean } = {},
 ) {
   const payments = opts.payments ?? new FakePaymentProvider();
   const app = createApp({
@@ -19,7 +19,7 @@ export function memberApp(
     db: database,
     identity: fake.provider,
     bootstrapAdmins: { phones: [], emails: [] },
-    rateLimit: { enabled: false },
+    rateLimit: { enabled: false, routes: opts.routeLimits ?? false },
     payments,
   });
   return { app, fake, payments };

@@ -25,6 +25,7 @@ import { cartRouter } from './modules/cart/router.js';
 import { catalogRouter } from './modules/catalog/router.js';
 import { checkoutRouter } from './modules/checkout/router.js';
 import { orderPaymentsRouter, webhookRouter } from './modules/payments/router.js';
+import { customerOrdersRouter } from './modules/orders/customerRouter.js';
 import { devPaymentsRouter } from './modules/payments/devRouter.js';
 import { geoRouter } from './modules/geo/router.js';
 import { wishlistRouter } from './modules/wishlist/router.js';
@@ -38,7 +39,8 @@ export interface AppDeps {
   db: Database;
   identity: IdentityProvider;
   bootstrapAdmins?: BootstrapAdmins;
-  rateLimit?: { enabled: boolean; generalMax?: number };
+  /** enabled: the general /v1 limit; routes: per-route limits (default: same as enabled). */
+  rateLimit?: { enabled: boolean; generalMax?: number; routes?: boolean };
   /** Defaults to PayWay when configured, else the fake provider. */
   payments?: PaymentProvider;
 }
@@ -99,6 +101,7 @@ export function createApp(deps: AppDeps): express.Express {
     identity: deps.identity,
     bootstrapAdmins: deps.bootstrapAdmins ?? { phones: config.bootstrapAdminPhones, emails: config.bootstrapAdminEmails },
     payments: deps.payments ?? createPaymentProvider(config),
+    routeLimits: deps.rateLimit?.routes ?? deps.rateLimit?.enabled !== false,
   });
   v1.use(authRouter(ctx));
   v1.use(accountRouter(ctx));
@@ -108,6 +111,7 @@ export function createApp(deps: AppDeps): express.Express {
   v1.use(wishlistRouter(ctx));
   v1.use(cartRouter(ctx));
   v1.use(checkoutRouter(ctx));
+  v1.use(customerOrdersRouter(ctx));
   v1.use(orderPaymentsRouter(ctx));
   const dev = devPaymentsRouter(ctx);
   if (dev) v1.use(dev);

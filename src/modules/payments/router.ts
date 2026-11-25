@@ -2,14 +2,15 @@ import { desc, eq, sql } from 'drizzle-orm';
 import express, { Router, type Request } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../../context.js';
-import { branches, orderEvents, orderItems, payments, paymentWebhookEvents, type OrderRow, type PaymentRow } from '../../db/schema/index.js';
+import { payments, paymentWebhookEvents, type OrderRow, type PaymentRow } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
 import { normalizePhone } from '../../lib/phone.js';
 import { validate } from '../../middleware/validate.js';
 import { langSchema } from '../catalog/i18n.js';
 import { startPaymentAttempt } from '../checkout/paymentAttempt.js';
 import { findOrderForAccess } from '../orders/access.js';
-import { orderView, paymentView } from '../orders/view.js';
+import { loadOrderView } from '../orders/load.js';
+import { paymentView } from '../orders/view.js';
 import { availablePaymentMethods, paymentMethodsEnabled } from '../settings/payments.js';
 import { refreshPayment } from './check.js';
 import { applyProviderResult } from './confirm.js';
@@ -34,14 +35,7 @@ export function orderPaymentsRouter(ctx: AppContext): Router {
 
   router.get('/orders/:number', noStore, ...ctx.guestOrMember, validate({ query: z.object({ lang: langSchema }) }), async (req, res) => {
     const order = await access(req);
-    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id)).orderBy(orderItems.id);
-    const events = await db.select().from(orderEvents).where(eq(orderEvents.orderId, order.id)).orderBy(orderEvents.id);
-    const branchName = order.pickupBranchId ? (await db.select({ name: branches.name }).from(branches).where(eq(branches.id, order.pickupBranchId)))[0]?.name : null;
-    const payment = await latestPayment(ctx, order.id);
-    res.json({
-      order: orderView(order, items, { lang: (req.query as { lang: 'en' | 'km' }).lang, assetBase: ctx.config.assetBaseUrl, pickupBranchName: branchName, events }),
-      payment: payment ? paymentView(payment) : null,
-    });
+    res.json(await loadOrderView(db, order, { lang: (req.query as { lang: 'en' | 'km' }).lang, assetBase: ctx.config.assetBaseUrl }));
   });
 
   router.get('/orders/:number/payment-status', noStore, ...ctx.guestOrMember, async (req, res) => {

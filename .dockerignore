@@ -1,0 +1,11 @@
+node_modules
+dist
+legacy
+test
+docs
+.git
+.github
+.superpowers
+.env
+.env.*
+*.log

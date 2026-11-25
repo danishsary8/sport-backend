@@ -1,0 +1,45 @@
+# Local setup: docker compose up --build
+# API on http://localhost:8080 (docs at /docs), Postgres on localhost:5432
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sportcastle
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sportcastle"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    build: .
+    command: ["sh", "-c", "node dist/db/migrate.js && node dist/db/seed.js"]
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/sportcastle
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: .
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      DATABASE_URL: postgres://postgres:postgres@db:5432/sportcastle
+      PUBLIC_BASE_URL: http://localhost:8080
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173
+      LOG_LEVEL: info
+    ports:
+      - "8080:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  db-data:

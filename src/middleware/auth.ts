@@ -49,11 +49,16 @@ export function optionalAuth(identity: IdentityProvider): RequestHandler {
 }
 
 /** Loads (creating on first use) the Postgres user for req.auth; rejects deleted accounts. */
-export function requireUser(db: Db, bootstrap: BootstrapAdmins): RequestHandler {
+export function requireUser(db: Db, bootstrap: BootstrapAdmins, identity: IdentityProvider): RequestHandler {
   return async (req, _res, next) => {
     if (!req.auth) throw new AppError('unauthenticated', 401, 'Sign in required');
     const { user, created } = await upsertFromClaims(db, req.auth, bootstrap);
-    if (user.deletedAt) throw new AppError('account_deleted', 403, 'This account has been deleted');
+    if (user.deletedAt) {
+      // The Firebase user should be gone; if deletion failed earlier, retry so the person
+      // can sign up again with the same phone. Best effort, never blocks the response.
+      void identity.deleteUser(user.firebaseUid).catch(() => {});
+      throw new AppError('account_deleted', 403, 'This account has been deleted');
+    }
     req.user = user;
     req.userCreated = created;
     next();

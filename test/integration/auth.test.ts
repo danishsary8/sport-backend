@@ -141,4 +141,31 @@ describe('POST /v1/auth/session', () => {
     const row = await database.pool.query("select phone_e164 from users where firebase_uid = 'gone'");
     expect(row.rows[0]?.phone_e164).toBeNull();
   });
+
+  it('moves a phone from an old live account to the uid that now owns it in Firebase', async () => {
+    await database.pool.query("insert into users (firebase_uid, phone_e164) values ('stale', '+85577777777')");
+    const res = await request(app())
+      .post('/v1/auth/session')
+      .set(bearer(fake.token({ uid: 'owner', phone: '+85577777777' })));
+    expect(res.status).toBe(200);
+    expect(res.body.user.phone).toBe('+85577777777');
+    const stale = await database.pool.query("select phone_e164 from users where firebase_uid = 'stale'");
+    expect(stale.rows[0]?.phone_e164).toBeNull();
+  });
+
+  it('clears the phone when the token no longer carries one (unlinked)', async () => {
+    await request(app()).post('/v1/auth/session').set(bearer(fake.token({ uid: 'u', phone: '+85566666666', email: 'u@x.com', emailVerified: true })));
+    const me = await request(app()).get('/v1/me').set(bearer(fake.token({ uid: 'u', email: 'u@x.com', emailVerified: true })));
+    expect(me.body.user).toMatchObject({ phone: null, phoneVerified: false });
+  });
+
+  it('retries deleting the Firebase user when a deleted account signs in again', async () => {
+    const token = fake.token({ uid: 'ghost', phone: '+85555555555' });
+    await request(app()).post('/v1/auth/session').set(bearer(token));
+    await database.pool.query("update users set deleted_at = now(), phone_e164 = null where firebase_uid = 'ghost'");
+    const res = await request(app()).get('/v1/me').set(bearer(token));
+    expect(res.status).toBe(403);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(fake.deleted).toContain('ghost');
+  });
 });

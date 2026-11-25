@@ -22,7 +22,7 @@ export interface AppContext {
 export function createContext(deps: Omit<AppContext, 'member' | 'guestOrMember'>): AppContext {
   return {
     ...deps,
-    member: [requireAuth(deps.identity), requireUser(deps.database.db, deps.bootstrapAdmins)],
+    member: [requireAuth(deps.identity), requireUser(deps.database.db, deps.bootstrapAdmins, deps.identity)],
     guestOrMember: [optionalAuth(deps.identity)],
   };
 }

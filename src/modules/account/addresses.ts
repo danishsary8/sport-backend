@@ -1,7 +1,7 @@
 import { and, count, desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db } from '../../db/client.js';
-import { addresses, geoCommunes, geoDistricts, geoProvinces, type AddressRow } from '../../db/schema/index.js';
+import { addresses, geoCommunes, geoDistricts, geoProvinces, users, type AddressRow } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
 import { normalizePhone } from '../../lib/phone.js';
 
@@ -157,6 +157,17 @@ async function ownAddress(tx: Tx, userId: string, id: string): Promise<AddressRo
   return row;
 }
 
+/**
+ * Serialises every address write for one member (and account deletion), so the cap, the single
+ * default and default promotion hold under concurrent requests. Also refuses writes for an
+ * account deleted after the request was authenticated.
+ */
+export async function lockMemberAddresses(tx: Tx, userId: string): Promise<void> {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`addresses:${userId}`}))`);
+  const [user] = await tx.select({ deletedAt: users.deletedAt }).from(users).where(eq(users.id, userId));
+  if (!user || user.deletedAt) throw new AppError('account_deleted', 403, 'This account has been deleted');
+}
+
 async function clearDefault(tx: Tx, userId: string): Promise<void> {
   await tx.update(addresses).set({ isDefault: false }).where(and(eq(addresses.userId, userId), eq(addresses.isDefault, true)));
 }
@@ -168,8 +179,7 @@ export function listAddresses(db: Db, userId: string): Promise<AddressView[]> {
 export async function createAddress(db: Db, userId: string, input: AddressCreate): Promise<AddressView> {
   return db.transaction(async (tx) => {
     await assertHierarchy(tx, input.provinceCode, input.districtCode, input.communeCode);
-    // Serialise address writes per member so the limit and the single default hold under concurrency.
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`addresses:${userId}`}))`);
+    await lockMemberAddresses(tx, userId);
     const [{ n } = { n: 0 }] = await tx.select({ n: count() }).from(addresses).where(eq(addresses.userId, userId));
     if (n >= MAX_ADDRESSES) {
       throw new AppError('address_limit', 409, `You can save up to ${MAX_ADDRESSES} addresses`);
@@ -199,6 +209,7 @@ export async function createAddress(db: Db, userId: string, input: AddressCreate
 
 export async function updateAddress(db: Db, userId: string, id: string, patch: AddressPatch): Promise<AddressView> {
   return db.transaction(async (tx) => {
+    await lockMemberAddresses(tx, userId);
     const current = await ownAddress(tx, userId, id);
     const next = {
       provinceCode: patch.provinceCode ?? current.provinceCode,
@@ -223,6 +234,7 @@ export async function updateAddress(db: Db, userId: string, id: string, patch: A
 
 export async function setDefaultAddress(db: Db, userId: string, id: string): Promise<AddressView> {
   return db.transaction(async (tx) => {
+    await lockMemberAddresses(tx, userId);
     await ownAddress(tx, userId, id);
     await clearDefault(tx, userId);
     await tx.update(addresses).set({ isDefault: true, updatedAt: sql`now()` }).where(eq(addresses.id, id));
@@ -232,6 +244,7 @@ export async function setDefaultAddress(db: Db, userId: string, id: string): Pro
 
 export async function deleteAddress(db: Db, userId: string, id: string): Promise<void> {
   await db.transaction(async (tx) => {
+    await lockMemberAddresses(tx, userId);
     const row = await ownAddress(tx, userId, id);
     await tx.delete(addresses).where(eq(addresses.id, id));
     if (row.isDefault) {

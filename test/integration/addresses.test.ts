@@ -168,3 +168,29 @@ describe('ownership', () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe('concurrency', () => {
+  it('always leaves exactly one default when addresses are deleted at the same time', async () => {
+    for (let round = 0; round < 10; round += 1) {
+      await resetDb(database);
+      const home = (await create(alice)).body.address;
+      await create(alice, { label: 'Older' });
+      const newest = (await create(alice, { label: 'Newest' })).body.address;
+      await Promise.all([
+        request(ctx.app).delete(`/v1/me/addresses/${home.id}`).set(bearer(alice)),
+        request(ctx.app).delete(`/v1/me/addresses/${newest.id}`).set(bearer(alice)),
+      ]);
+      const all = await list(alice);
+      expect(all).toHaveLength(1);
+      expect(all[0].isDefault).toBe(true);
+    }
+  });
+
+  it('keeps the cap and a single default under concurrent creates', async () => {
+    for (let i = 0; i < 18; i += 1) await create(alice, { label: `A${i}` });
+    const results = await Promise.all(Array.from({ length: 5 }, (_, i) => create(alice, { label: `C${i}`, isDefault: true })));
+    expect(results.filter((r) => r.status === 201)).toHaveLength(2);
+    expect(results.filter((r) => r.status === 409)).toHaveLength(3);
+    expect((await list(alice)).filter((a: { isDefault: boolean }) => a.isDefault)).toHaveLength(1);
+  });
+});

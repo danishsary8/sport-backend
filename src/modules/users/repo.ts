@@ -1,4 +1,4 @@
-import { and, eq, getTableColumns, isNotNull, ne, sql } from 'drizzle-orm';
+import { and, eq, getTableColumns, ne, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import { users, type UserRow } from '../../db/schema/index.js';
 import type { AuthClaims } from '../../lib/identity.js';
@@ -27,12 +27,13 @@ export async function upsertFromClaims(
 
   return db.transaction(async (tx) => {
     if (claims.phone) {
-      // A number can come back after an account was deleted (anonymised rows keep nothing, but
-      // older rows might); free it so the unique constraint doesn't block the new owner.
+      // Firebase allows a number on only one user, so a verified token proves current ownership.
+      // Free it from any other row (deleted account, user removed in the Firebase console, number
+      // unlinked) so the unique constraint never locks the real owner out.
       await tx
         .update(users)
         .set({ phoneE164: null })
-        .where(and(eq(users.phoneE164, claims.phone), ne(users.firebaseUid, claims.uid), isNotNull(users.deletedAt)));
+        .where(and(eq(users.phoneE164, claims.phone), ne(users.firebaseUid, claims.uid)));
     }
 
     const rows = await tx
@@ -48,7 +49,8 @@ export async function upsertFromClaims(
       .onConflictDoUpdate({
         target: users.firebaseUid,
         set: {
-          phoneE164: sql`coalesce(excluded.phone_e164, ${users.phoneE164})`,
+          // The token is the source of truth: no phone_number claim means the phone was unlinked.
+          phoneE164: sql`excluded.phone_e164`,
           email: sql`coalesce(excluded.email, ${users.email})`,
           photoUrl: sql`coalesce(excluded.photo_url, ${users.photoUrl})`,
           fullName: sql`coalesce(${users.fullName}, excluded.full_name)`,

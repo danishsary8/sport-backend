@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db } from '../../db/client.js';
 import { addresses, branches, users, type UserRow } from '../../db/schema/index.js';
@@ -32,9 +32,9 @@ export async function updateProfile(db: Db, user: UserRow, patch: ProfilePatch):
   const [updated] = await db
     .update(users)
     .set({ ...patch, updatedAt: sql`now()` })
-    .where(eq(users.id, user.id))
+    .where(and(eq(users.id, user.id), isNull(users.deletedAt)))
     .returning();
-  if (!updated) throw new AppError('not_found', 404, 'Not found');
+  if (!updated) throw new AppError('account_deleted', 403, 'This account has been deleted');
   return updated;
 }
 
@@ -44,6 +44,8 @@ export async function updateProfile(db: Db, user: UserRow, patch: ProfilePatch):
  */
 export async function deleteAccount(db: Db, identity: IdentityProvider, logger: Logger, user: UserRow): Promise<void> {
   await db.transaction(async (tx) => {
+    // Same lock as address writes, so an address saved concurrently can't outlive the deletion.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`addresses:${user.id}`}))`);
     await tx.delete(addresses).where(eq(addresses.userId, user.id));
     await tx
       .update(users)

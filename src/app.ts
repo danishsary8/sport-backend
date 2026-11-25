@@ -11,6 +11,7 @@ import {
   DEFAULT_RATE_LIMIT_WINDOW_MS,
 } from './middleware/rateLimit.js';
 import { requestId } from './middleware/requestId.js';
+import { healthRouter } from './modules/health/router.js';
 
 export interface AppDeps {
   config: Config;
@@ -53,6 +54,9 @@ export function createApp(deps: AppDeps): express.Express {
       },
     }),
   );
+
+  // Probes sit outside /v1 so they are never rate limited.
+  app.use(healthRouter(deps.db));
 
   const v1 = Router();
   if (deps.rateLimit?.enabled !== false) {

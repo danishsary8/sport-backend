@@ -47,3 +47,39 @@ describe('createApp', () => {
     expect(limited.body.error.code).toBe('rate_limited');
   });
 });
+
+describe('health probes', () => {
+  it('reports liveness without details', async () => {
+    const res = await request(buildApp()).get('/health');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ status: 'ok' });
+    expect(res.headers['cache-control']).toBe('no-store');
+  });
+
+  it('reports ready when the database answers', async () => {
+    const res = await request(buildApp()).get('/ready');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ status: 'ready' });
+    expect(res.headers['cache-control']).toBe('no-store');
+  });
+
+  it('reports unavailable when the database fails', async () => {
+    const res = await request(buildApp({ db: { ping: async () => Promise.reject(new Error('down')) } })).get('/ready');
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({ status: 'unavailable' });
+  });
+
+  it('gives up on a hung database within the 3s timeout', async () => {
+    const started = Date.now();
+    const res = await request(buildApp({ db: { ping: () => new Promise<void>(() => {}) } })).get('/ready');
+    expect(res.status).toBe(503);
+    expect(Date.now() - started).toBeLessThan(3500);
+  }, 6000);
+
+  it('does not rate limit the probes', async () => {
+    const app = buildApp({ rateLimit: { enabled: true, generalMax: 1 } });
+    for (let i = 0; i < 3; i += 1) {
+      expect((await request(app).get('/health')).status).toBe(200);
+    }
+  });
+});

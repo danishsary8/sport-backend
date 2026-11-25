@@ -7,6 +7,7 @@ import type { Db } from './db/client.js';
 import { createErrorHandler, notFoundHandler } from './lib/errors.js';
 import type { Logger } from './lib/logger.js';
 import { requestId } from './lib/request-id.js';
+import { catalogRoutes } from './modules/catalog/routes.js';
 import { healthRoutes } from './modules/health/routes.js';
 
 export interface AppDeps {
@@ -46,6 +47,7 @@ export function createApp(deps: AppDeps): Express {
   app.use(express.json({ limit: '100kb' }));
 
   app.use(healthRoutes({ checkDb: deps.checkDb ?? defaultCheckDb(deps.db) }));
+  app.use('/v1', catalogRoutes(deps.db));
 
   app.use(notFoundHandler);
   app.use(createErrorHandler(logger));

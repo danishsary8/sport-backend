@@ -65,6 +65,18 @@ export function notFoundHandler(req: Request, res: Response): void {
   send(res, req, ApiError.notFound(`No route for ${req.method} ${req.path}`));
 }
 
+const DB_DOWN_CODES = new Set(['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ECONNRESET', '57P01', '57P03', '08001', '08006']);
+
+/** True when the error (or its cause) means Postgres could not be reached. */
+export function isDatabaseUnavailable(err: unknown): boolean {
+  for (let e = err as { code?: string; message?: string; cause?: unknown } | undefined, depth = 0; e && depth < 4; depth++) {
+    if (e.code && DB_DOWN_CODES.has(e.code)) return true;
+    if (e.message && /timeout exceeded when trying to connect|Connection terminated/i.test(e.message)) return true;
+    e = e.cause as typeof e;
+  }
+  return false;
+}
+
 /** Last middleware: turns every thrown error into a problem+json response. */
 export function createErrorHandler(logger: Logger) {
   return (err: unknown, req: Request, res: Response, _next: NextFunction): void => {
@@ -78,6 +90,10 @@ export function createErrorHandler(logger: Logger) {
     }
     if (bodyError?.type === 'entity.parse.failed') {
       return send(res, req, new ApiError(400, 'malformed-json', 'Bad Request', 'Request body is not valid JSON.'));
+    }
+    if (isDatabaseUnavailable(err)) {
+      logger.warn({ err, requestId: req.id }, 'Database unavailable');
+      return send(res, req, ApiError.serviceUnavailable('The service is temporarily unavailable. Please try again shortly.'));
     }
     logger.error({ err, requestId: req.id }, 'Unhandled error');
     send(res, req, new ApiError(500, 'internal-error', 'Internal Server Error', 'Something went wrong on our side.'));

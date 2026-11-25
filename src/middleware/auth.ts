@@ -65,6 +65,20 @@ export function requireUser(db: Db, bootstrap: BootstrapAdmins, identity: Identi
   };
 }
 
+/** For routes open to guests: when a valid token was sent, load the member like requireUser. */
+export function optionalUser(db: Db, bootstrap: BootstrapAdmins): RequestHandler {
+  return async (req, _res, next) => {
+    if (!req.auth) {
+      next();
+      return;
+    }
+    const { user } = await upsertFromClaims(db, req.auth, bootstrap);
+    if (user.deletedAt) throw new AppError('account_deleted', 403, 'This account has been deleted');
+    req.user = user;
+    next();
+  };
+}
+
 export function requireRole(...roles: UserRole[]): RequestHandler {
   return (req, _res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {

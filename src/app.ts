@@ -21,6 +21,7 @@ import { adminStockRouter } from './modules/admin/stockRouter.js';
 import { adminUsersRouter } from './modules/admin/usersRouter.js';
 import { authRouter } from './modules/auth/router.js';
 import { branchesRouter } from './modules/branches/router.js';
+import { cartRouter } from './modules/cart/router.js';
 import { catalogRouter } from './modules/catalog/router.js';
 import { geoRouter } from './modules/geo/router.js';
 import { wishlistRouter } from './modules/wishlist/router.js';
@@ -97,6 +98,7 @@ export function createApp(deps: AppDeps): express.Express {
   v1.use(branchesRouter(ctx));
   v1.use(catalogRouter(ctx));
   v1.use(wishlistRouter(ctx));
+  v1.use(cartRouter(ctx));
   v1.use(adminUsersRouter(ctx));
   v1.use(adminStockRouter(ctx));
   v1.use(adminProductsRouter(ctx));

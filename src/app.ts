@@ -30,12 +30,17 @@ import { adminOrdersRouter } from './modules/orders/adminRouter.js';
 import { rmaRouter } from './modules/rma/router.js';
 import { loyaltyRouter } from './modules/loyalty/router.js';
 import { questionsRouter } from './modules/questions/router.js';
+import { adminOverviewRouter } from './modules/admin/overviewRouter.js';
+import { adminLogsRouter } from './modules/admin/logsRouter.js';
 import { devPaymentsRouter } from './modules/payments/devRouter.js';
 import { geoRouter } from './modules/geo/router.js';
 import { wishlistRouter } from './modules/wishlist/router.js';
 import { healthRouter } from './modules/health/router.js';
 import type { BootstrapAdmins } from './modules/users/repo.js';
 import { createPaymentProvider, type PaymentProvider } from './modules/payments/provider.js';
+import type { Notifier } from './modules/notifications/notifier.js';
+import { telegramNotifier } from './modules/notifications/telegram.js';
+import { resendNotifier } from './modules/notifications/resend.js';
 
 export interface AppDeps {
   config: Config;
@@ -47,6 +52,8 @@ export interface AppDeps {
   rateLimit?: { enabled: boolean; generalMax?: number; routes?: boolean };
   /** Defaults to PayWay when configured, else the fake provider. */
   payments?: PaymentProvider;
+  /** Defaults to Telegram/Resend from config (unconfigured channels report configured: false). */
+  notifiers?: { telegram: Notifier; email: Notifier };
 }
 
 export function createApp(deps: AppDeps): express.Express {
@@ -110,6 +117,10 @@ export function createApp(deps: AppDeps): express.Express {
     identity: deps.identity,
     bootstrapAdmins: deps.bootstrapAdmins ?? { phones: config.bootstrapAdminPhones, emails: config.bootstrapAdminEmails },
     payments: deps.payments ?? createPaymentProvider(config),
+    notifiers: deps.notifiers ?? {
+      telegram: telegramNotifier({ botToken: config.telegramBotToken, chatId: config.telegramChatId }),
+      email: resendNotifier({ apiKey: config.resendApiKey, from: config.notificationFromEmail }),
+    },
     routeLimits: deps.rateLimit?.routes ?? deps.rateLimit?.enabled !== false,
   });
   v1.use(authRouter(ctx));
@@ -133,6 +144,8 @@ export function createApp(deps: AppDeps): express.Express {
   v1.use(adminOrdersRouter(ctx));
   v1.use(rmaRouter(ctx));
   v1.use(loyaltyRouter(ctx));
+  v1.use(adminOverviewRouter(ctx));
+  v1.use(adminLogsRouter(ctx));
   // Payment webhooks are signature-checked and re-verified, so they skip the per-IP limiter.
   app.use('/v1', unlimited);
   app.use('/v1', v1);

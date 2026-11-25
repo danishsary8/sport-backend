@@ -4,6 +4,7 @@ import type { Database } from './db/client.js';
 import type { IdentityProvider } from './lib/identity.js';
 import type { Logger } from './lib/logger.js';
 import type { PaymentProvider } from './modules/payments/provider.js';
+import type { Notifier } from './modules/notifications/notifier.js';
 import { optionalAuth, optionalUser, requireAuth, requireUser } from './middleware/auth.js';
 import { createRateLimitMiddleware, DEFAULT_RATE_LIMIT_WINDOW_MS } from './middleware/rateLimit.js';
 import type { BootstrapAdmins } from './modules/users/repo.js';
@@ -16,6 +17,7 @@ export interface AppContext {
   identity: IdentityProvider;
   bootstrapAdmins: BootstrapAdmins;
   payments: PaymentProvider;
+  notifiers: { telegram: Notifier; email: Notifier };
   /** requireAuth + requireUser: the route needs a signed-in, non-deleted user. */
   member: RequestHandler[];
   /** Guests allowed; with a valid token, req.auth and req.user are set (deleted accounts rejected). */

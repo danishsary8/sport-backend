@@ -34,7 +34,11 @@ export async function start(env: NodeJS.ProcessEnv = process.env): Promise<Runni
   }
   const payments = createPaymentProvider(config);
   if (payments.name === 'fake') logger.warn('PayWay is not configured: using the fake payment provider (test payments only)');
-  const app = createApp({ config, logger, db: database, identity, payments });
+  const notifiers = {
+    telegram: telegramNotifier({ botToken: config.telegramBotToken, chatId: config.telegramChatId }),
+    email: resendNotifier({ apiKey: config.resendApiKey, from: config.notificationFromEmail }),
+  };
+  const app = createApp({ config, logger, db: database, identity, payments, notifiers });
 
   const server = app.listen(config.port, '0.0.0.0');
   await new Promise<void>((resolve, reject) => {
@@ -49,10 +53,7 @@ export async function start(env: NodeJS.ProcessEnv = process.env): Promise<Runni
     ? startScheduler({
         database,
         payments,
-        notifiers: {
-          telegram: telegramNotifier({ botToken: config.telegramBotToken, chatId: config.telegramChatId }),
-          email: resendNotifier({ apiKey: config.resendApiKey, from: config.notificationFromEmail }),
-        },
+        notifiers,
         logger,
         now: () => new Date(),
       })

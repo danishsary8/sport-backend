@@ -1,4 +1,4 @@
-export type Template = 'order_placed' | 'payment_received' | 'status_changed' | 'needs_refund' | 'payment_unverified';
+export type Template = 'order_placed' | 'payment_received' | 'status_changed' | 'needs_refund' | 'payment_unverified' | 'rma_requested' | 'rma_decided' | 'question_received';
 
 export interface OrderNotice {
   number: string;
@@ -11,6 +11,8 @@ export interface OrderNotice {
   fulfillment: string;
   items: { name: string; size: string; qty: number }[];
   reason?: string;
+  rma?: { number: string; resolution: string; status: string; refundCents: number; decisionNote: string | null; itemCount: number };
+  question?: { productName: string; authorName: string; text: string };
 }
 
 export function escapeHtml(input: string): string {
@@ -58,6 +60,32 @@ export function render(template: Template, n: OrderNotice, channel: 'telegram' |
       subject = `Order ${n.number}: ${words(n.status)}`;
       lines = [`Hi ${n.contactName},`, STATUS_COPY[n.status] ?? `Your order ${n.number} is now ${words(n.status)}.`, `Order ${n.number} · status: ${words(n.status)}`];
       break;
+    case 'rma_requested': {
+      const r = n.rma!;
+      subject = `Return request ${r.number}`;
+      lines = [`↩️ Return request ${r.number} for order ${n.number}: ${words(r.resolution)}, ${r.itemCount} item(s)${r.refundCents ? `, ${usd(r.refundCents)}` : ''}.`, `Contact: ${n.contactName} ${n.contactPhone} via ${n.contactChannel}`];
+      break;
+    }
+    case 'rma_decided': {
+      const r = n.rma!;
+      subject = `Your return ${r.number} was ${r.status}`;
+      const what =
+        r.status === 'approved'
+          ? r.resolution === 'size_exchange'
+            ? 'Your size exchange is approved; we will contact you to hand over the new size.'
+            : r.resolution === 'store_credit'
+              ? `Your return is approved; ${usd(r.refundCents)} store credit will be issued to you.`
+              : `Your return is approved; ${usd(r.refundCents)} will be refunded to your original payment method.`
+          : `Your return request was not accepted${r.decisionNote ? `: ${r.decisionNote}` : '.'}`;
+      lines = [`Hi ${n.contactName},`, what, `Return ${r.number} · order ${n.number}`];
+      break;
+    }
+    case 'question_received': {
+      const qn = n.question!;
+      subject = `New question: ${qn.productName}`;
+      lines = [`❓ New product question on ${qn.productName} from ${qn.authorName}:`, qn.text, 'Answer it in the admin area.'];
+      break;
+    }
     case 'payment_unverified':
       subject = `⚠️ Check payment: ${n.number}`;
       lines = [`⚠️ Order ${n.number} expired but PayWay could not be reached to confirm it was unpaid.`, `Check ${usd(n.totalCents)} for this order in the PayWay portal; if it was paid, refund or contact the customer.`, `Contact: ${n.contactName} ${n.contactPhone} via ${n.contactChannel}`];

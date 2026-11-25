@@ -35,6 +35,37 @@ export async function enqueueOrderNotifications(tx: Exec, event: Template, order
   await tx.insert(notificationOutbox).values(rows.map((r) => ({ ...r, template: event, payload: payload as unknown as Record<string, unknown> })));
 }
 
+/** Queues an arbitrary message (already-built payload) for one recipient. */
+export async function enqueueMessage(tx: Exec, channel: 'telegram' | 'email', recipient: string, template: Template, payload: OrderNotice): Promise<void> {
+  await tx.insert(notificationOutbox).values({ channel, recipient, template, payload: payload as unknown as Record<string, unknown> });
+}
+
+/** Return requests go to ops; decisions go to the member (account email, else the order's contact email). */
+export async function enqueueRmaNotification(tx: Exec, template: 'rma_requested' | 'rma_decided', rmaId: string): Promise<void> {
+  const r = await tx.execute<{
+    number: string; resolution: string; status: string; refund_cents: number; decision_note: string | null; item_count: number;
+    order_number: string; status_o: string; total_cents: number; total_khr: number; contact_name: string; contact_phone_e164: string;
+    contact_channel: string; fulfillment: string; contact_email: string | null; user_email: string | null;
+  }>(sql`
+    select r.number, r.resolution, r.status, r.refund_cents, r.decision_note,
+      (select coalesce(sum(qty), 0)::int from rma_items i where i.rma_id = r.id) as item_count,
+      o.number as order_number, o.status as status_o, o.total_cents, o.total_khr, o.contact_name, o.contact_phone_e164, o.contact_channel,
+      o.fulfillment, o.contact_email, u.email as user_email
+    from rma_requests r join orders o on o.id = r.order_id left join users u on u.id = r.user_id where r.id = ${rmaId}`);
+  const row = r.rows[0];
+  if (!row) return;
+  const payload: OrderNotice = {
+    number: row.order_number, status: row.status_o, totalCents: row.total_cents, totalKhr: row.total_khr, contactName: row.contact_name,
+    contactPhone: row.contact_phone_e164, contactChannel: row.contact_channel, fulfillment: row.fulfillment, items: [],
+    rma: { number: row.number, resolution: row.resolution, status: row.status, refundCents: row.refund_cents, decisionNote: row.decision_note, itemCount: row.item_count },
+  };
+  if (template === 'rma_requested') await enqueueMessage(tx, 'telegram', 'ops', template, payload);
+  else {
+    const to = row.user_email ?? row.contact_email;
+    if (to) await enqueueMessage(tx, 'email', to, template, payload);
+  }
+}
+
 /** Sends due messages. Rows are leased first, so parallel workers never send one twice. */
 export async function processOutbox(
   db: Db,

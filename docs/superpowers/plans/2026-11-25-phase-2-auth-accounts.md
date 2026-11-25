@@ -13,6 +13,7 @@
 ## Global Constraints
 
 - Everything in the phase 1 plan's Global Constraints still applies (error shape, `.js` imports, request id, phone redaction in logs).
+- Express 5 (upgraded in the phase 1 review): async handlers may throw; errors reach `errorHandler`.
 - All new routes live under `/v1`. IDs are `uuid` (`gen_random_uuid()`); timestamps are `timestamptz`.
 - Phone numbers are stored in E.164 (`+855…`). Firebase's `phone_number` claim is trusted as already E.164; address recipient phones are normalised with `libphonenumber-js`, default region `KH`.
 - The identity key is `users.firebase_uid`. `phone_e164` is unique when not null.
@@ -150,7 +151,7 @@ test/integration/seed.test.ts  auth.test.ts  account.test.ts  addresses.test.ts 
   - A phone sign-in token → `/auth/session` 200, `created: true`, `user.phone === '+85512345678'`, `role === 'customer'`; the second call → `created: false`, same id.
   - Google token (email, no phone) → `phone: null`, `phoneVerified: false`. Then the same uid with `phone` → `/me` shows the phone (Review Focus 1).
   - A deleted user (`deleted_at` set) holding `+85599999999`, and a new uid signing in with that phone → 200, the new row gets the phone, and the old row's phone is null.
-  - Bootstrap: phone in `bootstrapAdmins.phones` → `role: 'admin'`; a later login after a manual demotion to `staff` → stays `staff`? **No**: bootstrap always promotes, so `admin`. An unverified email in the bootstrap list → `customer`.
+  - Bootstrap: phone in `bootstrapAdmins.phones` → `role: 'admin'`. After a manual demotion to `staff`, the next login → `admin` again (bootstrap always promotes). An unverified email in the bootstrap list → `customer`.
   - Concurrency (Review Focus 2): `Promise.all` of `/auth/session` and `/me` with a fresh token → both 200, `select count(*) from users` = 1.
   - Deleted user → `/me` 403 `account_deleted`.
 - [ ] **Step 2:** Run → FAIL. **Step 3:** Implement and wire: `createApp` takes `db` (`Database`), `identity`, `bootstrapAdmins`. `server.ts` builds the identity from config (`createFirebaseIdentity` when `firebaseProjectId` is set, else `createUnconfiguredIdentity` and a startup warning). Update phase 1 tests' `buildApp` helpers to pass the new deps (a fake identity; `db` from `testDb()` or a stub exposing `ping`). **Step 4:** Run the whole suite → PASS. Commit `feat: firebase auth middleware, user upsert, auth session and me endpoints`.

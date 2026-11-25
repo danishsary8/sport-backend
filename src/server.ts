@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp } from './app.js';
 import { ConfigError, loadConfig } from './config/env.js';
-import { createDb } from './db/client.js';
+import { createDb, type Database } from './db/client.js';
 import { createFirebaseIdentity, createUnconfiguredIdentity } from './lib/identity.js';
 import { createLogger } from './lib/logger.js';
 import { startScheduler } from './jobs/sweeper.js';
@@ -22,10 +22,11 @@ export interface RunningServer {
 }
 
 /** Boots the API. Throws ConfigError before touching the network if configuration is invalid. */
-export async function start(env: NodeJS.ProcessEnv = process.env): Promise<RunningServer> {
+export async function start(env: NodeJS.ProcessEnv = process.env, hooks: { onDatabase?: (d: Database) => void } = {}): Promise<RunningServer> {
   const config = loadConfig(env);
   const logger = createLogger(config);
   const database = createDb(config, (err) => logger.error({ err }, 'Postgres pool error'));
+  hooks.onDatabase?.(database);
   let identity = createUnconfiguredIdentity();
   if (config.firebaseProjectId) {
     identity = createFirebaseIdentity({ projectId: config.firebaseProjectId, serviceAccount: config.firebaseServiceAccount });
@@ -41,10 +42,16 @@ export async function start(env: NodeJS.ProcessEnv = process.env): Promise<Runni
   const app = createApp({ config, logger, db: database, identity, payments, notifiers });
 
   const server = app.listen(config.port, '0.0.0.0');
-  await new Promise<void>((resolve, reject) => {
-    server.once('listening', resolve);
-    server.once('error', reject);
-  });
+  try {
+    await new Promise<void>((resolve, reject) => {
+      server.once('listening', resolve);
+      server.once('error', reject);
+    });
+  } catch (error) {
+    // e.g. the port is taken: don't leave the pool behind.
+    await database.close();
+    throw error;
+  }
   const { port } = server.address() as AddressInfo;
   const url = `http://127.0.0.1:${port}`;
   logger.info({ port, env: config.nodeEnv }, 'Sport Castle API listening');

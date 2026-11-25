@@ -20,15 +20,21 @@ export interface PoolOptions {
   maxConnections?: number;
 }
 
+/** TLS settings for the pool: verified certificates always; a pinned CA when one is configured. */
+export function sslOptions(cfg: Pick<Config, 'databaseSsl' | 'databaseSslCa'>): { rejectUnauthorized: true; ca?: string } | undefined {
+  if (!cfg.databaseSsl) return undefined;
+  return cfg.databaseSslCa ? { rejectUnauthorized: true, ca: cfg.databaseSslCa } : { rejectUnauthorized: true };
+}
+
 export function createDb(
-  cfg: Pick<Config, 'databaseUrl' | 'databaseSsl'>,
+  cfg: Pick<Config, 'databaseUrl' | 'databaseSsl'> & { databaseSslCa?: string },
   onPoolError: (err: Error) => void = () => {},
   options: PoolOptions = {},
 ): Database {
   const queryTimeoutMs = options.queryTimeoutMs ?? 10_000;
   const pool = new pg.Pool({
     connectionString: cfg.databaseUrl,
-    ssl: cfg.databaseSsl ? { rejectUnauthorized: true } : undefined,
+    ssl: sslOptions({ databaseSsl: cfg.databaseSsl, databaseSslCa: cfg.databaseSslCa }),
     max: options.maxConnections ?? 10,
     connectionTimeoutMillis: PING_TIMEOUT_MS,
     idleTimeoutMillis: 30_000,

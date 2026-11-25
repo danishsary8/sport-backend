@@ -37,6 +37,13 @@ export const notFoundHandler: RequestHandler = (_req, _res, next) => {
 function fromBodyParser(err: unknown): AppError | undefined {
   if (typeof err !== 'object' || err === null || !('type' in err)) return undefined;
   switch ((err as { type?: string }).type) {
+    case 'request.aborted':
+      return new AppError('request_aborted', 400, 'The request was interrupted');
+    case 'request.size.invalid':
+    case 'entity.verify.failed':
+      return new AppError('invalid_body', 400, 'The request body could not be read');
+    case 'parameters.too.many':
+      return new AppError('payload_too_large', 413, 'Request body is too large');
     case 'entity.parse.failed':
       return new AppError('invalid_json', 400, 'Malformed JSON request body');
     case 'entity.too.large':

@@ -9,6 +9,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     port: 0,
     databaseUrl: TEST_DATABASE_URL,
     databaseSsl: false,
+    databaseSslCa: undefined,
     corsOrigins: ['https://shop.example'],
     cookieSecret: 'test-cookie-secret-test-cookie-secret',
     logLevel: 'fatal',

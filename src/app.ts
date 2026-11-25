@@ -1,7 +1,6 @@
 import cors from 'cors';
 import express, { Router } from 'express';
 import helmet from 'helmet';
-import { pinoHttp } from 'pino-http';
 import type { Config } from './config/env.js';
 import { createContext } from './context.js';
 import type { Database } from './db/client.js';
@@ -14,6 +13,7 @@ import {
   DEFAULT_RATE_LIMIT_WINDOW_MS,
 } from './middleware/rateLimit.js';
 import { requestId } from './middleware/requestId.js';
+import { httpLogger } from './middleware/httpLog.js';
 import { accountRouter } from './modules/account/router.js';
 import { adminPricingRouter } from './modules/admin/pricingRouter.js';
 import { adminProductsRouter } from './modules/admin/productsRouter.js';
@@ -66,13 +66,7 @@ export function createApp(deps: AppDeps): express.Express {
   app.set('trust proxy', 1);
 
   app.use(requestId);
-  app.use(
-    pinoHttp({
-      logger,
-      genReqId: (req) => (req as express.Request).id,
-      customLogLevel: (_req, res, err) => (err || res.statusCode >= 500 ? 'error' : 'info'),
-    }),
-  );
+  app.use(httpLogger(logger));
   app.use(helmet());
 
   const allowed = new Set(config.corsOrigins);
@@ -92,7 +86,7 @@ export function createApp(deps: AppDeps): express.Express {
     express.json({
       limit: '1mb',
       verify: (req, _res, buf) => {
-        (req as express.Request).rawBody = Buffer.from(buf);
+        (req as express.Request).rawBody = buf;
       },
     }),
   );

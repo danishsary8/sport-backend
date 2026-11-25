@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 import { normalizePhone } from '../lib/phone.js';
 
@@ -6,6 +7,8 @@ export interface Config {
   port: number;
   databaseUrl: string;
   databaseSsl: boolean;
+  /** PEM of the CA that signed the database certificate (managed Postgres with a private CA). */
+  databaseSslCa: string | undefined;
   corsOrigins: string[];
   cookieSecret: string;
   logLevel: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace';
@@ -79,6 +82,7 @@ const envSchema = z
       .pipe(z.number().int().min(0).max(65535, 'must be a port number')),
     DATABASE_URL: z.string({ error: 'is required' }).trim().min(1, 'is required'),
     DATABASE_SSL: booleanText,
+    DATABASE_SSL_CA: optionalText,
     CORS_ORIGINS: optionalText.transform((v) =>
       v
         ? v
@@ -158,6 +162,11 @@ const envSchema = z
     }
   });
 
+/** DATABASE_SSL_CA holds the PEM itself, or a file path when it starts with '/'. */
+function loadCa(value: string): string {
+  return value.startsWith('/') ? readFileSync(value, 'utf8') : value.replace(/\\n/g, '\n');
+}
+
 /** Validates environment variables; throws ConfigError listing every problem. */
 export function loadConfig(env: NodeJS.ProcessEnv): Config {
   // `KEY=` lines (as in .env.example) arrive as '' — treat them as unset so defaults apply.
@@ -176,6 +185,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     port: e.PORT,
     databaseUrl: e.DATABASE_URL,
     databaseSsl: e.DATABASE_SSL ?? e.NODE_ENV === 'production',
+    databaseSslCa: e.DATABASE_SSL_CA ? loadCa(e.DATABASE_SSL_CA) : undefined,
     corsOrigins: e.CORS_ORIGINS,
     cookieSecret: e.COOKIE_SECRET,
     logLevel: e.LOG_LEVEL,

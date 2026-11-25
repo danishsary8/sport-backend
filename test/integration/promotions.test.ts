@@ -21,7 +21,7 @@ beforeEach(async () => {
 describe('findPromotion', () => {
   it('finds codes regardless of case and spaces', async () => {
     const r = await findPromotion(database.db, ' castle10 ', now);
-    expect(r).toEqual({ promotion: { code: 'CASTLE10', name: '10% off', type: 'percent', value: 10, minSubtotalCents: 0, scope: {} } });
+    expect(r).toEqual({ promotionId: expect.any(String), promotion: { code: 'CASTLE10', name: '10% off', type: 'percent', value: 10, minSubtotalCents: 0, scope: {} } });
   });
 
   it('explains unknown, expired, future and used-up codes', async () => {

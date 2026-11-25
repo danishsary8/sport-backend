@@ -44,8 +44,49 @@ describe('loadConfig', () => {
       CORS_ORIGINS: 'https://shop.example',
       FIREBASE_PROJECT_ID: 'p',
       FIREBASE_SERVICE_ACCOUNT_JSON: '{"project_id":"p"}',
+      PAYWAY_MERCHANT_ID: 'm',
+      PAYWAY_API_KEY: 'k',
+      PAYWAY_RETURN_URL: 'https://api.shop.example/v1/webhooks/payway',
+      PAYWAY_CONTINUE_URL: 'https://shop.example/checkout/return',
     });
     expect(cfg.databaseSsl).toBe(true);
+  });
+
+  describe('payments and notifications', () => {
+    const prod = {
+      ...base,
+      NODE_ENV: 'production',
+      CORS_ORIGINS: 'https://shop.example',
+      FIREBASE_PROJECT_ID: 'p',
+      FIREBASE_SERVICE_ACCOUNT_JSON: '{"project_id":"p"}',
+    };
+
+    it('requires PayWay credentials in production', () => {
+      const issues = issuesFor(prod).join('\n');
+      expect(issues).toContain('PAYWAY_MERCHANT_ID');
+      expect(issues).toContain('PAYWAY_API_KEY');
+    });
+
+    it('allows a cash-only shop to run without PayWay', () => {
+      expect(loadConfig({ ...prod, PAYMENT_METHODS_CASH_ONLY: 'true' }).paymentsCashOnly).toBe(true);
+    });
+
+    it('needs the merchant id and key together', () => {
+      expect(issuesFor({ ...base, PAYWAY_MERCHANT_ID: 'm' }).join('\n')).toContain('PAYWAY_API_KEY');
+    });
+
+    it('defaults to the PayWay sandbox and runs jobs', () => {
+      const cfg = loadConfig(base);
+      expect(cfg.paywayBaseUrl).toBe('https://checkout-sandbox.payway.com.kh');
+      expect(cfg.jobsEnabled).toBe(true);
+      expect(cfg.publicApiUrl).toBe('http://localhost:3000');
+      expect(loadConfig({ ...base, JOBS_ENABLED: 'false' }).jobsEnabled).toBe(false);
+    });
+
+    it('reads Telegram and Resend settings', () => {
+      const cfg = loadConfig({ ...base, TELEGRAM_BOT_TOKEN: 't', TELEGRAM_CHAT_ID: '-100', RESEND_API_KEY: 'r', NOTIFICATION_FROM_EMAIL: 'Shop <shop@example.com>' });
+      expect(cfg).toMatchObject({ telegramBotToken: 't', telegramChatId: '-100', resendApiKey: 'r', notificationFromEmail: 'Shop <shop@example.com>' });
+    });
   });
 
   it('allows DATABASE_SSL to override the default', () => {

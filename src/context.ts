@@ -3,6 +3,7 @@ import type { Config } from './config/env.js';
 import type { Database } from './db/client.js';
 import type { IdentityProvider } from './lib/identity.js';
 import type { Logger } from './lib/logger.js';
+import type { PaymentProvider } from './modules/payments/provider.js';
 import { optionalAuth, optionalUser, requireAuth, requireUser } from './middleware/auth.js';
 import type { BootstrapAdmins } from './modules/users/repo.js';
 
@@ -13,6 +14,7 @@ export interface AppContext {
   database: Database;
   identity: IdentityProvider;
   bootstrapAdmins: BootstrapAdmins;
+  payments: PaymentProvider;
   /** requireAuth + requireUser: the route needs a signed-in, non-deleted user. */
   member: RequestHandler[];
   /** Guests allowed; with a valid token, req.auth and req.user are set (deleted accounts rejected). */

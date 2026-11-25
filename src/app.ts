@@ -28,6 +28,7 @@ import { geoRouter } from './modules/geo/router.js';
 import { wishlistRouter } from './modules/wishlist/router.js';
 import { healthRouter } from './modules/health/router.js';
 import type { BootstrapAdmins } from './modules/users/repo.js';
+import { createPaymentProvider, type PaymentProvider } from './modules/payments/provider.js';
 
 export interface AppDeps {
   config: Config;
@@ -36,6 +37,8 @@ export interface AppDeps {
   identity: IdentityProvider;
   bootstrapAdmins?: BootstrapAdmins;
   rateLimit?: { enabled: boolean; generalMax?: number };
+  /** Defaults to PayWay when configured, else the fake provider. */
+  payments?: PaymentProvider;
 }
 
 export function createApp(deps: AppDeps): express.Express {
@@ -92,6 +95,7 @@ export function createApp(deps: AppDeps): express.Express {
     database: deps.db,
     identity: deps.identity,
     bootstrapAdmins: deps.bootstrapAdmins ?? { phones: config.bootstrapAdminPhones, emails: config.bootstrapAdminEmails },
+    payments: deps.payments ?? createPaymentProvider(config),
   });
   v1.use(authRouter(ctx));
   v1.use(accountRouter(ctx));

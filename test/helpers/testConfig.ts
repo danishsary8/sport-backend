@@ -17,6 +17,18 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     bootstrapAdminPhones: [],
     bootstrapAdminEmails: [],
     assetBaseUrl: '/assets/',
+    paywayMerchantId: undefined,
+    paywayApiKey: undefined,
+    paywayBaseUrl: 'https://checkout-sandbox.payway.com.kh',
+    paywayReturnUrl: undefined,
+    paywayContinueUrl: 'https://shop.example/checkout/return',
+    paymentsCashOnly: false,
+    publicApiUrl: 'http://localhost:3000',
+    telegramBotToken: undefined,
+    telegramChatId: undefined,
+    resendApiKey: undefined,
+    notificationFromEmail: undefined,
+    jobsEnabled: false,
     ...overrides,
   };
 }

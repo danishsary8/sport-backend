@@ -15,6 +15,24 @@ export interface Config {
   bootstrapAdminEmails: string[];
   /** Prefix for catalog image paths, e.g. https://cdn.example.com/ (default /assets/). */
   assetBaseUrl: string;
+  /** ABA PayWay; when merchant id + key are missing the fake provider is used (never in production). */
+  paywayMerchantId: string | undefined;
+  paywayApiKey: string | undefined;
+  paywayBaseUrl: string;
+  /** Pushback (webhook) URL PayWay calls, e.g. https://api.example.com/v1/webhooks/payway. */
+  paywayReturnUrl: string | undefined;
+  /** Where the browser goes after a card payment, e.g. https://example.com/checkout/return. */
+  paywayContinueUrl: string | undefined;
+  /** Production may run without PayWay only when the shop takes cash on pickup alone. */
+  paymentsCashOnly: boolean;
+  /** This API's public base URL (dev payment pages link back to it). */
+  publicApiUrl: string;
+  telegramBotToken: string | undefined;
+  telegramChatId: string | undefined;
+  resendApiKey: string | undefined;
+  notificationFromEmail: string | undefined;
+  /** Runs the per-minute sweeper (payments, expiry, notifications). */
+  jobsEnabled: boolean;
 }
 
 export class ConfigError extends Error {
@@ -92,6 +110,18 @@ const envSchema = z
     }),
     BOOTSTRAP_ADMIN_EMAILS: listOf((value) => value.toLowerCase()),
     ASSET_BASE_URL: z.string().trim().max(300).default('/assets/'),
+    PAYWAY_MERCHANT_ID: optionalText,
+    PAYWAY_API_KEY: optionalText,
+    PAYWAY_BASE_URL: z.string().trim().url().default('https://checkout-sandbox.payway.com.kh'),
+    PAYWAY_RETURN_URL: optionalText.pipe(z.string().url().optional()),
+    PAYWAY_CONTINUE_URL: optionalText.pipe(z.string().url().optional()),
+    PAYMENT_METHODS_CASH_ONLY: booleanText,
+    PUBLIC_API_URL: z.string().trim().url().default('http://localhost:3000'),
+    TELEGRAM_BOT_TOKEN: optionalText,
+    TELEGRAM_CHAT_ID: optionalText,
+    RESEND_API_KEY: optionalText,
+    NOTIFICATION_FROM_EMAIL: optionalText,
+    JOBS_ENABLED: booleanText,
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && env.CORS_ORIGINS.length === 0) {
@@ -105,6 +135,17 @@ const envSchema = z
       for (const key of ['FIREBASE_PROJECT_ID', 'FIREBASE_SERVICE_ACCOUNT_JSON'] as const) {
         if (env[key] === undefined) {
           ctx.addIssue({ code: 'custom', path: [key], message: 'is required in production' });
+        }
+      }
+    }
+    if ((env.PAYWAY_MERCHANT_ID === undefined) !== (env.PAYWAY_API_KEY === undefined)) {
+      const missing = env.PAYWAY_MERCHANT_ID === undefined ? 'PAYWAY_MERCHANT_ID' : 'PAYWAY_API_KEY';
+      ctx.addIssue({ code: 'custom', path: [missing], message: 'PAYWAY_MERCHANT_ID and PAYWAY_API_KEY must be set together' });
+    }
+    if (env.NODE_ENV === 'production' && !env.PAYMENT_METHODS_CASH_ONLY) {
+      for (const key of ['PAYWAY_MERCHANT_ID', 'PAYWAY_API_KEY', 'PAYWAY_RETURN_URL', 'PAYWAY_CONTINUE_URL'] as const) {
+        if (env[key] === undefined) {
+          ctx.addIssue({ code: 'custom', path: [key], message: 'is required in production (or set PAYMENT_METHODS_CASH_ONLY=true)' });
         }
       }
     }
@@ -143,5 +184,17 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     bootstrapAdminPhones: e.BOOTSTRAP_ADMIN_PHONES,
     bootstrapAdminEmails: e.BOOTSTRAP_ADMIN_EMAILS,
     assetBaseUrl: e.ASSET_BASE_URL,
+    paywayMerchantId: e.PAYWAY_MERCHANT_ID,
+    paywayApiKey: e.PAYWAY_API_KEY,
+    paywayBaseUrl: e.PAYWAY_BASE_URL.replace(/\/+$/, ''),
+    paywayReturnUrl: e.PAYWAY_RETURN_URL,
+    paywayContinueUrl: e.PAYWAY_CONTINUE_URL,
+    paymentsCashOnly: e.PAYMENT_METHODS_CASH_ONLY ?? false,
+    publicApiUrl: e.PUBLIC_API_URL.replace(/\/+$/, ''),
+    telegramBotToken: e.TELEGRAM_BOT_TOKEN,
+    telegramChatId: e.TELEGRAM_CHAT_ID,
+    resendApiKey: e.RESEND_API_KEY,
+    notificationFromEmail: e.NOTIFICATION_FROM_EMAIL,
+    jobsEnabled: e.JOBS_ENABLED ?? true,
   };
 }

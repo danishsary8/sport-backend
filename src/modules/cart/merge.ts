@@ -23,27 +23,32 @@ export async function mergeGuestCart(
     const [member] = await tx.select().from(carts).where(eq(carts.userId, userId)).for('update');
 
     const guestLines = await tx.select().from(cartItems).where(eq(cartItems.cartId, guest.id));
+    const memberLines = await tx.select({ qty: cartItems.qty }).from(cartItems).where(eq(cartItems.cartId, member!.id));
+    let units = memberLines.reduce((s, l) => s + l.qty, 0);
     let mergedLines = 0;
     let cappedLines = 0;
     for (const line of guestLines) {
-      const units = await tx.execute<{ units: number }>(sql`
+      const stockRow = await tx.execute<{ units: number }>(sql`
         select coalesce(sum(greatest(0, s.on_hand - s.reserved - coalesce(s.online_buffer, ${buffer}))), 0)::int as units
         from stock s where s.variant_id = ${line.variantId}`);
-      const available = units.rows[0]?.units ?? 0;
+      const available = stockRow.rows[0]?.units ?? 0;
       const [existing] = await tx
         .select()
         .from(cartItems)
         .where(and(eq(cartItems.cartId, member!.id), eq(cartItems.variantId, line.variantId), eq(cartItems.printKey, line.printKey)));
       const wanted = (existing?.qty ?? 0) + line.qty;
-      const qty = Math.min(wanted, CART_LIMITS.maxQty, Math.max(available, existing?.qty ?? 0));
+      const room = CART_LIMITS.maxUnits - units + (existing?.qty ?? 0);
+      const qty = Math.max(existing?.qty ?? 0, Math.min(wanted, CART_LIMITS.maxQty, available, room));
       if (qty < wanted) cappedLines += 1;
       mergedLines += 1;
+      units += qty - (existing?.qty ?? 0);
       if (existing) {
         if (qty !== existing.qty) await tx.update(cartItems).set({ qty }).where(eq(cartItems.id, existing.id));
       } else if (qty > 0) {
         const lineCount = await tx.select({ id: cartItems.id }).from(cartItems).where(eq(cartItems.cartId, member!.id));
         if (lineCount.length >= CART_LIMITS.maxLines) {
           cappedLines += 1;
+          units -= qty;
           continue;
         }
         await tx.insert(cartItems).values({

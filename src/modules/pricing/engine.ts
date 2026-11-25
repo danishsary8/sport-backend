@@ -13,15 +13,27 @@ interface Working {
   member: number;
 }
 
-/** Splits `amount` over lines in proportion to their weights; the rounding remainder goes to the largest. */
+/**
+ * Splits `amount` over lines in proportion to their weights (largest-remainder method): never
+ * gives a line more than its weight, and the shares always add up to min(amount, Σ weights).
+ */
 function allocate(amount: number, weights: number[]): number[] {
   const total = weights.reduce((s, w) => s + w, 0);
   if (total <= 0 || amount <= 0) return weights.map(() => 0);
   const capped = Math.min(amount, total);
-  const shares = weights.map((w) => Math.floor((capped * w) / total));
-  const remainder = capped - shares.reduce((s, v) => s + v, 0);
-  const largest = weights.indexOf(Math.max(...weights));
-  shares[largest]! += remainder;
+  const exact = weights.map((w) => (capped * w) / total);
+  const shares = exact.map((x) => Math.floor(x));
+  let remainder = capped - shares.reduce((s, v) => s + v, 0);
+  const order = exact
+    .map((x, i) => ({ i, frac: x - Math.floor(x) }))
+    .sort((a, b) => b.frac - a.frac || weights[b.i]! - weights[a.i]!);
+  for (const { i } of order) {
+    if (remainder === 0) break;
+    if (shares[i]! < weights[i]!) {
+      shares[i]! += 1;
+      remainder -= 1;
+    }
+  }
   return shares;
 }
 
@@ -74,8 +86,7 @@ export function priceCart(input: PricingInput): Breakdown {
   const code = promotion?.code ?? null;
   let promoApplied = false;
   let promoMessage: string | null = input.promo.rejectedMessage ?? null;
-  let promoShares = live.map(() => 0);
-  let useMember = true;
+  let codeShares: number[] | null = null;
   let freeShippingPromo = false;
 
   if (promotion) {
@@ -100,54 +111,86 @@ export function priceCart(input: PricingInput): Breakdown {
         promoMessage = `${code} doesn't apply to the items in your bag`;
       } else {
         const remaining = live.map((w, i) => (scoped[i] ? w.subtotal - w.team : 0));
-        const shares =
+        codeShares =
           promotion.type === 'percent' ? remaining.map((r) => pct(r, promotion.value)) : allocate(promotion.value, remaining);
-        const codeSavings = shares.reduce((s, v) => s + v, 0);
-        if (codeSavings > memberSavings) {
-          promoShares = shares;
-          useMember = false;
-          promoApplied = true;
-          promoMessage = null;
-        } else if (memberSavings > 0) {
-          promoMessage = `Your ${title(tier!)} member discount saves more than ${code}`;
-        } else {
-          promoMessage = `${code} doesn't lower the price of the items in your bag`;
-        }
       }
     }
   }
 
-  // Final per-line amounts.
-  const discounts: Breakdown['discounts'] = [];
-  let teamTotal = 0;
-  let memberTotal = 0;
-  const priced = new Map<Working, PricedLine>();
-  live.forEach((w, i) => {
-    const auto = lineAuto(w, useMember);
-    const source: PricedLine['discountSource'] = auto === 0 ? null : useMember && w.member > w.team ? 'member' : 'team';
-    if (source === 'member') memberTotal += auto;
-    else teamTotal += auto;
-    const discount = Math.min(w.subtotal, auto + promoShares[i]!);
-    priced.set(w, {
-      lineId: w.input.lineId,
-      unitPriceCents: w.input.unitPriceCents,
-      printFeeCents: w.printFee,
-      qty: w.input.qty,
-      subtotalCents: w.subtotal,
-      discountCents: discount,
-      totalCents: w.subtotal - discount,
-      discountSource: source,
-      purchasable: true,
+  // Prices one scenario (with or without the member discount, with or without the code's shares)
+  // through to delivery, so the two can be compared on what the customer actually pays.
+  const evaluate = (withMember: boolean, shares: number[]) => {
+    const priced = new Map<Working, PricedLine>();
+    let teamTotal = 0;
+    let memberTotal = 0;
+    let promoTotal = 0;
+    live.forEach((w, i) => {
+      const auto = lineAuto(w, withMember);
+      const source: PricedLine['discountSource'] = auto === 0 ? null : withMember && w.member > w.team ? 'member' : 'team';
+      if (source === 'member') memberTotal += auto;
+      else teamTotal += auto;
+      const promoShare = Math.min(shares[i]!, w.subtotal - auto);
+      promoTotal += promoShare;
+      const discount = auto + promoShare;
+      priced.set(w, {
+        lineId: w.input.lineId,
+        unitPriceCents: w.input.unitPriceCents,
+        printFeeCents: w.printFee,
+        qty: w.input.qty,
+        subtotalCents: w.subtotal,
+        discountCents: discount,
+        totalCents: w.subtotal - discount,
+        discountSource: source,
+        purchasable: true,
+      });
     });
-  });
-  if (teamTotal > 0) discounts.push({ kind: 'team', label: `Team discount (${rules.team.minItems}+ jerseys)`, amountCents: teamTotal });
-  if (memberTotal > 0) discounts.push({ kind: 'member', label: `${title(tier!)} member discount`, amountCents: memberTotal });
-  const promoTotal = promoShares.reduce((s, v) => s + v, 0);
-  if (promoTotal > 0) discounts.push({ kind: 'promo', label: `Code ${code}`, amountCents: promoTotal });
+    const afterDiscounts = live.reduce((s, w) => s + priced.get(w)!.totalCents, 0);
+
+    let shipping: number | null;
+    let freeRemaining: number | null = null;
+    let goldFree = false;
+    if (delivery.fulfillment === 'pickup') {
+      shipping = delivery.rate ? 0 : null;
+    } else if (!delivery.rate) {
+      shipping = null;
+    } else {
+      goldFree =
+        has(rules.loyalty.freeDelivery.fromTier) && delivery.methodId !== null && rules.loyalty.freeDelivery.methods.includes(delivery.methodId);
+      const thresholdMet = delivery.rate.freeOverCents !== null && afterDiscounts >= delivery.rate.freeOverCents;
+      if (goldFree || freeShippingPromo || thresholdMet || afterDiscounts === 0) {
+        shipping = 0;
+      } else {
+        shipping = delivery.rate.feeCents;
+        if (delivery.rate.freeOverCents !== null) freeRemaining = delivery.rate.freeOverCents - afterDiscounts;
+      }
+    }
+    return { priced, teamTotal, memberTotal, promoTotal, afterDiscounts, shipping, freeRemaining, goldFree, total: afterDiscounts + (shipping ?? 0) };
+  };
+
+  const noShares = live.map(() => 0);
+  let chosen = evaluate(true, noShares);
+  if (codeShares) {
+    const withCode = evaluate(false, codeShares);
+    const codeSaves = withCode.promoTotal > 0;
+    if (codeSaves && withCode.total < chosen.total) {
+      chosen = withCode;
+      promoApplied = true;
+      promoMessage = null;
+    } else if (memberSavings > 0) {
+      promoMessage = `Your ${title(tier!)} member discount saves more than ${code}`;
+    } else {
+      promoMessage = `${code} doesn't lower the price of the items in your bag`;
+    }
+  }
+
+  const discounts: Breakdown['discounts'] = [];
+  if (chosen.teamTotal > 0) discounts.push({ kind: 'team', label: `Team discount (${rules.team.minItems}+ jerseys)`, amountCents: chosen.teamTotal });
+  if (chosen.memberTotal > 0) discounts.push({ kind: 'member', label: `${title(tier!)} member discount`, amountCents: chosen.memberTotal });
+  if (chosen.promoTotal > 0) discounts.push({ kind: 'promo', label: `Code ${code}`, amountCents: chosen.promoTotal });
 
   const lines: PricedLine[] = working.map(
     (w) =>
-      priced.get(w) ?? {
+      chosen.priced.get(w) ?? {
         lineId: w.input.lineId,
         unitPriceCents: w.input.unitPriceCents,
         printFeeCents: w.printFee,
@@ -159,36 +202,22 @@ export function priceCart(input: PricingInput): Breakdown {
         purchasable: false,
       },
   );
-  const afterDiscounts = lines.reduce((s, l) => s + l.totalCents, 0);
 
-  // 6. Delivery.
   const applied: Breakdown['memberPerks']['applied'] = [];
-  if (memberTotal > 0) applied.push('member_discount');
+  if (chosen.memberTotal > 0) applied.push('member_discount');
+  if (chosen.goldFree) applied.push('free_delivery');
   if (freePrinting && live.some((w) => w.input.customPrint)) applied.push('free_printing');
-  let shipping: number | null;
-  let freeRemaining: number | null = null;
-  if (delivery.fulfillment === 'pickup') {
-    shipping = delivery.rate ? 0 : null;
-  } else if (!delivery.rate) {
-    shipping = null;
-  } else {
-    const goldFree = has(rules.loyalty.freeDelivery.fromTier) && delivery.methodId !== null && rules.loyalty.freeDelivery.methods.includes(delivery.methodId);
-    const thresholdMet = delivery.rate.freeOverCents !== null && afterDiscounts >= delivery.rate.freeOverCents;
-    if (goldFree) applied.push('free_delivery');
-    if (goldFree || freeShippingPromo || thresholdMet || afterDiscounts === 0) {
-      shipping = 0;
-    } else {
-      shipping = delivery.rate.feeCents;
-      if (delivery.rate.freeOverCents !== null) {
-        freeRemaining = delivery.rate.freeOverCents - afterDiscounts;
-        messages.push(`Spend ${usd(freeRemaining)} more for free delivery`);
-      }
-    }
+  const shipping = chosen.shipping;
+  const freeRemaining = chosen.freeRemaining;
+  if (freeRemaining !== null) messages.push(`Spend ${usd(freeRemaining)} more for free delivery`);
+  if (shipping === null) {
+    messages.push(
+      delivery.fulfillment === 'pickup' ? 'Choose a store for pickup' : 'This delivery option is not available for that address',
+    );
   }
-  if (shipping === null) messages.push('This delivery option is not available for that address');
 
   // 7. Totals.
-  const total = afterDiscounts + (shipping ?? 0);
+  const total = chosen.total;
   return {
     lines,
     merchandiseCents: merchandise,

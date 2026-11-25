@@ -12,10 +12,19 @@ let admin: string;
 let staff: string;
 const q = (text: string, values: unknown[] = []) => database.pool.query(text, values);
 
+/** Puts the shared pricing reference data back to the seeded defaults (other test files rely on it). */
+async function restoreSharedPricing() {
+  await q("delete from settings where key in ('khr_rate', 'custom_print_fees', 'team_discount_rule', 'loyalty_rules')");
+  await seed(database.db);
+  await q(`update shipping_rates set fee_cents = 300, needs_review = true where method_id = 'province_courier' and province_code is null`);
+  await q(`delete from promotions where code not in ('CASTLE10', 'PPFREE')`);
+}
+
 beforeAll(async () => {
   database = await testDb();
   await resetDb(database);
   await seed(database.db);
+  await restoreSharedPricing();
   ctx = memberApp(database);
   admin = ctx.fake.token({ uid: 'admin', phone: '+85511111111' });
   staff = ctx.fake.token({ uid: 'staff', phone: '+85522222222' });
@@ -25,9 +34,7 @@ beforeAll(async () => {
 });
 afterAll(async () => {
   // Shared reference data: put it back for other test files.
-  await q(`update settings set value = '{"rate":4100}' where key = 'khr_rate'`);
-  await q(`update shipping_rates set fee_cents = 300, needs_review = true where method_id = 'province_courier' and province_code is null`);
-  await q(`delete from promotions where code not in ('CASTLE10', 'PPFREE')`);
+  await restoreSharedPricing();
   await closeTestDb();
 });
 
@@ -72,5 +79,21 @@ describe('admin pricing', () => {
     expect((await loadRules(database.db)).khrRate).toBe(4000);
     const all = await api('get', '/settings/pricing', admin);
     expect(all.body.settings.khr_rate).toEqual({ rate: 4000 });
+  });
+
+  it('refuses loyalty tiers out of order or missing', async () => {
+    const current = (await api('get', '/settings/pricing', admin)).body.settings.loyalty_rules;
+    const reversed = { ...current, tiers: [...current.tiers].reverse() };
+    expect((await api('put', '/settings/pricing/loyalty_rules', admin, reversed)).status).toBe(400);
+    const duplicated = { ...current, tiers: current.tiers.map((t: { id: string }, i: number) => (i === 2 ? { ...t, id: 'silver' } : t)) };
+    expect((await api('put', '/settings/pricing/loyalty_rules', admin, duplicated)).status).toBe(400);
+    const flat = { ...current, tiers: current.tiers.map((t: object) => ({ ...t, minSpendCents: 0 })) };
+    expect((await api('put', '/settings/pricing/loyalty_rules', admin, flat)).status).toBe(400);
+  });
+
+  it('refuses print fees that leave a patch unpriced, and a 0% team discount', async () => {
+    const fees = { baseCents: 800, patches: { none: 0, cpl: 400, aff: 400, champions: 500, 'f1-paddock': 500 } };
+    expect((await api('put', '/settings/pricing/custom_print_fees', admin, fees)).status).toBe(400);
+    expect((await api('put', '/settings/pricing/team_discount_rule', admin, { minItems: 5, percent: 0, categories: ['jerseys'] })).status).toBe(400);
   });
 });

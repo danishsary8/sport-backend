@@ -99,4 +99,31 @@ describe('merging the guest bag at sign-in', () => {
     expect(res.status).toBe(403);
     expect((await q('select count(*)::int as n from carts where guest_token is not null')).rows[0].n).toBe(1);
   });
+
+  it('keeps a merged bag within 50 items in total', async () => {
+    const jerseyL = (await q("select v.id from variants v join products p on p.id = v.product_id where p.slug = $1 and v.size_label = 'L'", [JERSEY])).rows[0].id;
+    await request(ctx.app).patch(`/v1/cart/items/${(await memberCart()).lines[0].id}`).set(bearer(member)).send({ qty: 20 });
+    const agent = request.agent(ctx.app);
+    const res = await agent.post('/v1/cart/items').send({ variantId: jerseyL, qty: 20 });
+    await agent.post('/v1/cart/items').send({ variantId: v.boot, qty: 20 });
+    const cookie = String(res.headers['set-cookie']).split(';')[0]!;
+    const merged = await request(ctx.app).post('/v1/auth/session').set(bearer(member)).set('Cookie', cookie);
+    expect(merged.body.cartMerged.cappedLines).toBeGreaterThan(0);
+    const units = (await memberCart()).lines.reduce((s: number, l: { qty: number }) => s + l.qty, 0);
+    expect(units).toBe(50);
+  });
+});
+
+describe('lowering quantities in an over-full bag', () => {
+  it('always allows reducing a quantity', async () => {
+    const cart = await memberCart();
+    const lineId = cart.lines[0].id;
+    // Simulate a bag that is over the total limit (e.g. limits tightened later).
+    await q('update cart_items set qty = 20 where id = $1', [lineId]);
+    const jerseyL = (await q("select v.id from variants v join products p on p.id = v.product_id where p.slug = $1 and v.size_label = 'L'", [JERSEY])).rows[0].id;
+    const xl = (await q("select v.id from variants v join products p on p.id = v.product_id where p.slug = $1 and v.size_label = 'XL'", [JERSEY])).rows[0].id;
+    await q(`insert into cart_items (cart_id, variant_id, qty) values ($1, $2, 20), ($1, $3, 20)`, [cart.id, jerseyL, xl]);
+    const res = await request(ctx.app).patch(`/v1/cart/items/${lineId}`).set(bearer(member)).send({ qty: 19 });
+    expect(res.status).toBe(200);
+  });
 });

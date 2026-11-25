@@ -185,3 +185,12 @@ describe('changes after adding', () => {
     expect(cart.checkoutReady).toBe(false);
   });
 });
+
+describe('expired sign-in on bag actions', () => {
+  it('asks the client to sign in again instead of quietly using a guest bag', async () => {
+    const res = await request(ctx.app).post('/v1/cart/items').set(bearer('expired-token')).send({ variantId: v.jerseyM, qty: 1 });
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('invalid_token');
+    expect(res.headers['set-cookie']).toBeUndefined();
+  });
+});

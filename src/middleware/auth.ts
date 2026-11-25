@@ -33,7 +33,11 @@ export function requireAuth(identity: IdentityProvider): RequestHandler {
   };
 }
 
-/** Like requireAuth, but guests (no or bad token) continue without req.auth. */
+/**
+ * For routes open to guests. No token → guest. A token that is sent but invalid or expired is
+ * rejected (401) so the client refreshes it, instead of silently showing a signed-in member an
+ * empty guest bag.
+ */
 export function optionalAuth(identity: IdentityProvider): RequestHandler {
   return async (req, _res, next) => {
     const token = bearerToken(req.get('authorization'));
@@ -41,7 +45,7 @@ export function optionalAuth(identity: IdentityProvider): RequestHandler {
       try {
         req.auth = await identity.verifyIdToken(token);
       } catch (error) {
-        if (!(error instanceof InvalidTokenError)) throw mapIdentityError(error);
+        throw mapIdentityError(error);
       }
     }
     next();

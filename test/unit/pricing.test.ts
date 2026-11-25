@@ -205,3 +205,45 @@ describe('delivery', () => {
     expect(b.messages).toContain('This delivery option is not available for that address');
   });
 });
+
+describe('review fixes', () => {
+  it('compares the code and the member discount on the final total, delivery included', () => {
+    const seven: PromotionInput = { code: 'SEVEN', name: '$7 off', type: 'fixed', value: 700, minSubtotalCents: 0, scope: {} };
+    // Member: 5600 − 560 = 5040 ≥ 5000 → free delivery → 5040. Code: 5600 − 700 = 4900 → + 250 = 5150.
+    const b = price({ lines: [line('boots', 5600)], tier: 'silver', promo: seven, delivery: PP });
+    expect(b.totalCents).toBe(5040);
+    expect(b.promo).toEqual({ code: 'SEVEN', applied: false, message: 'Your Silver member discount saves more than SEVEN' });
+  });
+
+  it('makes per-line discounts add up to the discounts shown, to the cent', () => {
+    const odd: PromotionInput = { code: 'ODD', name: 'odd', type: 'fixed', value: 2999, minSubtotalCents: 0, scope: {} };
+    const b = price({ lines: [line('balls', 1000), line('balls', 1000), line('balls', 1000)], promo: odd });
+    const lineSum = b.lines.reduce((s, l) => s + l.discountCents, 0);
+    const shown = b.discounts.reduce((s, d) => s + d.amountCents, 0);
+    expect(lineSum).toBe(shown);
+    expect(shown).toBe(2999);
+    for (const l of b.lines) expect(l.discountCents).toBeLessThanOrEqual(l.subtotalCents);
+    expect(b.merchandiseCents - shown + (b.shippingCents ?? 0)).toBe(b.totalCents);
+  });
+
+  it('keeps the books balanced across many random bags', () => {
+    let seed = 7;
+    const rand = (n: number) => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed % n;
+    };
+    const cats = ['boots', 'jerseys', 'f1', 'balls', 'essentials'];
+    const tiers: (TierId | null)[] = [null, 'bronze', 'silver', 'gold', 'pro'];
+    for (let i = 0; i < 300; i += 1) {
+      const lines = Array.from({ length: 1 + rand(5) }, () => line(cats[rand(5)]!, 100 + rand(30000), 1 + rand(6)));
+      const promo: PromotionInput | null =
+        rand(3) === 0 ? null : rand(2) === 0 ? { ...CASTLE10, value: 1 + rand(100) } : { code: 'FX', name: 'fx', type: 'fixed', value: 1 + rand(20000), minSubtotalCents: 0, scope: {} };
+      const b = price({ lines, tier: tiers[rand(5)]!, promo, delivery: PP });
+      const lineSum = b.lines.reduce((s, l) => s + l.discountCents, 0);
+      const shown = b.discounts.reduce((s, d) => s + d.amountCents, 0);
+      expect(lineSum).toBe(shown);
+      expect(b.merchandiseCents - shown + (b.shippingCents ?? 0)).toBe(b.totalCents);
+      for (const l of b.lines) expect(l.totalCents).toBeGreaterThanOrEqual(0);
+    }
+  });
+});

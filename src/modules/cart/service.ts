@@ -87,7 +87,10 @@ async function assertLimits(tx: Tx, cartId: string, changes: { replacing: string
     throw new AppError('cart_limit', 409, `Your bag can hold up to ${CART_LIMITS.maxLines} different items`);
   }
   const otherUnits = lines.filter((l) => !changes.replacing.includes(l.id)).reduce((s, l) => s + l.qty, 0);
-  if (otherUnits + changes.qty > CART_LIMITS.maxUnits) {
+  const currentUnits = lines.reduce((s, l) => s + l.qty, 0);
+  const newUnits = otherUnits + changes.qty;
+  // Only block changes that grow the bag past the limit; lowering a quantity is always allowed.
+  if (newUnits > CART_LIMITS.maxUnits && newUnits > currentUnits) {
     throw new AppError('cart_limit', 409, `Your bag can hold up to ${CART_LIMITS.maxUnits} items in total`);
   }
 }

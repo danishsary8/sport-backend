@@ -20,7 +20,8 @@
     "db:seed": "node dist/db/seed/run.js",
     "catalog:import": "node dist/db/seed/importCatalog.js",
     "lint": "eslint .",
-    "loadtest": "tsx scripts/loadtest.ts"
+    "loadtest": "tsx scripts/loadtest.ts",
+    "contracts:openapi": "tsx scripts/openapi.ts"
   },
   "dependencies": {
     "cors": "^2.8.6",

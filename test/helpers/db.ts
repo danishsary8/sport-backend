@@ -5,7 +5,7 @@ import { seed } from '../../src/db/seed/index.js';
 import { TEST_DATABASE_URL } from './testConfig.js';
 
 /** Reference data that survives resetDb(). */
-const REFERENCE_TABLES = new Set(['branches', 'geo_provinces', 'geo_districts', 'geo_communes', 'settings']);
+const REFERENCE_TABLES = new Set(['branches', 'categories', 'geo_provinces', 'geo_districts', 'geo_communes', 'settings']);
 
 let shared: Promise<Database> | undefined;
 

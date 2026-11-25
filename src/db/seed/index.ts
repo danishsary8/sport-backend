@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import type { Db } from '../client.js';
-import { branches, geoCommunes, geoDistricts, geoProvinces } from '../schema/index.js';
+import { branches, categories, geoCommunes, geoDistricts, geoProvinces, settings } from '../schema/index.js';
 import branchData from './data/branches.json' with { type: 'json' };
 import communeData from './data/communes.json' with { type: 'json' };
 import districtData from './data/districts.json' with { type: 'json' };
@@ -13,6 +13,20 @@ interface GeoRow {
 }
 
 const BATCH = 500;
+
+/** Top-level shop categories (names from the storefront's CATEGORY_LABELS). */
+export const CATEGORY_SEED = [
+  { slug: 'boots', nameI18n: { en: 'Football Boots' }, sort: 1 },
+  { slug: 'jerseys', nameI18n: { en: 'Jerseys & Kits' }, sort: 2 },
+  { slug: 'f1', nameI18n: { en: 'F1 Motorsport' }, sort: 3 },
+  { slug: 'balls', nameI18n: { en: 'Match Balls' }, sort: 4 },
+  { slug: 'essentials', nameI18n: { en: 'GK & Essentials' }, sort: 5 },
+];
+
+/** Settings created once with defaults; never overwritten by later seeds (admins may change them). */
+const DEFAULT_SETTINGS: { key: string; value: Record<string, unknown> }[] = [
+  { key: 'online_safety_buffer', value: { units: 1 } },
+];
 
 export const provinceOfDistrict = (code: string): string => code.slice(0, -2).padStart(2, '0');
 export const districtOfCommune = (code: string): string => code.slice(0, -2);
@@ -56,6 +70,12 @@ export async function seed(db: Db): Promise<{ branches: number; provinces: numbe
           sort: sql`excluded.sort`,
         },
       });
+
+    await tx
+      .insert(categories)
+      .values(CATEGORY_SEED)
+      .onConflictDoUpdate({ target: categories.slug, set: { nameI18n: sql`excluded.name_i18n`, sort: sql`excluded.sort` } });
+    await tx.insert(settings).values(DEFAULT_SETTINGS).onConflictDoNothing();
 
     const names = { nameKm: sql`excluded.name_km`, nameEn: sql`excluded.name_en` };
     await tx

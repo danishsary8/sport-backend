@@ -52,7 +52,7 @@ export async function withIdempotency(
   const release = () =>
     db
       .delete(idempotencyKeys)
-      .where(and(eq(idempotencyKeys.scope, scope), eq(idempotencyKeys.key, key), isNull(idempotencyKeys.statusCode), eq(idempotencyKeys.createdAt, claimAt!)));
+      .where(and(eq(idempotencyKeys.scope, scope), eq(idempotencyKeys.key, key), isNull(idempotencyKeys.statusCode), sql`date_trunc('milliseconds', ${idempotencyKeys.createdAt}) = ${claimAt!}`));
   let result: { status: number; body: unknown };
   try {
     result = await fn();

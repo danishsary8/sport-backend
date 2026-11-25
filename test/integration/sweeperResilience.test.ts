@@ -73,12 +73,19 @@ describe('sweeper during a payment service outage', () => {
 
   it('stops quickly even while a provider call hangs', async () => {
     for (let i = 0; i < 3; i++) await placeGuestOrder(ctx.app, address, { variantId: jerseyM, qty: 1 });
-    ctx.payments.checkTransaction = () => new Promise(() => {});
+    let release: () => void = () => {};
+    ctx.payments.checkTransaction = () =>
+      new Promise((resolve) => {
+        release = () => resolve({ status: 'pending', amountCents: null, raw: null });
+      });
     const scheduler = startScheduler({ ...deps(31 * MIN), intervalMs: 60_000 });
-    void scheduler.runNow();
+    const run = scheduler.runNow();
     await new Promise((r) => setTimeout(r, 200));
     const started = Date.now();
     await scheduler.stop();
     expect(Date.now() - started).toBeLessThan(2_000);
+    // Let the hung call finish (as a real timeout would) so the run releases its database connection.
+    release();
+    await run;
   });
 });

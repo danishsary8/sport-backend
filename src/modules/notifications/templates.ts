@@ -11,6 +11,8 @@ export interface OrderNotice {
   fulfillment: string;
   items: { name: string; size: string; qty: number }[];
   reason?: string;
+  /** For a wrong-amount payment: what the customer actually paid. */
+  paidCents?: number;
   rma?: { number: string; resolution: string; status: string; refundCents: number; decisionNote: string | null; itemCount: number };
   question?: { productName: string; authorName: string; text: string };
 }
@@ -92,7 +94,7 @@ export function render(template: Template, n: OrderNotice, channel: 'telegram' |
       break;
     case 'needs_refund':
       subject = `🔴 URGENT refund needed: ${n.number}`;
-      lines = [`🔴 URGENT: order ${n.number} needs a refund (${usd(n.totalCents)}).`, `Reason: ${n.reason ?? 'see the order timeline'}`, `Contact: ${n.contactName} ${n.contactPhone} via ${n.contactChannel}`];
+      lines = [`🔴 URGENT: order ${n.number} needs a refund (${usd(n.paidCents ?? n.totalCents)}).`, `Reason: ${n.reason ?? 'see the order timeline'}`, `Contact: ${n.contactName} ${n.contactPhone} via ${n.contactChannel}`];
       break;
   }
   const text = lines.join('\n');

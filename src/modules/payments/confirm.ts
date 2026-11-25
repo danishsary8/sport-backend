@@ -34,13 +34,13 @@ async function allocationsOf(tx: Tx, orderId: string) {
     .where(eq(orderItems.orderId, orderId));
 }
 
-async function flagRefund(tx: Tx, order: OrderRow, reason: string, markPaid: boolean): Promise<'needs_refund'> {
+async function flagRefund(tx: Tx, order: OrderRow, reason: string, markPaid: boolean, paidCents?: number): Promise<'needs_refund'> {
   await tx
     .update(orders)
     .set({ needsRefund: true, ...(markPaid ? { paymentStatus: 'paid' as const, paidAt: sql`now()` } : {}), updatedAt: sql`now()` })
     .where(eq(orders.id, order.id));
   await recordEvent(tx, { orderId: order.id, kind: 'flag', actor: 'system', note: `Needs refund: ${reason}` });
-  await enqueueOrderNotifications(tx, 'needs_refund', order.id, { reason });
+  await enqueueOrderNotifications(tx, 'needs_refund', order.id, { reason, ...(paidCents !== undefined ? { paidCents } : {}) });
   return 'needs_refund';
 }
 
@@ -138,7 +138,7 @@ export async function applyProviderResult(deps: { db: Db; now: () => Date }, tra
     await recordEvent(tx, { orderId: order.id, kind: 'payment', actor: 'system', note: `Payment ${payment.providerTranId} approved (${source})` });
 
     if (check.amountCents !== null && check.amountCents !== payment.amountCents) {
-      return flagRefund(tx, order, `paid ${(check.amountCents / 100).toFixed(2)} but the order total is ${(payment.amountCents / 100).toFixed(2)}`, false);
+      return flagRefund(tx, order, `paid ${(check.amountCents / 100).toFixed(2)} but the order total is ${(payment.amountCents / 100).toFixed(2)}`, false, check.amountCents);
     }
     if (order.paymentStatus === 'paid') return flagRefund(tx, order, `paid twice (attempt ${payment.attempt})`, false);
     if (order.status === 'pending_payment') {

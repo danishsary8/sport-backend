@@ -26,6 +26,28 @@ const valueOk = (v: { type?: string; value?: number }) =>
   v.type === undefined || v.value === undefined || (v.type === 'percent' ? v.value >= 1 && v.value <= 100 : v.type === 'fixed' ? v.value >= 1 : true);
 const valueMessage = { message: 'Percent codes need 1–100; fixed codes need at least 1 cent', path: ['value'] };
 
+interface PromoShape {
+  type: string;
+  value: number;
+  scope?: { categories?: string[]; brands?: string[]; methods?: string[] } | null;
+  startsAt?: Date | null;
+  endsAt?: Date | null;
+}
+
+/** Rules across fields: dates in order, free delivery is a delivery effect only, money-off never targets delivery methods. */
+export function promoProblems(p: PromoShape): { path: string; message: string }[] {
+  const problems: { path: string; message: string }[] = [];
+  if (p.startsAt && p.endsAt && p.startsAt >= p.endsAt) problems.push({ path: 'endsAt', message: 'Must be after startsAt' });
+  const scope = p.scope ?? {};
+  if (p.type === 'free_shipping') {
+    if (p.value !== 0) problems.push({ path: 'value', message: 'Free delivery promotions have value 0' });
+    if (scope.categories?.length || scope.brands?.length) problems.push({ path: 'scope', message: 'Free delivery applies to the whole order; remove categories/brands' });
+  } else if (scope.methods?.length) {
+    problems.push({ path: 'scope.methods', message: 'Only free delivery promotions can be limited to delivery methods' });
+  }
+  return problems;
+}
+
 const promoCreate = z
   .object({
     code: z.string().trim().min(3).max(30).transform((c) => c.toUpperCase()).pipe(z.string().regex(/^[A-Z0-9_-]+$/, 'Use A–Z, 0–9, _ and -')),
@@ -72,6 +94,8 @@ export function adminPricingRouter(ctx: AppContext): Router {
   });
 
   router.post('/admin/promotions', ...admin, validate({ body: promoCreate }), async (req, res) => {
+    const problems = promoProblems(req.body);
+    if (problems.length) throw new AppError('validation_failed', 400, 'Validation failed', problems);
     try {
       const [promotion] = await db.insert(promotions).values(req.body).returning();
       ctx.logger.info({ actorId: req.user!.id, code: promotion!.code }, 'Promotion created');
@@ -90,6 +114,8 @@ export function adminPricingRouter(ctx: AppContext): Router {
     if (!valueOk({ type: req.body.type ?? current.type, value: req.body.value ?? current.value })) {
       throw new AppError('validation_failed', 400, 'Validation failed', [{ path: 'value', message: valueMessage.message }]);
     }
+    const problems = promoProblems({ ...current, ...req.body });
+    if (problems.length) throw new AppError('validation_failed', 400, 'Validation failed', problems);
     const [promotion] = await db.update(promotions).set(req.body).where(eq(promotions.id, id)).returning();
     ctx.logger.info({ actorId: req.user!.id, code: promotion!.code, change: req.body }, 'Promotion updated');
     res.json({ promotion });

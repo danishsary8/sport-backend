@@ -154,10 +154,11 @@ export async function placeOrder(deps: CheckoutDeps, owner: CartOwner, user: Use
     });
     if (!cart || priced.items.length === 0) throw new AppError('cart_empty', 400, 'Your bag is empty');
     const { view, pricing } = priced;
+    const variantOf = new Map(priced.items.map((i) => [i.id, i.variantId]));
     const unavailable = view.lines.some((l) => l.problem === 'unavailable') || pricing.shippingCents === null;
     if (!unavailable && view.lines.some((l) => l.problem === 'exceeds_stock')) {
       throw new AppError('stock_changed', 409, 'Some items sold out while you were checking out', {
-        lines: view.lines.filter((l) => l.problem === 'exceeds_stock').map((l) => ({ lineId: l.id, available: l.maxQty })),
+        lines: view.lines.filter((l) => l.problem === 'exceeds_stock').map((l) => ({ lineId: l.id, variantId: variantOf.get(l.id)!, available: l.maxQty })),
       });
     }
     if (!view.checkoutReady) {
@@ -174,7 +175,7 @@ export async function placeOrder(deps: CheckoutDeps, owner: CartOwner, user: Use
     const plan = planAllocations(lines, input.fulfillment === 'pickup' ? { fulfillment: 'pickup', branchId: input.pickupBranchId! } : { fulfillment: 'delivery' });
     if (!plan.ok) {
       throw new AppError('stock_changed', 409, 'Some items sold out while you were checking out', {
-        lines: plan.shortfalls.map((s) => ({ lineId: s.lineId, available: s.available })),
+        lines: plan.shortfalls.map((s) => ({ lineId: s.lineId, variantId: s.variantId, available: s.available })),
       });
     }
 
@@ -208,7 +209,18 @@ export async function placeOrder(deps: CheckoutDeps, owner: CartOwner, user: Use
       },
       now,
     );
-    await reserveAllocations(tx, plan.allocations.map((a) => ({ variantId: a.variantId, branchId: a.branchId, qty: a.qty })), row.number);
+    try {
+      await reserveAllocations(tx, plan.allocations.map((a) => ({ variantId: a.variantId, branchId: a.branchId, qty: a.qty })), row.number);
+    } catch (error) {
+      // Same shape as the other stock_changed answers: the bag line and its variant.
+      if (error instanceof AppError && error.code === 'stock_changed') {
+        const short = (error.details as { lines: { variantId: string; available: number }[] }).lines;
+        throw new AppError('stock_changed', 409, error.message, {
+          lines: short.map((s) => ({ lineId: priced.items.find((i) => i.variantId === s.variantId)?.id ?? null, variantId: s.variantId, available: s.available })),
+        });
+      }
+      throw error;
+    }
 
     const itemIdByLine = new Map<string, string>();
     for (const [idx, item] of priced.items.entries()) {
@@ -256,8 +268,8 @@ export async function placeOrder(deps: CheckoutDeps, owner: CartOwner, user: Use
     try {
       payment = await startPaymentAttempt(deps, order.id, input.paymentMethod);
     } catch (error) {
-      if (!(error instanceof AppError)) throw error;
-      paymentError = error.message;
+      // The order exists and the bag is empty: never turn this into a 500. The customer retries payment.
+      paymentError = error instanceof AppError ? error.message : 'The payment service is not responding; please try again';
     }
   }
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id)).orderBy(orderItems.id);

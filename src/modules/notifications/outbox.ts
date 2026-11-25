@@ -9,7 +9,7 @@ export const MAX_ATTEMPTS = 8;
 const LEASE_MINUTES = 5;
 
 /** Queues the messages an order event causes. Runs inside the caller's transaction; never sends. */
-export async function enqueueOrderNotifications(tx: Exec, event: Template, orderId: string, extra: { reason?: string } = {}): Promise<void> {
+export async function enqueueOrderNotifications(tx: Exec, event: Template, orderId: string, extra: { reason?: string; paidCents?: number } = {}): Promise<void> {
   const [order] = await tx.select().from(orders).where(eq(orders.id, orderId));
   if (!order) return;
   const items = await tx.select({ snapshot: orderItems.productSnapshot, qty: orderItems.qty }).from(orderItems).where(eq(orderItems.orderId, orderId));

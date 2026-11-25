@@ -39,12 +39,11 @@ export interface PricedCheckout {
  * current prices, stock, member tier, promo and delivery choice, through priceCart.
  */
 export async function pricedCheckout(db: Exec, cart: CartRow | undefined, opts: CheckoutPricingOptions): Promise<PricedCheckout> {
-  const [buffer, rules, tier, delivery] = await Promise.all([
-    safetyBuffer(db),
-    loadRules(db),
-    tierFor(db, opts.user),
-    deliveryRate(db, opts.delivery),
-  ]);
+  // One after another: inside a transaction they share one client, which can't run queries in parallel.
+  const buffer = await safetyBuffer(db);
+  const rules = await loadRules(db);
+  const tier = await tierFor(db, opts.user);
+  const delivery = await deliveryRate(db, opts.delivery);
   const items = cart ? await db.select().from(cartItems).where(eq(cartItems.cartId, cart.id)).orderBy(cartItems.createdAt, cartItems.id) : [];
   const infos = await variantInfo(db, [...new Set(items.map((i) => i.variantId))], buffer);
   const promoCode = opts.promoOverride !== undefined ? opts.promoOverride : (cart?.promoCode ?? null);

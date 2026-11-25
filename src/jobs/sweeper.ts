@@ -1,6 +1,6 @@
 import { and, asc, eq, gt, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
-import { carts, orderItemAllocations, orderItems, orders, payments, promotions, type OrderStatus } from '../db/schema/index.js';
+import { carts, idempotencyKeys, orderItemAllocations, orderItems, orders, payments, promotions, type OrderStatus } from '../db/schema/index.js';
 import { AppError } from '../lib/errors.js';
 import type { Logger } from '../lib/logger.js';
 import type { Notifier } from '../modules/notifications/notifier.js';
@@ -164,6 +164,8 @@ export async function sweepOnce(deps: SweepDeps): Promise<SweepResult> {
           .where(and(isNotNull(carts.guestToken), lt(carts.updatedAt, new Date(now.getTime() - GUEST_CART_DAYS * 86_400_000))))
           .returning({ id: carts.id });
         result.guestCartsDeleted = deleted.length;
+        // Idempotency keys only need to outlive a client's retries (spec: 24 hours).
+        await db.delete(idempotencyKeys).where(lt(idempotencyKeys.createdAt, new Date(now.getTime() - 86_400_000)));
       } catch (error) {
         deps.logger.error({ err: error }, 'Sweeper: guest cart cleanup failed');
       }

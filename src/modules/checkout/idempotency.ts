@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { and, eq, lt, sql } from 'drizzle-orm';
+import { and, eq, isNull, lt, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import { idempotencyKeys } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
@@ -29,7 +29,8 @@ export async function withIdempotency(
   hash: string,
   fn: () => Promise<{ status: number; body: unknown }>,
 ): Promise<{ status: number; body: unknown }> {
-  const claimed = await db.insert(idempotencyKeys).values({ scope, key, requestHash: hash }).onConflictDoNothing().returning({ key: idempotencyKeys.key });
+  const claimed = await db.insert(idempotencyKeys).values({ scope, key, requestHash: hash }).onConflictDoNothing().returning({ createdAt: idempotencyKeys.createdAt });
+  let claimAt = claimed[0]?.createdAt;
   if (claimed.length === 0) {
     const [row] = await db.select().from(idempotencyKeys).where(and(eq(idempotencyKeys.scope, scope), eq(idempotencyKeys.key, key)));
     if (!row) return withIdempotency(db, scope, key, hash, fn);
@@ -42,11 +43,16 @@ export async function withIdempotency(
       .update(idempotencyKeys)
       .set({ createdAt: sql`now()` })
       .where(and(eq(idempotencyKeys.scope, scope), eq(idempotencyKeys.key, key), lt(idempotencyKeys.createdAt, new Date(Date.now() - IN_PROGRESS_MS))))
-      .returning({ key: idempotencyKeys.key });
+      .returning({ createdAt: idempotencyKeys.createdAt });
     if (takeover.length === 0) throw new AppError('request_in_progress', 409, 'This order is already being placed; please wait');
+    claimAt = takeover[0]!.createdAt;
   }
 
-  const release = () => db.delete(idempotencyKeys).where(and(eq(idempotencyKeys.scope, scope), eq(idempotencyKeys.key, key)));
+  // Release only our own unfinished claim: a slow original that finished meanwhile keeps its result.
+  const release = () =>
+    db
+      .delete(idempotencyKeys)
+      .where(and(eq(idempotencyKeys.scope, scope), eq(idempotencyKeys.key, key), isNull(idempotencyKeys.statusCode), eq(idempotencyKeys.createdAt, claimAt!)));
   let result: { status: number; body: unknown };
   try {
     result = await fn();

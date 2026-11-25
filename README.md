@@ -6,7 +6,7 @@ The commerce backend for Sport Castle, a Phnom Penh football / futsal / F1 store
 - Plans: `docs/superpowers/plans/`
 - Behaviour research: `sport-heaven/docs/research/zando-behavior-reference.md`
 
-**Status:** phase 1 (foundation) done: config, logging, errors, security baseline, health probes, migrations, CI. Feature modules arrive in phases 2–6; the pre-split code waiting to be ported sits in `legacy/` (not built, not tested).
+**Status:** phases 1–2 done: foundation (config, logging, errors, security baseline, probes, migrations, CI) and auth & accounts (Firebase phone/Google sign-in, roles, profile, addresses, geo, branches, admin roles). Catalog, cart, checkout and payments arrive in phases 3–6; pre-split code waiting to be ported sits in `legacy/` (not built, not tested).
 
 ## Requirements
 
@@ -19,7 +19,7 @@ The commerce backend for Sport Castle, a Phnom Penh football / futsal / F1 store
 npm ci
 cp .env.example .env            # then edit DATABASE_URL / COOKIE_SECRET
 createdb sport_dev              # or: psql -c 'CREATE DATABASE sport_dev;'
-npm run build && npm run db:migrate
+npm run build && npm run db:migrate && npm run db:seed
 npm run dev                     # http://localhost:3000/health
 ```
 
@@ -41,10 +41,31 @@ npm test
 | `npm test` / `test:unit` / `test:int` | All tests / pure unit tests / tests against Postgres |
 | `npm run db:generate` | Generate a SQL migration from schema changes into `drizzle/` (commit it) |
 | `npm run db:migrate` | Apply migrations (run after `build`) |
+| `npm run db:seed` | Load branches + Cambodian provinces/districts/communes (idempotent) |
 
 ## Configuration
 
 All environment variables are validated at boot; the server refuses to start and lists every problem if any are wrong. See `.env.example` for the full list. In production, `CORS_ORIGINS` is required and Postgres SSL is on by default.
+
+## Authentication
+
+Customers sign in on the frontend with Firebase (phone number + SMS code, or Google) and send `Authorization: Bearer <Firebase ID token>`.
+
+- `POST /v1/auth/session`: call right after sign-in; creates or refreshes the user and returns it.
+- Roles: `customer`, `staff` (optionally limited to one branch), `admin`. Numbers/emails in `BOOTSTRAP_ADMIN_PHONES` / `BOOTSTRAP_ADMIN_EMAILS` become admin when they sign in.
+- Without `FIREBASE_PROJECT_ID`, sign-in routes answer `503 auth_unavailable` (fine for local work on public routes). Production requires `FIREBASE_PROJECT_ID` and `FIREBASE_SERVICE_ACCOUNT_JSON` (enables revoked-token checks and account deletion).
+
+## Endpoints (so far)
+
+| Method & path | Who | Purpose |
+|---|---|---|
+| `GET /health`, `GET /ready` | anyone | Liveness / readiness |
+| `GET /v1/branches` | anyone | The three stores |
+| `GET /v1/geo/provinces`, `/districts?provinceCode=`, `/communes?districtCode=` | anyone | Address pickers (Khmer + English) |
+| `POST /v1/auth/session` | signed in | Create/refresh the user after Firebase sign-in |
+| `GET /v1/me`, `PATCH /v1/me`, `DELETE /v1/me` | signed in | Profile; deletion anonymises the account and removes the Firebase user |
+| `GET/POST /v1/me/addresses`, `PATCH/DELETE /v1/me/addresses/:id`, `POST /v1/me/addresses/:id/default` | signed in | Delivery addresses (max 20, one default) |
+| `GET /v1/admin/users?q=&role=&page=&pageSize=`, `PATCH /v1/admin/users/:id/role` | admin | Find users, set customer/staff/admin and staff branch |
 
 ## HTTP conventions
 
@@ -63,7 +84,9 @@ src/
   lib/                 logger (pino, phone redaction), errors
   middleware/          request id, validation, rate limiting
   db/                  client, schema, migrator
-  modules/<feature>/   routers + services + repositories (health today)
+  context.ts           shared dependencies + auth middleware chains for routers
+  modules/<feature>/   routers + services (auth, account, users, admin, geo, branches, health)
+  db/seed/             reference data (branches, geo) + seed script
 drizzle/               committed SQL migrations
 test/unit, test/integration
 legacy/                pre-split code awaiting port (excluded)

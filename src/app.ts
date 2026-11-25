@@ -15,6 +15,7 @@ import {
 } from './middleware/rateLimit.js';
 import { requestId } from './middleware/requestId.js';
 import { accountRouter } from './modules/account/router.js';
+import { adminUsersRouter } from './modules/admin/usersRouter.js';
 import { authRouter } from './modules/auth/router.js';
 import { branchesRouter } from './modules/branches/router.js';
 import { geoRouter } from './modules/geo/router.js';
@@ -89,6 +90,7 @@ export function createApp(deps: AppDeps): express.Express {
   v1.use(accountRouter(ctx));
   v1.use(geoRouter(ctx));
   v1.use(branchesRouter(ctx));
+  v1.use(adminUsersRouter(ctx));
   app.use('/v1', v1);
 
   app.use(notFoundHandler);

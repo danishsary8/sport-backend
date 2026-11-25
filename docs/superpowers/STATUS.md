@@ -24,6 +24,18 @@ After a context reset, trust this file, the plan ledgers (`.superpowers/sdd/<pla
 | Stage 1 done incl. review fixes (twice) | 535/535 |
 | Stage 2 done incl. review fixes (twice) | 596/596 | frontend clean-up: 2/2 (typecheck, lint, build clean) |
 
+## Load test (phase 7, `npm run loadtest`)
+
+50 guests checking out the same size at once, 10 units sellable online (local laptop-class container, Postgres on the same machine). Three runs:
+
+| Run | Orders (201) | Sold out (409) | Other | Busy retries | p50 | p95 | p99 |
+|---|---|---|---|---|---|---|---|
+| 1 | 10 | 40 | 0 | 0 | 596 ms | 621 ms | 698 ms |
+| 2 | 10 | 40 | 0 | 0 | 614 ms | 659 ms | 739 ms |
+| 3 | 10 | 40 | 0 | 0 | 606 ms | 624 ms | 679 ms |
+
+The latency is mostly queueing behind the 10-connection pool, since all 50 requests arrive within milliseconds of each other. Normal checkouts take tens of milliseconds.
+
 ## Rulings (cumulative)
 
 - [Stage 0] Seed inserted shipping rates before the provinces they reference, so seeding a brand-new database failed (every integration test skipped). Geo is now seeded first in the same transaction.

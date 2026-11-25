@@ -13,49 +13,11 @@ import type { Breakdown, PriceLineInput } from '../pricing/types.js';
 import type { Tx } from '../stock/service.js';
 import { newGuestToken, type CartOwner } from './owner.js';
 
-export const CART_LIMITS = { maxLines: 30, maxQty: 20, maxUnits: 50 };
+import { CART_LIMITS, type CartView } from './types.js';
+import { sellable, variantInfo, type VariantInfo } from './variants.js';
+import { pricedCheckout, type CheckoutPricingOptions } from '../checkout/pricing.js';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Exec = Db | Tx;
-
-interface VariantInfo {
-  variant_id: string;
-  variant_status: string;
-  price_cents: number;
-  compare_at_cents: number | null;
-  size_label: string;
-  sku: string;
-  product_id: string;
-  product_slug: string;
-  product_status: string;
-  is_customizable: boolean;
-  name_i18n: { en: string; km?: string };
-  brand_slug: string;
-  brand_name: string;
-  category_slug: string;
-  color: string;
-  image_path: string | null;
-  units: number;
-}
-
-/** Everything a cart needs to know about variants: product, price, image and units sellable online. */
-async function variantInfo(db: Exec, variantIds: string[], buffer: number): Promise<Map<string, VariantInfo>> {
-  if (variantIds.length === 0) return new Map();
-  const rows = await db.execute<VariantInfo & Record<string, unknown>>(sql`
-    select v.id as variant_id, v.status as variant_status, v.price_cents, v.compare_at_cents, v.size_label, v.sku,
-      p.id as product_id, p.slug as product_slug, p.status as product_status, p.is_customizable, p.name_i18n,
-      b.slug as brand_slug, b.name as brand_name, c.slug as category_slug, pc.name as color,
-      (select pi.path from product_images pi where pi.product_id = p.id order by (pi.color_id = v.color_id) desc nulls last, pi.sort, pi.id limit 1) as image_path,
-      coalesce((select sum(greatest(0, s.on_hand - s.reserved - coalesce(s.online_buffer, ${buffer}))) from stock s where s.variant_id = v.id), 0)::int as units
-    from variants v
-    join products p on p.id = v.product_id
-    join brands b on b.id = p.brand_id
-    join categories c on c.id = p.category_id
-    join product_colors pc on pc.id = v.color_id
-    where v.id in ${variantIds}`);
-  return new Map(rows.rows.map((r) => [r.variant_id, r]));
-}
-
-const sellable = (v: VariantInfo | undefined) => v !== undefined && v.variant_status === 'active' && v.product_status === 'active';
 
 export async function findCart(db: Exec, owner: CartOwner, lock = false): Promise<CartRow | undefined> {
   if (owner.kind === 'guest' && !owner.token) return undefined;
@@ -202,115 +164,10 @@ export async function setPromo(db: Db, owner: CartOwner, code: string | null): P
   });
 }
 
-export interface CartLineView {
-  id: string;
-  productSlug: string;
-  productName: string;
-  brand: string;
-  imageUrl: string | null;
-  size: string;
-  color: string;
-  sku: string;
-  qty: number;
-  maxQty: number;
-  availability: Availability;
-  lowStockCount: number | null;
-  customPrint: CustomPrint | null;
-  unitPriceCents: number;
-  compareAtCents: number | null;
-  printFeeCents: number;
-  discountCents: number;
-  lineTotalCents: number;
-  purchasable: boolean;
-  problem: null | 'unavailable' | 'exceeds_stock';
-}
-
-export interface CartView {
-  id: string | null;
-  lines: CartLineView[];
-  pricing: Breakdown;
-  promoCode: string | null;
-  checkoutReady: boolean;
-  notices: string[];
-}
-
+export { CART_LIMITS, type CartLineView, type CartView } from './types.js';
 export const DEFAULT_DELIVERY: DeliveryChoice = { fulfillment: 'delivery', methodId: 'pp_rider', provinceCode: '12' };
 
 /** Prices the cart from current database prices, stock, member tier, promo and delivery choice. */
-export async function cartView(
-  db: Db,
-  cart: CartRow | undefined,
-  opts: { user?: Pick<UserRow, 'id' | 'phoneE164'>; delivery: DeliveryChoice; lang: Lang; assetBase: string; now?: Date },
-): Promise<CartView> {
-  const [buffer, rules, tier, delivery] = await Promise.all([
-    safetyBuffer(db),
-    loadRules(db),
-    tierFor(db, opts.user),
-    deliveryRate(db, opts.delivery),
-  ]);
-  const items = cart ? await db.select().from(cartItems).where(eq(cartItems.cartId, cart.id)).orderBy(cartItems.createdAt, cartItems.id) : [];
-  const infos = await variantInfo(db, [...new Set(items.map((i) => i.variantId))], buffer);
-  const promoLookup = cart?.promoCode ? await findPromotion(db, cart.promoCode, opts.now ?? new Date()) : null;
-
-  const inputs: PriceLineInput[] = items.map((item) => {
-    const info = infos.get(item.variantId);
-    return {
-      lineId: item.id,
-      categorySlug: info?.category_slug ?? '',
-      brandSlug: info?.brand_slug ?? '',
-      unitPriceCents: info?.price_cents ?? 0,
-      compareAtCents: info?.compare_at_cents ?? null,
-      qty: item.qty,
-      customPrint: (item.customPrint as CustomPrint | null) ?? null,
-      purchasable: sellable(info),
-    };
-  });
-  const pricing = priceCart({
-    lines: inputs,
-    tier,
-    promo: {
-      promotion: promoLookup && 'promotion' in promoLookup ? promoLookup.promotion : null,
-      rejectedMessage: promoLookup && 'rejectedMessage' in promoLookup ? promoLookup.rejectedMessage : undefined,
-      enteredCode: cart?.promoCode ?? null,
-    },
-    delivery,
-    rules,
-  });
-
-  const lines: CartLineView[] = items.map((item, i) => {
-    const info = infos.get(item.variantId);
-    const priced = pricing.lines[i]!;
-    const purchasable = sellable(info);
-    const maxQty = Math.min(CART_LIMITS.maxQty, info?.units ?? 0);
-    return {
-      id: item.id,
-      productSlug: info?.product_slug ?? '',
-      productName: info ? (pick(info.name_i18n, opts.lang) ?? info.product_slug) : 'Unavailable item',
-      brand: info?.brand_name ?? '',
-      imageUrl: assetUrl(opts.assetBase, info?.image_path),
-      size: info?.size_label ?? '',
-      color: info?.color ?? '',
-      sku: info?.sku ?? '',
-      qty: item.qty,
-      maxQty,
-      ...availabilityOf(info?.units ?? 0),
-      customPrint: (item.customPrint as CustomPrint | null) ?? null,
-      unitPriceCents: info?.price_cents ?? 0,
-      compareAtCents: info?.compare_at_cents ?? null,
-      printFeeCents: priced.printFeeCents,
-      discountCents: priced.discountCents,
-      lineTotalCents: priced.totalCents,
-      purchasable,
-      problem: !purchasable ? 'unavailable' : item.qty > maxQty ? 'exceeds_stock' : null,
-    };
-  });
-
-  return {
-    id: cart?.id ?? null,
-    lines,
-    pricing,
-    promoCode: cart?.promoCode ?? null,
-    checkoutReady: lines.length > 0 && lines.every((l) => l.problem === null) && pricing.shippingCents !== null,
-    notices: ["Items in your bag aren't reserved until you check out"],
-  };
+export async function cartView(db: Db, cart: CartRow | undefined, opts: CheckoutPricingOptions): Promise<CartView> {
+  return (await pricedCheckout(db, cart, opts)).view;
 }

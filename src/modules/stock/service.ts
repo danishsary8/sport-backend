@@ -17,7 +17,8 @@ export type StockReason =
   | 'rma_restock'
   | 'exchange_reserve';
 
-export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+export type { Tx } from '../../db/exec.js';
+import type { Tx } from '../../db/exec.js';
 
 export interface Movement {
   variantId: string;

@@ -87,7 +87,7 @@ export function escapeLike(value: string): string {
 }
 
 /** Current global online safety buffer (units held back per variant per branch). */
-export async function safetyBuffer(db: Db): Promise<number> {
+export async function safetyBuffer(db: Db | import('../../db/exec.js').Tx): Promise<number> {
   const r = await db.execute<{ units: number | null }>(
     sql`select (value->>'units')::int as units from settings where key = 'online_safety_buffer'`,
   );

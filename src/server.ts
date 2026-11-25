@@ -7,11 +7,17 @@ import { ConfigError, loadConfig } from './config/env.js';
 import { createDb } from './db/client.js';
 import { createFirebaseIdentity, createUnconfiguredIdentity } from './lib/identity.js';
 import { createLogger } from './lib/logger.js';
+import { startScheduler } from './jobs/sweeper.js';
+import { resendNotifier } from './modules/notifications/resend.js';
+import { telegramNotifier } from './modules/notifications/telegram.js';
+import { createPaymentProvider } from './modules/payments/provider.js';
 
 const SHUTDOWN_GRACE_MS = 10_000;
 
 export interface RunningServer {
   url: string;
+  /** Whether the per-minute sweeper (payments, expiry, notifications) runs in this process. */
+  jobsRunning: boolean;
   stop(): Promise<void>;
 }
 
@@ -26,7 +32,9 @@ export async function start(env: NodeJS.ProcessEnv = process.env): Promise<Runni
   } else {
     logger.warn('FIREBASE_PROJECT_ID is not set: sign-in endpoints will answer 503 auth_unavailable');
   }
-  const app = createApp({ config, logger, db: database, identity });
+  const payments = createPaymentProvider(config);
+  if (payments.name === 'fake') logger.warn('PayWay is not configured: using the fake payment provider (test payments only)');
+  const app = createApp({ config, logger, db: database, identity, payments });
 
   const server = app.listen(config.port, '0.0.0.0');
   await new Promise<void>((resolve, reject) => {
@@ -36,6 +44,19 @@ export async function start(env: NodeJS.ProcessEnv = process.env): Promise<Runni
   const { port } = server.address() as AddressInfo;
   const url = `http://127.0.0.1:${port}`;
   logger.info({ port, env: config.nodeEnv }, 'Sport Castle API listening');
+
+  const scheduler = config.jobsEnabled
+    ? startScheduler({
+        database,
+        payments,
+        notifiers: {
+          telegram: telegramNotifier({ botToken: config.telegramBotToken, chatId: config.telegramChatId }),
+          email: resendNotifier({ apiKey: config.resendApiKey, from: config.notificationFromEmail }),
+        },
+        logger,
+        now: () => new Date(),
+      })
+    : null;
 
   let stopping: Promise<void> | undefined;
   const stop = () => {
@@ -53,12 +74,13 @@ export async function start(env: NodeJS.ProcessEnv = process.env): Promise<Runni
         // Idle keep-alive sockets would otherwise hold close() open.
         server.closeIdleConnections();
       });
+      await scheduler?.stop();
       await database.close();
     })();
     return stopping;
   };
 
-  return { url, stop };
+  return { url, jobsRunning: scheduler !== null, stop };
 }
 
 async function main(): Promise<void> {

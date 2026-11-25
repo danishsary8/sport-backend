@@ -6,7 +6,7 @@ The commerce backend for Sport Castle, a Phnom Penh football / futsal / F1 store
 - Plans: `docs/superpowers/plans/`
 - Behaviour research: `sport-heaven/docs/research/zando-behavior-reference.md`
 
-**Status:** phases 1–4 done: foundation (config, logging, errors, security baseline, probes, migrations, CI); auth & accounts (Firebase phone/Google sign-in, roles, profile, addresses, geo, branches, admin roles); catalog (products, sizes, per-branch stock with audit trail, filters, search, collections, home, wishlist, staff counter sales, admin product API). cart & pricing (server-priced guest/member carts, team discount, member perks, promo codes, delivery rates, admin pricing). Checkout and payments arrive in phases 5–6; pre-split code waiting to be ported sits in `legacy/` (not built, not tested).
+**Status:** phases 1–4 done: foundation (config, logging, errors, security baseline, probes, migrations, CI); auth & accounts (Firebase phone/Google sign-in, roles, profile, addresses, geo, branches, admin roles); catalog (products, sizes, per-branch stock with audit trail, filters, search, collections, home, wishlist, staff counter sales, admin product API). cart & pricing (server-priced guest/member carts, team discount, member perks, promo codes, delivery rates, admin pricing); checkout & payments (orders with stock held for 30 minutes, ABA PayWay KHQR/card with a fake provider for development, webhook + poll + sweeper confirmation, loyalty points, notification outbox). Post-purchase (tracking, admin orders, returns) arrives in phase 6; pre-split code waiting to be ported sits in `legacy/` (not built, not tested).
 
 ## Requirements
 
@@ -98,6 +98,35 @@ Stock rules: customers only ever see `ok`, `low` (with 1–3 left) or `out`. The
 | `GET /v1/admin/shipping-rates`, `PUT /v1/admin/shipping-rates/:id` | admin | Delivery fees |
 | `GET /v1/admin/settings/pricing`, `PUT /v1/admin/settings/pricing/:key` | admin | Pricing rules |
 
+## Checkout, orders and payments
+
+1. The checkout page calls `POST /v1/checkout/quote` whenever the shopper changes delivery or payment. It prices the bag exactly as `GET /v1/cart` does and lists the delivery options (with this bag's fee), pickup stores and payment methods.
+2. `POST /v1/orders` with a unique `Idempotency-Key` header (a UUID per checkout attempt; resending the same key returns the same order). The server re-prices the bag, holds the stock (`reserved_until` = 30 minutes; 48 hours for cash on pickup), empties the bag and returns `{order, payment, orderAccessToken}`.
+   - Delivery takes each line from the store with the most stock, splitting it across stores when needed; pickup uses only the chosen store. The online safety buffer always applies.
+   - Two shoppers buying the last unit at the same moment: exactly one order succeeds; the other gets `409 stock_changed`.
+   - `payment.instructions` is `{kind:'qr', qrString, deeplink}` (render the KHQR from `qrString`), `{kind:'redirect', url, method, fields}` (card: submit a form to PayWay) or `{kind:'none'}` (cash on pickup).
+3. While the QR is shown the page polls `GET /v1/orders/:number/payment-status` every 3 s; the server asks PayWay at most once every 5 s per order.
+4. Payment is confirmed by any of: PayWay's webhook (`POST /v1/webhooks/payway`), the poll, or the per-minute sweeper. Each one re-checks the transaction with PayWay's signed check API before trusting it, and confirming twice changes nothing. On payment the stock leaves the shelf, members with a verified phone earn 10 points per $1 (excluding delivery), the promo use is recorded and ops/customers are notified.
+5. Unpaid orders expire when their hold ends: the stock and the promo use are released. A payment that arrives after expiry re-holds the stock if it can; otherwise the order is flagged `needs_refund` and ops get an urgent Telegram message. A second payment for the same order, or a wrong amount, is flagged the same way.
+
+Guests prove access to their order with the `orderAccessToken` (24 h) in an `X-Order-Token` header; switching payment method also needs their contact phone. Members just send their sign-in token.
+
+| Method & path | Who | Purpose |
+|---|---|---|
+| `POST /v1/checkout/quote` | anyone | Totals, delivery options, pickup stores and payment methods for the bag |
+| `POST /v1/orders` | anyone (needs `Idempotency-Key`) | Place the order and start payment |
+| `GET /v1/orders/:number` | owner | Order with timeline and the latest payment |
+| `GET /v1/orders/:number/payment-status` | owner | Poll while paying |
+| `POST /v1/orders/:number/payments` | owner (+ contact phone for guests) | Retry or switch payment method while the order is still held |
+| `POST /v1/webhooks/payway` | PayWay | Payment pushback (not rate limited; always re-verified) |
+| `POST /v1/dev/payments/:tranId/approve`, `GET /v1/dev/payments/:tranId/checkout` | development only | Approve a fake payment (only when PayWay isn't configured and `NODE_ENV` isn't production) |
+
+**Payments setup.** Without `PAYWAY_MERCHANT_ID` / `PAYWAY_API_KEY` the API uses a fake provider: QR codes are placeholders and payments are approved with the dev route above. Production refuses to start without PayWay (unless `PAYMENT_METHODS_CASH_ONLY=true`). Set `PAYWAY_BASE_URL` (sandbox by default), `PAYWAY_RETURN_URL` (this API's `/v1/webhooks/payway`, registered with ABA) and `PAYWAY_CONTINUE_URL` (the shop page shoppers return to after card payment). Which methods are offered is the `payment_methods_enabled` setting (KHQR and card on; ACLEDA, Wing and cash on pickup off). Every PayWay field name lives in `src/modules/payments/payway/mapping.ts`, marked to be verified in the sandbox.
+
+**Background jobs.** Every minute (one instance at a time, via a Postgres advisory lock) the API checks pending payments, expires unpaid orders, sends queued notifications and deletes guest bags untouched for 60 days. Set `JOBS_ENABLED=false` to run an instance without them.
+
+**Notifications.** Messages are queued in `notification_outbox` with the order and sent by the job with retries (backing off up to an hour; given up after 8 tries). Ops get Telegram messages for new orders, payments and refunds needed (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`); customers who gave an email get payment and status emails through Resend (`RESEND_API_KEY`, `NOTIFICATION_FROM_EMAIL`). Unconfigured channels are skipped. A failed send never affects an order.
+
 ## HTTP conventions
 
 - API routes live under `/v1`. Probes: `GET /health` (liveness) and `GET /ready` (database reachable → 200, otherwise 503).
@@ -116,7 +145,8 @@ src/
   middleware/          request id, validation, rate limiting
   db/                  client, schema, migrator
   context.ts           shared dependencies + auth middleware chains for routers
-  modules/<feature>/   routers + services (auth, account, users, admin, geo, branches, catalog, stock, wishlist, pricing, cart, health)
+  modules/<feature>/   routers + services (auth, account, users, admin, geo, branches, catalog, stock, wishlist, pricing, cart, checkout, orders, payments, loyalty, notifications, settings, health)
+  jobs/                per-minute sweeper (payments, expiry, notifications, old guest bags)
   db/seed/             reference data (branches, geo) + seed script
 drizzle/               committed SQL migrations
 test/unit, test/integration

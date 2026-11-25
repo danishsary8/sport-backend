@@ -23,6 +23,15 @@ describe('start', () => {
     await expect(fetch(`${server.url}/health`)).rejects.toThrow();
   });
 
+  it('runs the background jobs unless JOBS_ENABLED=false, and stops them on shutdown', async () => {
+    const withJobs = await start(env);
+    expect(withJobs.jobsRunning).toBe(true);
+    await withJobs.stop();
+    const without = await start({ ...env, JOBS_ENABLED: 'false' });
+    expect(without.jobsRunning).toBe(false);
+    await without.stop();
+  });
+
   it('refuses to start without a valid configuration', async () => {
     await expect(start({})).rejects.toBeInstanceOf(ConfigError);
   });

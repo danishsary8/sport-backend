@@ -22,6 +22,16 @@ import { sizeSort } from '../catalog/sizes.js';
 import { skuBase } from '../catalog/sku.js';
 import type { Tx } from '../stock/service.js';
 
+/** Catalog image paths are relative to ASSET_BASE_URL: no scheme, no leading slash, no "..". */
+export const imagePath = z
+  .string()
+  .trim()
+  .min(1)
+  .max(300)
+  .regex(/^[a-z0-9][a-z0-9/_.-]*$/, 'Use a relative path like catalog/name.jpg (lowercase letters, digits, / _ . -)')
+  .refine((p) => !p.split('/').includes('..'), 'Must not contain ".."');
+
+
 const i18n = z.object({ en: z.string().trim().min(1).max(500), km: z.string().trim().max(500).optional() });
 const slug = z.string().trim().min(2).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Use lowercase letters, numbers and dashes');
 const priceCents = z.number().int().min(0).max(10_000_000);
@@ -70,7 +80,7 @@ const createSchema = z.object({
   status: productFields.status.default('draft'),
   colors: z.array(z.object({ name: z.string().trim().min(1).max(80), swatchHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional() })).min(1).max(20),
   variants: z.array(variantInput).min(1).max(100),
-  images: z.array(z.object({ path: z.string().trim().min(1).max(300), color: z.string().trim().max(80).optional(), alt: z.string().max(200).optional() })).max(30).default([]),
+  images: z.array(z.object({ path: imagePath, color: z.string().trim().max(80).optional(), alt: z.string().max(200).optional() })).max(30).default([]),
 });
 
 const patchSchema = z
@@ -103,9 +113,9 @@ async function idOf(tx: Tx | Db, table: typeof brands | typeof categories, value
 /** Keeps the search index text in sync with names, brand, club, league, colours and category. */
 async function refreshSearchText(tx: Tx, productId: string): Promise<void> {
   await tx.execute(sql`
-    update products p set search_text = lower(concat_ws(' ',
+    update products p set search_text = unaccent(lower(concat_ws(' ',
       p.name_i18n->>'en', p.short_name_i18n->>'en', b.name, p.attributes->>'club', p.attributes->>'league',
-      (select string_agg(pc.name, ' ') from product_colors pc where pc.product_id = p.id), c.slug)),
+      (select string_agg(pc.name, ' ') from product_colors pc where pc.product_id = p.id), c.slug))),
       updated_at = now()
     from brands b, categories c
     where p.id = ${productId} and b.id = p.brand_id and c.id = p.category_id`);
@@ -215,6 +225,14 @@ export function adminProductsRouter(ctx: AppContext): Router {
           .returning({ id: products.id });
         const productId = product!.id;
         const colorIds = new Map<string, string>();
+        const names = input.colors.map((c) => c.name.toLowerCase());
+        const dup = names.find((n, i) => names.indexOf(n) !== i);
+        if (dup) throw new AppError('color_exists', 400, `The colour "${dup}" is listed twice`);
+        for (const img of input.images) {
+          if (img.color && !names.includes(img.color.toLowerCase())) {
+            throw new AppError('validation_failed', 400, 'Validation failed', [{ path: 'images', message: `Unknown colour "${img.color}"` }]);
+          }
+        }
         for (const [sort, c] of input.colors.entries()) {
           const [row] = await tx.insert(productColors).values({ productId, name: c.name, swatchHex: c.swatchHex ?? null, sort }).returning({ id: productColors.id });
           colorIds.set(c.name.toLowerCase(), row!.id);

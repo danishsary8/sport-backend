@@ -1,4 +1,6 @@
 import { sql } from 'drizzle-orm';
+import type { UserRow } from '../../db/schema/index.js';
+import { AppError } from '../../lib/errors.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../../context.js';
@@ -10,6 +12,11 @@ import { assertBranchAccess, assertBranchExists, branchFor } from './branchAcces
 
 const uuid = z.string().uuid();
 const branchId = z.string().trim().min(1).max(40);
+
+/** null for admins and unscoped staff; the staff member's branch otherwise. */
+function scopedBranch(user: UserRow): string | null {
+  return user.role === 'staff' && user.staffBranchId ? user.staffBranchId : null;
+}
 
 export function adminStockRouter(ctx: AppContext): Router {
   const router = Router();
@@ -65,7 +72,8 @@ export function adminStockRouter(ctx: AppContext): Router {
       select v.id as "variantId", v.sku, v.size_label as size, s.branch_id as "branchId", s.on_hand as "onHand",
         s.reserved, s.online_buffer as "onlineBuffer", s.needs_count as "needsCount", s.updated_at as "updatedAt"
       from variants v join stock s on s.variant_id = v.id
-      where v.product_id = ${productId} order by v.size_sort, s.branch_id`);
+      where v.product_id = ${productId} and (${scopedBranch(req.user!)}::text is null or s.branch_id = ${scopedBranch(req.user!)})
+      order by v.size_sort, s.branch_id`);
     res.json({ stock: rows.rows });
   });
 
@@ -74,7 +82,11 @@ export function adminStockRouter(ctx: AppContext): Router {
     ...staff,
     validate({ query: z.object({ variantId: uuid, branchId: branchId.optional(), limit: z.coerce.number().int().min(1).max(200).default(50) }) }),
     async (req, res) => {
-      const { variantId, branchId: branch, limit } = req.query as unknown as { variantId: string; branchId?: string; limit: number };
+      const { variantId, branchId: requested, limit } = req.query as unknown as { variantId: string; branchId?: string; limit: number };
+      // Staff tied to a branch only read their own branch's history.
+      const scoped = scopedBranch(req.user!);
+      if (scoped && requested && requested !== scoped) throw new AppError('forbidden', 403, 'You can only see stock at your own branch');
+      const branch = scoped ?? requested;
       const rows = await db.execute<Record<string, unknown>>(sql`
         select m.id, m.branch_id as "branchId", m.delta_on_hand as "deltaOnHand", m.delta_reserved as "deltaReserved",
           m.reason, m.ref_id as "refId", m.note, m.actor_user_id as "actorUserId", m.created_at as "createdAt"

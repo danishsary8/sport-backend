@@ -57,6 +57,13 @@
       "when": 1795645941539,
       "tag": "0007_ledger_actor",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795645942539,
+      "tag": "0008_catalog_hardening",
+      "breakpoints": true
     }
   ]
 }

@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../../context.js';
 import type { Db } from '../../db/client.js';
-import { products, wishlistItems } from '../../db/schema/index.js';
+import { products, variants, wishlistItems } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
 import { validate } from '../../middleware/validate.js';
 import { langSchema, type Lang } from '../catalog/i18n.js';
@@ -19,6 +19,26 @@ async function activeProductId(db: Db, idOrSlug: string): Promise<string> {
   const [row] = await db.select({ id: products.id }).from(products).where(and(match, eq(products.status, 'active')));
   if (!row) throw new AppError('not_found', 404, 'Product not found');
   return row.id;
+}
+
+/**
+ * Adds a product, never letting the list pass `max`: a per-user transaction lock makes the count and the
+ * insert one step. Products with nothing on sale (no active sizes) can't be added.
+ */
+export async function addToWishlist(db: Db, userId: string, productId: string, max = WISHLIST_MAX): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('wishlist:' || ${userId}))`);
+    const [sellable] = await tx.select({ id: variants.id }).from(variants).where(and(eq(variants.productId, productId), eq(variants.status, 'active'))).limit(1);
+    if (!sellable) throw new AppError('not_found', 404, 'Product not found');
+    const [existing] = await tx
+      .select({ p: wishlistItems.productId })
+      .from(wishlistItems)
+      .where(and(eq(wishlistItems.userId, userId), eq(wishlistItems.productId, productId)));
+    if (existing) return;
+    const [{ n } = { n: 0 }] = await tx.select({ n: count() }).from(wishlistItems).where(eq(wishlistItems.userId, userId));
+    if (n >= max) throw new AppError('wishlist_full', 409, `Your wishlist can hold up to ${max} items`);
+    await tx.insert(wishlistItems).values({ userId, productId }).onConflictDoNothing();
+  });
 }
 
 export function wishlistRouter(ctx: AppContext): Router {
@@ -43,17 +63,7 @@ export function wishlistRouter(ctx: AppContext): Router {
   });
 
   router.put('/me/wishlist/:product', ...ctx.member, async (req, res) => {
-    const productId = await activeProductId(db, String(req.params.product));
-    const userId = req.user!.id;
-    const [{ n } = { n: 0 }] = await db.select({ n: count() }).from(wishlistItems).where(eq(wishlistItems.userId, userId));
-    if (n >= WISHLIST_MAX) {
-      const [existing] = await db
-        .select({ p: wishlistItems.productId })
-        .from(wishlistItems)
-        .where(and(eq(wishlistItems.userId, userId), eq(wishlistItems.productId, productId)));
-      if (!existing) throw new AppError('wishlist_full', 409, `Your wishlist can hold up to ${WISHLIST_MAX} items`);
-    }
-    await db.insert(wishlistItems).values({ userId, productId }).onConflictDoNothing();
+    await addToWishlist(db, req.user!.id, await activeProductId(db, String(req.params.product)));
     res.status(204).end();
   });
 

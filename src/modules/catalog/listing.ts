@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { Db } from '../../db/client.js';
 import { AppError } from '../../lib/errors.js';
 import { langSchema } from './i18n.js';
+import { searchNeedle } from './searchText.js';
 
 /** A query param that may repeat (?brand=a&brand=b) → string[]. */
 const many = z
@@ -21,6 +22,13 @@ const blankToUndefined = (v: unknown) => (typeof v === 'string' && v.trim() === 
 const cents = z.preprocess(blankToUndefined, z.coerce.number().int().min(0).max(10_000_000).optional());
 const optionalText = z.preprocess(blankToUndefined, z.string().trim().max(80).optional());
 
+export const TAGS = ['new', 'best_seller', 'limited', 'signature', 'retro', 'ucl', 'sale'] as const;
+const manyTags = z
+  .union([z.string(), z.array(z.string())])
+  .transform((v) => (Array.isArray(v) ? v : [v]).map((s) => s.trim()).filter(Boolean))
+  .pipe(z.array(z.enum(TAGS)).max(TAGS.length))
+  .optional();
+
 export const SORTS = ['popular', 'new', 'price_asc', 'price_desc', 'discount'] as const;
 /** discount=1|2|3 → at least 10%, 30%, 50% off. */
 export const DISCOUNT_BANDS: Record<string, number> = { '1': 10, '2': 30, '3': 50 };
@@ -36,7 +44,7 @@ export const catalogFilterShape = {
   kitType: many,
   garmentType: many,
   /** new | best_seller | limited | signature | retro | ucl | sale (repeatable, OR). */
-  tag: many,
+  tag: manyTags,
   priceMin: cents,
   priceMax: cents,
   discount: z.enum(['1', '2', '3']).optional(),
@@ -164,14 +172,15 @@ export function filterConditions(f: CatalogFilters, exclude?: FilterKey): SQL {
   if (use('discount')) parts.push(sql`coalesce(base.discount_pct, 0) >= ${DISCOUNT_BANDS[f.discount!]}`);
   if (use('inStockOnly') && f.inStockOnly) parts.push(sql`base.units > 0`);
   if (f.q && exclude !== 'q') {
-    const pattern = `%${escapeLike(f.q.toLowerCase())}%`;
-    parts.push(sql`(base.search_text like ${pattern} or word_similarity(${f.q.toLowerCase()}, base.search_text) >= 0.5)`);
+    const needle = searchNeedle(f.q);
+    const pattern = `%${escapeLike(needle)}%`;
+    parts.push(sql`(base.search_text like ${pattern} or word_similarity(${needle}, base.search_text) >= 0.5)`);
   }
   return sql.join(parts, sql` and `);
 }
 
 export function orderBy(sort: CatalogQuery['sort'], q: string | undefined): SQL {
-  const relevance = q ? sql`word_similarity(${q.toLowerCase()}, base.search_text) desc, ` : sql``;
+  const relevance = q ? sql`word_similarity(${searchNeedle(q)}, base.search_text) desc, ` : sql``;
   switch (sort) {
     case 'new':
       return sql`coalesce((base.flags->>'newArrival')::boolean, false) desc, base.created_at desc, base.slug`;
@@ -207,7 +216,7 @@ export interface ListedRow extends Record<string, unknown> {
 export const cardColumns = sql`
   base.id, base.slug, base.name_i18n, base.flags, base.brand_slug, base.brand_name, base.category_slug,
   base.price, base.compare_at, base.discount_pct, base.units,
-  (select array_agg(v.size_label order by v.size_sort) from variants v where v.product_id = base.id and v.status = 'active') as sizes,
+  (select array_agg(sz.size_label order by sz.s, sz.size_label) from (select v.size_label, min(v.size_sort) as s from variants v where v.product_id = base.id and v.status = 'active' group by v.size_label) sz) as sizes,
   (select json_agg(json_build_object('name', pc.name, 'swatchHex', pc.swatch_hex) order by pc.sort, pc.name) from product_colors pc where pc.product_id = base.id) as colors,
   (select array_agg(pi.path order by pi.sort, pi.id) from product_images pi where pi.product_id = base.id) as images`;
 

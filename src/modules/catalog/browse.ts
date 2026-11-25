@@ -1,3 +1,4 @@
+import { searchNeedle } from './searchText.js';
 import { sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import { AppError } from '../../lib/errors.js';
@@ -8,7 +9,7 @@ import { assetUrl, toCard } from './view.js';
 type I18nValue = { en: string; km?: string };
 
 export async function suggest(db: Db, q: string, lang: Lang, assetBase: string, buffer: number) {
-  const needle = q.toLowerCase();
+  const needle = searchNeedle(q);
   const pattern = `%${escapeLike(needle)}%`;
   const cte = aggregatesCte(buffer);
   const [products, brands, categories] = await Promise.all([

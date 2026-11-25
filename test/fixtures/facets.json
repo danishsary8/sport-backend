@@ -1,0 +1,2204 @@
+{
+ "none": {
+  "total": 80,
+  "facets": [
+   {
+    "key": "category",
+    "label": "Category",
+    "type": "radio",
+    "options": [
+     {
+      "value": "boots",
+      "label": "Football Boots",
+      "count": 15,
+      "selected": false
+     },
+     {
+      "value": "jerseys",
+      "label": "Jerseys & Kits",
+      "count": 44,
+      "selected": false
+     },
+     {
+      "value": "f1",
+      "label": "F1 Motorsport",
+      "count": 12,
+      "selected": false
+     },
+     {
+      "value": "balls",
+      "label": "Match Balls",
+      "count": 6,
+      "selected": false
+     },
+     {
+      "value": "essentials",
+      "label": "GK & Essentials",
+      "count": 3,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "brand",
+    "label": "Brand",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "adidas",
+      "label": "Adidas",
+      "count": 30,
+      "selected": false
+     },
+     {
+      "value": "castore",
+      "label": "Castore",
+      "count": 6,
+      "selected": false
+     },
+     {
+      "value": "gksm",
+      "label": "GKSM",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "jordan-nike",
+      "label": "Jordan / Nike",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "mizuno",
+      "label": "Mizuno",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "molten",
+      "label": "Molten",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "new-balance",
+      "label": "New Balance",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "nike",
+      "label": "Nike",
+      "count": 22,
+      "selected": false
+     },
+     {
+      "value": "puma",
+      "label": "Puma",
+      "count": 7,
+      "selected": false
+     },
+     {
+      "value": "puma-f1",
+      "label": "Puma F1",
+      "count": 3,
+      "selected": false
+     },
+     {
+      "value": "select",
+      "label": "Select",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "trusox",
+      "label": "TruSox",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "varaman",
+      "label": "Varaman",
+      "count": 4,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "size",
+    "label": "Size",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "EU 39",
+      "label": "EU 39",
+      "count": 15,
+      "selected": false
+     },
+     {
+      "value": "EU 40",
+      "label": "EU 40",
+      "count": 15,
+      "selected": false
+     },
+     {
+      "value": "EU 40.5",
+      "label": "EU 40.5",
+      "count": 15,
+      "selected": false
+     },
+     {
+      "value": "EU 41",
+      "label": "EU 41",
+      "count": 15,
+      "selected": false
+     },
+     {
+      "value": "EU 42",
+      "label": "EU 42",
+      "count": 15,
+      "selected": false
+     },
+     {
+      "value": "EU 42.5",
+      "label": "EU 42.5",
+      "count": 15,
+      "selected": false
+     },
+     {
+      "value": "EU 43",
+      "label": "EU 43",
+      "count": 15,
+      "selected": false
+     },
+     {
+      "value": "EU 44",
+      "label": "EU 44",
+      "count": 15,
+      "selected": false
+     },
+     {
+      "value": "EU 44.5",
+      "label": "EU 44.5",
+      "count": 15,
+      "selected": false
+     },
+     {
+      "value": "EU 45",
+      "label": "EU 45",
+      "count": 15,
+      "selected": false
+     },
+     {
+      "value": "S",
+      "label": "S",
+      "count": 57,
+      "selected": false
+     },
+     {
+      "value": "M",
+      "label": "M",
+      "count": 57,
+      "selected": false
+     },
+     {
+      "value": "L",
+      "label": "L",
+      "count": 57,
+      "selected": false
+     },
+     {
+      "value": "XL",
+      "label": "XL",
+      "count": 57,
+      "selected": false
+     },
+     {
+      "value": "XXL",
+      "label": "XXL",
+      "count": 56,
+      "selected": false
+     },
+     {
+      "value": "Size 4",
+      "label": "Size 4",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "Size 5",
+      "label": "Size 5",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "Size 7",
+      "label": "Size 7",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "Size 8",
+      "label": "Size 8",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "Size 9",
+      "label": "Size 9",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "Size 10",
+      "label": "Size 10",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "Size 11",
+      "label": "Size 11",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "S (EU 36–39)",
+      "label": "S (EU 36–39)",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "M (EU 40–43)",
+      "label": "M (EU 40–43)",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "L (EU 44–47)",
+      "label": "L (EU 44–47)",
+      "count": 1,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "league",
+    "label": "League",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "Bundesliga",
+      "label": "Bundesliga",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "Cambodian Premier League",
+      "label": "Cambodian Premier League",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "Formula 1",
+      "label": "Formula 1",
+      "count": 12,
+      "selected": false
+     },
+     {
+      "value": "International",
+      "label": "International",
+      "count": 19,
+      "selected": false
+     },
+     {
+      "value": "La Liga",
+      "label": "La Liga",
+      "count": 11,
+      "selected": false
+     },
+     {
+      "value": "Ligue 1",
+      "label": "Ligue 1",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "Premier League",
+      "label": "Premier League",
+      "count": 7,
+      "selected": false
+     },
+     {
+      "value": "Serie A",
+      "label": "Serie A",
+      "count": 3,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "surface",
+    "label": "Surface",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "AG",
+      "label": "AG",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "FG",
+      "label": "FG",
+      "count": 8,
+      "selected": false
+     },
+     {
+      "value": "FG/AG",
+      "label": "FG/AG",
+      "count": 3,
+      "selected": false
+     },
+     {
+      "value": "MG",
+      "label": "MG",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "TF",
+      "label": "TF",
+      "count": 1,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "kitType",
+    "label": "Kit",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "Away",
+      "label": "Away",
+      "count": 17,
+      "selected": false
+     },
+     {
+      "value": "Home",
+      "label": "Home",
+      "count": 29,
+      "selected": false
+     },
+     {
+      "value": "Retro",
+      "label": "Retro",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "Special Edition",
+      "label": "Special Edition",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "Third",
+      "label": "Third",
+      "count": 3,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "price",
+    "label": "Price",
+    "type": "range",
+    "range": {
+     "min": 2800,
+     "max": 27500,
+     "selectedMin": null,
+     "selectedMax": null,
+     "buckets": [
+      {
+       "label": "$0–$25",
+       "min": 0,
+       "max": 2500,
+       "count": 0
+      },
+      {
+       "label": "$25–$50",
+       "min": 2500,
+       "max": 5000,
+       "count": 7
+      },
+      {
+       "label": "$50–$100",
+       "min": 5000,
+       "max": 10000,
+       "count": 43
+      },
+      {
+       "label": "$100–$200",
+       "min": 10000,
+       "max": 20000,
+       "count": 16
+      },
+      {
+       "label": "$200+",
+       "min": 20000,
+       "max": null,
+       "count": 14
+      }
+     ]
+    }
+   },
+   {
+    "key": "discount",
+    "label": "Discount",
+    "type": "radio",
+    "options": [
+     {
+      "value": "1",
+      "label": "10% off or more",
+      "count": 0,
+      "selected": false
+     },
+     {
+      "value": "2",
+      "label": "30% off or more",
+      "count": 0,
+      "selected": false
+     },
+     {
+      "value": "3",
+      "label": "50% off or more",
+      "count": 0,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "inStockOnly",
+    "label": "Availability",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "true",
+      "label": "In stock",
+      "count": 80,
+      "selected": false
+     }
+    ]
+   }
+  ]
+ },
+ "jerseys": {
+  "total": 44,
+  "facets": [
+   {
+    "key": "category",
+    "label": "Category",
+    "type": "radio",
+    "options": [
+     {
+      "value": "boots",
+      "label": "Football Boots",
+      "count": 15,
+      "selected": false
+     },
+     {
+      "value": "jerseys",
+      "label": "Jerseys & Kits",
+      "count": 44,
+      "selected": true
+     },
+     {
+      "value": "f1",
+      "label": "F1 Motorsport",
+      "count": 12,
+      "selected": false
+     },
+     {
+      "value": "balls",
+      "label": "Match Balls",
+      "count": 6,
+      "selected": false
+     },
+     {
+      "value": "essentials",
+      "label": "GK & Essentials",
+      "count": 3,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "brand",
+    "label": "Brand",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "adidas",
+      "label": "Adidas",
+      "count": 21,
+      "selected": false
+     },
+     {
+      "value": "jordan-nike",
+      "label": "Jordan / Nike",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "nike",
+      "label": "Nike",
+      "count": 15,
+      "selected": false
+     },
+     {
+      "value": "puma",
+      "label": "Puma",
+      "count": 3,
+      "selected": false
+     },
+     {
+      "value": "varaman",
+      "label": "Varaman",
+      "count": 4,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "size",
+    "label": "Size",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "S",
+      "label": "S",
+      "count": 44,
+      "selected": false
+     },
+     {
+      "value": "M",
+      "label": "M",
+      "count": 44,
+      "selected": false
+     },
+     {
+      "value": "L",
+      "label": "L",
+      "count": 44,
+      "selected": false
+     },
+     {
+      "value": "XL",
+      "label": "XL",
+      "count": 44,
+      "selected": false
+     },
+     {
+      "value": "XXL",
+      "label": "XXL",
+      "count": 44,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "league",
+    "label": "League",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "Bundesliga",
+      "label": "Bundesliga",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "Cambodian Premier League",
+      "label": "Cambodian Premier League",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "International",
+      "label": "International",
+      "count": 19,
+      "selected": false
+     },
+     {
+      "value": "La Liga",
+      "label": "La Liga",
+      "count": 9,
+      "selected": false
+     },
+     {
+      "value": "Ligue 1",
+      "label": "Ligue 1",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "Premier League",
+      "label": "Premier League",
+      "count": 7,
+      "selected": false
+     },
+     {
+      "value": "Serie A",
+      "label": "Serie A",
+      "count": 3,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "kitType",
+    "label": "Kit",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "Away",
+      "label": "Away",
+      "count": 13,
+      "selected": false
+     },
+     {
+      "value": "Home",
+      "label": "Home",
+      "count": 25,
+      "selected": false
+     },
+     {
+      "value": "Retro",
+      "label": "Retro",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "Special Edition",
+      "label": "Special Edition",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "Third",
+      "label": "Third",
+      "count": 3,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "price",
+    "label": "Price",
+    "type": "range",
+    "range": {
+     "min": 2800,
+     "max": 11500,
+     "selectedMin": null,
+     "selectedMax": null,
+     "buckets": [
+      {
+       "label": "$0–$25",
+       "min": 0,
+       "max": 2500,
+       "count": 0
+      },
+      {
+       "label": "$25–$50",
+       "min": 2500,
+       "max": 5000,
+       "count": 4
+      },
+      {
+       "label": "$50–$100",
+       "min": 5000,
+       "max": 10000,
+       "count": 35
+      },
+      {
+       "label": "$100–$200",
+       "min": 10000,
+       "max": 20000,
+       "count": 5
+      },
+      {
+       "label": "$200+",
+       "min": 20000,
+       "max": null,
+       "count": 0
+      }
+     ]
+    }
+   },
+   {
+    "key": "discount",
+    "label": "Discount",
+    "type": "radio",
+    "options": [
+     {
+      "value": "1",
+      "label": "10% off or more",
+      "count": 0,
+      "selected": false
+     },
+     {
+      "value": "2",
+      "label": "30% off or more",
+      "count": 0,
+      "selected": false
+     },
+     {
+      "value": "3",
+      "label": "50% off or more",
+      "count": 0,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "inStockOnly",
+    "label": "Availability",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "true",
+      "label": "In stock",
+      "count": 44,
+      "selected": false
+     }
+    ]
+   }
+  ]
+ },
+ "bootsNikeSize": {
+  "total": 5,
+  "facets": [
+   {
+    "key": "category",
+    "label": "Category",
+    "type": "radio",
+    "options": [
+     {
+      "value": "boots",
+      "label": "Football Boots",
+      "count": 5,
+      "selected": true
+     }
+    ]
+   },
+   {
+    "key": "brand",
+    "label": "Brand",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "adidas",
+      "label": "Adidas",
+      "count": 4,
+      "selected": false
+     },
+     {
+      "value": "mizuno",
+      "label": "Mizuno",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "new-balance",
+      "label": "New Balance",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "nike",
+      "label": "Nike",
+      "count": 5,
+      "selected": true
+     },
+     {
+      "value": "puma",
+      "label": "Puma",
+      "count": 3,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "size",
+    "label": "Size",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "EU 39",
+      "label": "EU 39",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 40",
+      "label": "EU 40",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 40.5",
+      "label": "EU 40.5",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 41",
+      "label": "EU 41",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 42",
+      "label": "EU 42",
+      "count": 5,
+      "selected": true
+     },
+     {
+      "value": "EU 42.5",
+      "label": "EU 42.5",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 43",
+      "label": "EU 43",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 44",
+      "label": "EU 44",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 44.5",
+      "label": "EU 44.5",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 45",
+      "label": "EU 45",
+      "count": 5,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "surface",
+    "label": "Surface",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "AG",
+      "label": "AG",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "FG",
+      "label": "FG",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "TF",
+      "label": "TF",
+      "count": 1,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "price",
+    "label": "Price",
+    "type": "range",
+    "range": {
+     "min": 14500,
+     "max": 26500,
+     "selectedMin": null,
+     "selectedMax": null,
+     "buckets": [
+      {
+       "label": "$0–$25",
+       "min": 0,
+       "max": 2500,
+       "count": 0
+      },
+      {
+       "label": "$25–$50",
+       "min": 2500,
+       "max": 5000,
+       "count": 0
+      },
+      {
+       "label": "$50–$100",
+       "min": 5000,
+       "max": 10000,
+       "count": 0
+      },
+      {
+       "label": "$100–$200",
+       "min": 10000,
+       "max": 20000,
+       "count": 1
+      },
+      {
+       "label": "$200+",
+       "min": 20000,
+       "max": null,
+       "count": 4
+      }
+     ]
+    }
+   },
+   {
+    "key": "discount",
+    "label": "Discount",
+    "type": "radio",
+    "options": [
+     {
+      "value": "1",
+      "label": "10% off or more",
+      "count": 0,
+      "selected": false
+     },
+     {
+      "value": "2",
+      "label": "30% off or more",
+      "count": 0,
+      "selected": false
+     },
+     {
+      "value": "3",
+      "label": "50% off or more",
+      "count": 0,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "inStockOnly",
+    "label": "Availability",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "true",
+      "label": "In stock",
+      "count": 5,
+      "selected": false
+     }
+    ]
+   }
+  ]
+ },
+ "priceAndStock": {
+  "total": 63,
+  "facets": [
+   {
+    "key": "category",
+    "label": "Category",
+    "type": "radio",
+    "options": [
+     {
+      "value": "boots",
+      "label": "Football Boots",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "jerseys",
+      "label": "Jerseys & Kits",
+      "count": 42,
+      "selected": false
+     },
+     {
+      "value": "f1",
+      "label": "F1 Motorsport",
+      "count": 12,
+      "selected": false
+     },
+     {
+      "value": "balls",
+      "label": "Match Balls",
+      "count": 6,
+      "selected": false
+     },
+     {
+      "value": "essentials",
+      "label": "GK & Essentials",
+      "count": 2,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "brand",
+    "label": "Brand",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "adidas",
+      "label": "Adidas",
+      "count": 26,
+      "selected": false
+     },
+     {
+      "value": "castore",
+      "label": "Castore",
+      "count": 6,
+      "selected": false
+     },
+     {
+      "value": "gksm",
+      "label": "GKSM",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "jordan-nike",
+      "label": "Jordan / Nike",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "molten",
+      "label": "Molten",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "nike",
+      "label": "Nike",
+      "count": 17,
+      "selected": false
+     },
+     {
+      "value": "puma",
+      "label": "Puma",
+      "count": 4,
+      "selected": false
+     },
+     {
+      "value": "puma-f1",
+      "label": "Puma F1",
+      "count": 3,
+      "selected": false
+     },
+     {
+      "value": "select",
+      "label": "Select",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "trusox",
+      "label": "TruSox",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "varaman",
+      "label": "Varaman",
+      "count": 2,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "size",
+    "label": "Size",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "EU 39",
+      "label": "EU 39",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "EU 40",
+      "label": "EU 40",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "EU 40.5",
+      "label": "EU 40.5",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "EU 41",
+      "label": "EU 41",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "EU 42",
+      "label": "EU 42",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "EU 42.5",
+      "label": "EU 42.5",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "EU 43",
+      "label": "EU 43",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "EU 44",
+      "label": "EU 44",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "EU 44.5",
+      "label": "EU 44.5",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "EU 45",
+      "label": "EU 45",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "S",
+      "label": "S",
+      "count": 54,
+      "selected": false
+     },
+     {
+      "value": "M",
+      "label": "M",
+      "count": 54,
+      "selected": false
+     },
+     {
+      "value": "L",
+      "label": "L",
+      "count": 54,
+      "selected": false
+     },
+     {
+      "value": "XL",
+      "label": "XL",
+      "count": 54,
+      "selected": false
+     },
+     {
+      "value": "XXL",
+      "label": "XXL",
+      "count": 54,
+      "selected": false
+     },
+     {
+      "value": "Size 4",
+      "label": "Size 4",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "Size 5",
+      "label": "Size 5",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "Size 7",
+      "label": "Size 7",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "Size 8",
+      "label": "Size 8",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "Size 9",
+      "label": "Size 9",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "Size 10",
+      "label": "Size 10",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "Size 11",
+      "label": "Size 11",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "S (EU 36–39)",
+      "label": "S (EU 36–39)",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "M (EU 40–43)",
+      "label": "M (EU 40–43)",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "L (EU 44–47)",
+      "label": "L (EU 44–47)",
+      "count": 1,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "league",
+    "label": "League",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "Bundesliga",
+      "label": "Bundesliga",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "Formula 1",
+      "label": "Formula 1",
+      "count": 12,
+      "selected": false
+     },
+     {
+      "value": "International",
+      "label": "International",
+      "count": 19,
+      "selected": false
+     },
+     {
+      "value": "La Liga",
+      "label": "La Liga",
+      "count": 11,
+      "selected": false
+     },
+     {
+      "value": "Ligue 1",
+      "label": "Ligue 1",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "Premier League",
+      "label": "Premier League",
+      "count": 7,
+      "selected": false
+     },
+     {
+      "value": "Serie A",
+      "label": "Serie A",
+      "count": 3,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "surface",
+    "label": "Surface",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "TF",
+      "label": "TF",
+      "count": 1,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "kitType",
+    "label": "Kit",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "Away",
+      "label": "Away",
+      "count": 17,
+      "selected": false
+     },
+     {
+      "value": "Home",
+      "label": "Home",
+      "count": 27,
+      "selected": false
+     },
+     {
+      "value": "Retro",
+      "label": "Retro",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "Special Edition",
+      "label": "Special Edition",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "Third",
+      "label": "Third",
+      "count": 3,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "price",
+    "label": "Price",
+    "type": "range",
+    "range": {
+     "min": 2800,
+     "max": 27500,
+     "selectedMin": 3000,
+     "selectedMax": 20000,
+     "buckets": [
+      {
+       "label": "$0–$25",
+       "min": 0,
+       "max": 2500,
+       "count": 0
+      },
+      {
+       "label": "$25–$50",
+       "min": 2500,
+       "max": 5000,
+       "count": 7
+      },
+      {
+       "label": "$50–$100",
+       "min": 5000,
+       "max": 10000,
+       "count": 43
+      },
+      {
+       "label": "$100–$200",
+       "min": 10000,
+       "max": 20000,
+       "count": 16
+      },
+      {
+       "label": "$200+",
+       "min": 20000,
+       "max": null,
+       "count": 14
+      }
+     ]
+    }
+   },
+   {
+    "key": "discount",
+    "label": "Discount",
+    "type": "radio",
+    "options": [
+     {
+      "value": "1",
+      "label": "10% off or more",
+      "count": 0,
+      "selected": false
+     },
+     {
+      "value": "2",
+      "label": "30% off or more",
+      "count": 0,
+      "selected": false
+     },
+     {
+      "value": "3",
+      "label": "50% off or more",
+      "count": 0,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "inStockOnly",
+    "label": "Availability",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "true",
+      "label": "In stock",
+      "count": 63,
+      "selected": true
+     }
+    ]
+   }
+  ]
+ },
+ "searchAndDiscount": {
+  "total": 0,
+  "facets": [
+   {
+    "key": "category",
+    "label": "Category",
+    "type": "radio",
+    "options": []
+   },
+   {
+    "key": "price",
+    "label": "Price",
+    "type": "range",
+    "range": {
+     "min": 0,
+     "max": 0,
+     "selectedMin": null,
+     "selectedMax": null,
+     "buckets": [
+      {
+       "label": "$0–$25",
+       "min": 0,
+       "max": 2500,
+       "count": 0
+      },
+      {
+       "label": "$25–$50",
+       "min": 2500,
+       "max": 5000,
+       "count": 0
+      },
+      {
+       "label": "$50–$100",
+       "min": 5000,
+       "max": 10000,
+       "count": 0
+      },
+      {
+       "label": "$100–$200",
+       "min": 10000,
+       "max": 20000,
+       "count": 0
+      },
+      {
+       "label": "$200+",
+       "min": 20000,
+       "max": null,
+       "count": 0
+      }
+     ]
+    }
+   },
+   {
+    "key": "discount",
+    "label": "Discount",
+    "type": "radio",
+    "options": [
+     {
+      "value": "1",
+      "label": "10% off or more",
+      "count": 0,
+      "selected": true
+     },
+     {
+      "value": "2",
+      "label": "30% off or more",
+      "count": 0,
+      "selected": false
+     },
+     {
+      "value": "3",
+      "label": "50% off or more",
+      "count": 0,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "inStockOnly",
+    "label": "Availability",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "true",
+      "label": "In stock",
+      "count": 0,
+      "selected": false
+     }
+    ]
+   }
+  ]
+ },
+ "search": {
+  "total": 23,
+  "facets": [
+   {
+    "key": "category",
+    "label": "Category",
+    "type": "radio",
+    "options": [
+     {
+      "value": "boots",
+      "label": "Football Boots",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "jerseys",
+      "label": "Jerseys & Kits",
+      "count": 16,
+      "selected": false
+     },
+     {
+      "value": "balls",
+      "label": "Match Balls",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "essentials",
+      "label": "GK & Essentials",
+      "count": 1,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "brand",
+    "label": "Brand",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "jordan-nike",
+      "label": "Jordan / Nike",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "nike",
+      "label": "Nike",
+      "count": 22,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "size",
+    "label": "Size",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "EU 39",
+      "label": "EU 39",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 40",
+      "label": "EU 40",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 40.5",
+      "label": "EU 40.5",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 41",
+      "label": "EU 41",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 42",
+      "label": "EU 42",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 42.5",
+      "label": "EU 42.5",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 43",
+      "label": "EU 43",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 44",
+      "label": "EU 44",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 44.5",
+      "label": "EU 44.5",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "EU 45",
+      "label": "EU 45",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "S",
+      "label": "S",
+      "count": 17,
+      "selected": false
+     },
+     {
+      "value": "M",
+      "label": "M",
+      "count": 17,
+      "selected": false
+     },
+     {
+      "value": "L",
+      "label": "L",
+      "count": 17,
+      "selected": false
+     },
+     {
+      "value": "XL",
+      "label": "XL",
+      "count": 17,
+      "selected": false
+     },
+     {
+      "value": "XXL",
+      "label": "XXL",
+      "count": 16,
+      "selected": false
+     },
+     {
+      "value": "Size 5",
+      "label": "Size 5",
+      "count": 1,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "league",
+    "label": "League",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "International",
+      "label": "International",
+      "count": 7,
+      "selected": false
+     },
+     {
+      "value": "La Liga",
+      "label": "La Liga",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "Ligue 1",
+      "label": "Ligue 1",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "Premier League",
+      "label": "Premier League",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "Serie A",
+      "label": "Serie A",
+      "count": 1,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "surface",
+    "label": "Surface",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "AG",
+      "label": "AG",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "FG",
+      "label": "FG",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "TF",
+      "label": "TF",
+      "count": 1,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "kitType",
+    "label": "Kit",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "Away",
+      "label": "Away",
+      "count": 4,
+      "selected": false
+     },
+     {
+      "value": "Home",
+      "label": "Home",
+      "count": 8,
+      "selected": false
+     },
+     {
+      "value": "Retro",
+      "label": "Retro",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "Third",
+      "label": "Third",
+      "count": 2,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "price",
+    "label": "Price",
+    "type": "range",
+    "range": {
+     "min": 2800,
+     "max": 26500,
+     "selectedMin": null,
+     "selectedMax": null,
+     "buckets": [
+      {
+       "label": "$0–$25",
+       "min": 0,
+       "max": 2500,
+       "count": 0
+      },
+      {
+       "label": "$25–$50",
+       "min": 2500,
+       "max": 5000,
+       "count": 1
+      },
+      {
+       "label": "$50–$100",
+       "min": 5000,
+       "max": 10000,
+       "count": 12
+      },
+      {
+       "label": "$100–$200",
+       "min": 10000,
+       "max": 20000,
+       "count": 6
+      },
+      {
+       "label": "$200+",
+       "min": 20000,
+       "max": null,
+       "count": 4
+      }
+     ]
+    }
+   },
+   {
+    "key": "discount",
+    "label": "Discount",
+    "type": "radio",
+    "options": [
+     {
+      "value": "1",
+      "label": "10% off or more",
+      "count": 0,
+      "selected": false
+     },
+     {
+      "value": "2",
+      "label": "30% off or more",
+      "count": 0,
+      "selected": false
+     },
+     {
+      "value": "3",
+      "label": "50% off or more",
+      "count": 0,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "inStockOnly",
+    "label": "Availability",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "true",
+      "label": "In stock",
+      "count": 23,
+      "selected": false
+     }
+    ]
+   }
+  ]
+ },
+ "colors": {
+  "total": 0,
+  "facets": [
+   {
+    "key": "category",
+    "label": "Category",
+    "type": "radio",
+    "options": []
+   },
+   {
+    "key": "price",
+    "label": "Price",
+    "type": "range",
+    "range": {
+     "min": 0,
+     "max": 0,
+     "selectedMin": null,
+     "selectedMax": null,
+     "buckets": [
+      {
+       "label": "$0–$25",
+       "min": 0,
+       "max": 2500,
+       "count": 0
+      },
+      {
+       "label": "$25–$50",
+       "min": 2500,
+       "max": 5000,
+       "count": 0
+      },
+      {
+       "label": "$50–$100",
+       "min": 5000,
+       "max": 10000,
+       "count": 0
+      },
+      {
+       "label": "$100–$200",
+       "min": 10000,
+       "max": 20000,
+       "count": 0
+      },
+      {
+       "label": "$200+",
+       "min": 20000,
+       "max": null,
+       "count": 0
+      }
+     ]
+    }
+   },
+   {
+    "key": "discount",
+    "label": "Discount",
+    "type": "radio",
+    "options": [
+     {
+      "value": "1",
+      "label": "10% off or more",
+      "count": 0,
+      "selected": false
+     },
+     {
+      "value": "2",
+      "label": "30% off or more",
+      "count": 0,
+      "selected": false
+     },
+     {
+      "value": "3",
+      "label": "50% off or more",
+      "count": 0,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "inStockOnly",
+    "label": "Availability",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "true",
+      "label": "In stock",
+      "count": 0,
+      "selected": false
+     }
+    ]
+   }
+  ]
+ },
+ "tagsAndLeague": {
+  "total": 7,
+  "facets": [
+   {
+    "key": "category",
+    "label": "Category",
+    "type": "radio",
+    "options": [
+     {
+      "value": "jerseys",
+      "label": "Jerseys & Kits",
+      "count": 7,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "brand",
+    "label": "Brand",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "adidas",
+      "label": "Adidas",
+      "count": 5,
+      "selected": false
+     },
+     {
+      "value": "nike",
+      "label": "Nike",
+      "count": 1,
+      "selected": false
+     },
+     {
+      "value": "puma",
+      "label": "Puma",
+      "count": 1,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "size",
+    "label": "Size",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "S",
+      "label": "S",
+      "count": 7,
+      "selected": false
+     },
+     {
+      "value": "M",
+      "label": "M",
+      "count": 7,
+      "selected": false
+     },
+     {
+      "value": "L",
+      "label": "L",
+      "count": 7,
+      "selected": false
+     },
+     {
+      "value": "XL",
+      "label": "XL",
+      "count": 7,
+      "selected": false
+     },
+     {
+      "value": "XXL",
+      "label": "XXL",
+      "count": 7,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "league",
+    "label": "League",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "Bundesliga",
+      "label": "Bundesliga",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "Formula 1",
+      "label": "Formula 1",
+      "count": 12,
+      "selected": false
+     },
+     {
+      "value": "International",
+      "label": "International",
+      "count": 17,
+      "selected": false
+     },
+     {
+      "value": "La Liga",
+      "label": "La Liga",
+      "count": 10,
+      "selected": false
+     },
+     {
+      "value": "Ligue 1",
+      "label": "Ligue 1",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "Premier League",
+      "label": "Premier League",
+      "count": 7,
+      "selected": true
+     },
+     {
+      "value": "Serie A",
+      "label": "Serie A",
+      "count": 3,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "kitType",
+    "label": "Kit",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "Away",
+      "label": "Away",
+      "count": 2,
+      "selected": false
+     },
+     {
+      "value": "Home",
+      "label": "Home",
+      "count": 5,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "price",
+    "label": "Price",
+    "type": "range",
+    "range": {
+     "min": 9400,
+     "max": 9800,
+     "selectedMin": null,
+     "selectedMax": null,
+     "buckets": [
+      {
+       "label": "$0–$25",
+       "min": 0,
+       "max": 2500,
+       "count": 0
+      },
+      {
+       "label": "$25–$50",
+       "min": 2500,
+       "max": 5000,
+       "count": 0
+      },
+      {
+       "label": "$50–$100",
+       "min": 5000,
+       "max": 10000,
+       "count": 7
+      },
+      {
+       "label": "$100–$200",
+       "min": 10000,
+       "max": 20000,
+       "count": 0
+      },
+      {
+       "label": "$200+",
+       "min": 20000,
+       "max": null,
+       "count": 0
+      }
+     ]
+    }
+   },
+   {
+    "key": "discount",
+    "label": "Discount",
+    "type": "radio",
+    "options": [
+     {
+      "value": "1",
+      "label": "10% off or more",
+      "count": 0,
+      "selected": false
+     },
+     {
+      "value": "2",
+      "label": "30% off or more",
+      "count": 0,
+      "selected": false
+     },
+     {
+      "value": "3",
+      "label": "50% off or more",
+      "count": 0,
+      "selected": false
+     }
+    ]
+   },
+   {
+    "key": "inStockOnly",
+    "label": "Availability",
+    "type": "checkbox",
+    "options": [
+     {
+      "value": "true",
+      "label": "In stock",
+      "count": 7,
+      "selected": false
+     }
+    ]
+   }
+  ]
+ }
+}

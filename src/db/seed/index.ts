@@ -52,6 +52,9 @@ const DEFAULT_HOME_SECTIONS = [
 const DEFAULT_SETTINGS: { key: string; value: Record<string, unknown> }[] = [
   { key: 'online_safety_buffer', value: { units: 1 } },
   { key: 'khr_rate', value: { rate: 4100 } },
+  { key: 'payment_methods_enabled', value: { aba_khqr: true, card: true, acleda: false, wing: false, cash_on_pickup: false } },
+  { key: 'reservation_minutes', value: { minutes: 30 } },
+  { key: 'cash_on_pickup_hours', value: { hours: 48 } },
   {
     key: 'custom_print_fees',
     value: { baseCents: 800, patches: { none: 0, ucl: 500, cpl: 400, aff: 400, champions: 500, 'f1-paddock': 500 } },

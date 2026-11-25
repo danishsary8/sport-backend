@@ -6,7 +6,7 @@ import type { Logger } from './lib/logger.js';
 import type { PaymentProvider } from './modules/payments/provider.js';
 import type { Notifier } from './modules/notifications/notifier.js';
 import { optionalAuth, optionalUser, requireAuth, requireUser } from './middleware/auth.js';
-import { createRateLimitMiddleware, DEFAULT_RATE_LIMIT_WINDOW_MS } from './middleware/rateLimit.js';
+import { createRateLimitMiddleware, DEFAULT_RATE_LIMIT_WINDOW_MS, InMemoryRateLimitStore, type RateLimitStore } from './middleware/rateLimit.js';
 import type { BootstrapAdmins } from './modules/users/repo.js';
 
 /** Everything a feature router needs, built once per app. */
@@ -22,17 +22,27 @@ export interface AppContext {
   member: RequestHandler[];
   /** Guests allowed; with a valid token, req.auth and req.user are set (deleted accounts rejected). */
   guestOrMember: RequestHandler[];
-  /** A per-IP limiter for one route (max requests per minute); a no-op when route limits are off. */
-  routeLimit(bucket: string, maxPerMinute: number): RequestHandler;
+  /**
+   * A limiter for one route (max requests per minute), keyed by client IP or, after auth, by member id
+   * (guests pass the per-member limiter). A no-op when route limits are off.
+   */
+  routeLimit(bucket: string, maxPerMinute: number, by?: 'ip' | 'user'): RequestHandler;
 }
 
-export function createContext(deps: Omit<AppContext, 'member' | 'guestOrMember' | 'routeLimit'> & { routeLimits?: boolean }): AppContext {
-  const { routeLimits = true, ...rest } = deps;
+export function createContext(deps: Omit<AppContext, 'member' | 'guestOrMember' | 'routeLimit'> & { routeLimits?: boolean; rateLimitStore?: RateLimitStore }): AppContext {
+  const { routeLimits = true, rateLimitStore, ...rest } = deps;
+  const store = rateLimitStore ?? new InMemoryRateLimitStore();
   return {
     ...rest,
-    routeLimit: (bucket, maxPerMinute) =>
+    routeLimit: (bucket, maxPerMinute, by = 'ip') =>
       routeLimits
-        ? createRateLimitMiddleware({ bucket, windowMs: DEFAULT_RATE_LIMIT_WINDOW_MS, maxRequests: maxPerMinute })
+        ? createRateLimitMiddleware({
+            bucket,
+            windowMs: DEFAULT_RATE_LIMIT_WINDOW_MS,
+            maxRequests: maxPerMinute,
+            store,
+            ...(by === 'user' ? { keyGenerator: (req) => `user:${req.user?.id ?? ''}`, skip: (req) => !req.user } : {}),
+          })
         : (_req, _res, next) => next(),
     member: [requireAuth(deps.identity), requireUser(deps.database.db, deps.bootstrapAdmins, deps.identity)],
     guestOrMember: [optionalAuth(deps.identity), optionalUser(deps.database.db, deps.bootstrapAdmins)],

@@ -11,6 +11,7 @@ import {
   createRateLimitMiddleware,
   DEFAULT_GENERAL_MAX_REQUESTS,
   DEFAULT_RATE_LIMIT_WINDOW_MS,
+  type RateLimitStore,
 } from './middleware/rateLimit.js';
 import { requestId } from './middleware/requestId.js';
 import { httpLogger } from './middleware/httpLog.js';
@@ -51,6 +52,8 @@ export interface AppDeps {
   bootstrapAdmins?: BootstrapAdmins;
   /** enabled: the general /v1 limit; routes: per-route limits (default: same as enabled). */
   rateLimit?: { enabled: boolean; generalMax?: number; routes?: boolean };
+  /** Shared rate-limit counters (default in-memory; use Redis with several instances). */
+  rateLimitStore?: RateLimitStore;
   /** Defaults to PayWay when configured, else the fake provider. */
   payments?: PaymentProvider;
   /** Defaults to Telegram/Resend from config (unconfigured channels report configured: false). */
@@ -102,6 +105,7 @@ export function createApp(deps: AppDeps): express.Express {
         bucket: 'api-general',
         windowMs: DEFAULT_RATE_LIMIT_WINDOW_MS,
         maxRequests: deps.rateLimit?.generalMax ?? DEFAULT_GENERAL_MAX_REQUESTS,
+        store: deps.rateLimitStore,
       }),
     );
   }
@@ -117,6 +121,7 @@ export function createApp(deps: AppDeps): express.Express {
       email: resendNotifier({ apiKey: config.resendApiKey, from: config.notificationFromEmail }),
     },
     routeLimits: deps.rateLimit?.routes ?? deps.rateLimit?.enabled !== false,
+    rateLimitStore: deps.rateLimitStore,
   });
   v1.use(authRouter(ctx));
   v1.use(accountRouter(ctx));

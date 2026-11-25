@@ -14,6 +14,14 @@ export interface RateLimitDecision {
   retryAfterSeconds: number;
 }
 
+/**
+ * Where counters live. The in-memory store is right for one instance; with several instances behind a
+ * load balancer, implement this with Redis (INCR + PEXPIRE on `key`) so every instance shares counts.
+ */
+export interface RateLimitStore {
+  consume(key: string, windowMs: number, maxRequests: number, nowMs: number): RateLimitDecision | Promise<RateLimitDecision>;
+}
+
 export interface RateLimitConfig {
   /** Bucket identifier used to isolate tiered limiters (e.g., 'api-general', 'api-sensitive') */
   bucket: string;
@@ -29,6 +37,8 @@ export interface RateLimitConfig {
   keyGenerator?: (req: Request) => string;
   /** Optional skip predicate */
   skip?: (req: Request) => boolean;
+  /** Shared counter store (default: a private in-memory store). */
+  store?: RateLimitStore;
 }
 
 export const DEFAULT_RATE_LIMIT_WINDOW_MS = 60_000;
@@ -47,7 +57,7 @@ export function resolveClientIp(req: Request): string {
  * Pure, bounded in-memory fixed-window rate limiter store.
  * Automatically prunes expired buckets and evicts oldest entries when `maxEntries` is reached.
  */
-export class InMemoryRateLimitStore {
+export class InMemoryRateLimitStore implements RateLimitStore {
   private readonly entries = new Map<string, RateLimitEntry>();
   private readonly maxEntries: number;
 
@@ -122,11 +132,11 @@ export class InMemoryRateLimitStore {
 }
 
 export function createRateLimitMiddleware(config: RateLimitConfig) {
-  const store = new InMemoryRateLimitStore(config.maxEntries);
+  const store = config.store ?? new InMemoryRateLimitStore(config.maxEntries);
   const getNowMs = config.nowMs ?? (() => Date.now());
   const resolveKey = config.keyGenerator ?? resolveClientIp;
 
-  const middleware = (req: Request, res: Response, next: NextFunction) => {
+  const middleware = async (req: Request, res: Response, next: NextFunction) => {
     if (config.skip?.(req)) {
       next();
       return;
@@ -134,7 +144,7 @@ export function createRateLimitMiddleware(config: RateLimitConfig) {
 
     const nowMs = getNowMs();
     const clientKey = `${config.bucket}:${resolveKey(req)}`;
-    const decision = store.consume(
+    const decision = await store.consume(
       clientKey,
       config.windowMs,
       config.maxRequests,

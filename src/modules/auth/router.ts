@@ -10,7 +10,7 @@ export function authRouter(ctx: AppContext): Router {
 
   // Called by the frontend right after Firebase sign-in. Creates the user on first login and
   // moves any guest bag (sc_cart cookie) into the member's bag.
-  router.post('/auth/session', ...ctx.member, async (req, res) => {
+  router.post('/auth/session', ctx.routeLimit('session', 20), ...ctx.member, async (req, res) => {
     const raw = readCookie(req, CART_COOKIE);
     const token = raw ? verify(raw, ctx.config.cookieSecret) : null;
     let cartMerged: { mergedLines: number; cappedLines: number } | undefined;

@@ -80,7 +80,7 @@ export function checkoutRouter(ctx: AppContext): Router {
     });
   });
 
-  router.post('/orders', ...ctx.guestOrMember, validate({ body: placeOrderSchema }), async (req, res) => {
+  router.post('/orders', ctx.routeLimit('orders', 10), ...ctx.guestOrMember, ctx.routeLimit('orders-member', 5, 'user'), validate({ body: placeOrderSchema }), async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     const key = req.get('idempotency-key')?.trim() ?? '';
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) {

@@ -45,7 +45,7 @@ export async function processOutbox(
   const leased = await db.execute<{ id: number; channel: 'telegram' | 'email'; recipient: string; template: Template; payload: OrderNotice; attempts: number }>(sql`
     update notification_outbox set next_attempt_at = ${new Date(now.getTime() + LEASE_MINUTES * 60_000)}
     where id in (
-      select id from notification_outbox where status = 'pending' and next_attempt_at <= ${now}
+      select id from notification_outbox where status = 'pending' and date_trunc('milliseconds', next_attempt_at) <= ${now}
       order by id limit ${limit} for update skip locked
     )
     returning id, channel, recipient, template, payload, attempts`);

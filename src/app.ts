@@ -32,6 +32,7 @@ import { loyaltyRouter } from './modules/loyalty/router.js';
 import { questionsRouter } from './modules/questions/router.js';
 import { adminOverviewRouter } from './modules/admin/overviewRouter.js';
 import { adminLogsRouter } from './modules/admin/logsRouter.js';
+import { systemHealthRouter } from './modules/health/system/router.js';
 import { devPaymentsRouter } from './modules/payments/devRouter.js';
 import { geoRouter } from './modules/geo/router.js';
 import { wishlistRouter } from './modules/wishlist/router.js';
@@ -146,6 +147,7 @@ export function createApp(deps: AppDeps): express.Express {
   v1.use(loyaltyRouter(ctx));
   v1.use(adminOverviewRouter(ctx));
   v1.use(adminLogsRouter(ctx));
+  v1.use(systemHealthRouter(ctx));
   // Payment webhooks are signature-checked and re-verified, so they skip the per-IP limiter.
   app.use('/v1', unlimited);
   app.use('/v1', v1);

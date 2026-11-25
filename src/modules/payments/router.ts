@@ -1,4 +1,4 @@
-import { desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import express, { Router, type Request } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../../context.js';
@@ -82,6 +82,11 @@ export function orderPaymentsRouter(ctx: AppContext): Router {
   return router;
 }
 
+/** Bodies a payment pushback may have; anything larger is refused before parsing. */
+export const WEBHOOK_BODY_LIMIT = '16kb';
+const STALE_RECEIVED_MS = 60_000;
+const WEBHOOK_CHECK_INTERVAL_MS = 2_000;
+
 /** PayWay pushback. Not rate limited; never trusted on its own: every claim is re-checked with the provider. */
 export function webhookRouter(ctx: AppContext): Router {
   const router = Router();
@@ -89,30 +94,34 @@ export function webhookRouter(ctx: AppContext): Router {
   const now = () => new Date();
 
   // VERIFY AGAINST PAYWAY SANDBOX: pushbacks are JSON; form-encoded bodies are accepted too, just in case.
-  router.post('/webhooks/payway', express.urlencoded({ extended: false, limit: '64kb' }), async (req, res) => {
+  router.post('/webhooks/payway', express.urlencoded({ extended: false, limit: WEBHOOK_BODY_LIMIT }), async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     const raw = req.rawBody ?? Buffer.from(JSON.stringify(req.body ?? {}));
     const headers = Object.fromEntries(Object.entries(req.headers).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
     const v = ctx.payments.verifyWebhook(raw, headers);
-    let payload: unknown = req.body ?? {};
-    if (typeof payload !== 'object' || payload === null) payload = {};
 
     const [stored] = await db
       .insert(paymentWebhookEvents)
-      .values({ provider: ctx.payments.name, eventId: v.eventId, signatureValid: v.valid, processingStatus: 'received', tranId: v.tranId, payload })
+      .values({ provider: ctx.payments.name, eventId: v.eventId, signatureValid: v.valid, processingStatus: 'received', tranId: v.tranId, payload: v.payload })
       .onConflictDoNothing()
       .returning({ id: paymentWebhookEvents.id });
     let eventId = stored?.id;
     if (!eventId) {
-      const [existing] = await db
-        .select({ id: paymentWebhookEvents.id, status: paymentWebhookEvents.processingStatus })
-        .from(paymentWebhookEvents)
-        .where(sql`${paymentWebhookEvents.provider} = ${ctx.payments.name} and ${paymentWebhookEvents.eventId} = ${v.eventId}`);
-      if (!existing || existing.status !== 'failed') {
+      // A redelivery: process it again only if the first attempt failed or never finished.
+      const [retry] = await db
+        .update(paymentWebhookEvents)
+        .set({ processingStatus: 'received', receivedAt: now() })
+        .where(
+          sql`${paymentWebhookEvents.provider} = ${ctx.payments.name} and ${paymentWebhookEvents.eventId} = ${v.eventId}
+            and (${paymentWebhookEvents.processingStatus} = 'failed'
+              or (${paymentWebhookEvents.processingStatus} = 'received' and ${paymentWebhookEvents.receivedAt} < ${new Date(Date.now() - STALE_RECEIVED_MS)}))`,
+        )
+        .returning({ id: paymentWebhookEvents.id });
+      if (!retry) {
         res.json({ ok: true });
         return;
       }
-      eventId = existing.id;
+      eventId = retry.id;
     }
     const finish = (status: 'processed' | 'ignored' | 'rejected' | 'failed', error?: string) =>
       db.update(paymentWebhookEvents).set({ processingStatus: status, error: error ?? null, processedAt: now() }).where(eq(paymentWebhookEvents.id, eventId!));
@@ -122,28 +131,50 @@ export function webhookRouter(ctx: AppContext): Router {
       ctx.logger.warn({ provider: ctx.payments.name, reason: v.reason }, 'Rejected payment webhook');
       throw new AppError('invalid_signature', 401, 'Invalid webhook');
     }
-    const [payment] = await db.select({ id: payments.id }).from(payments).where(eq(payments.providerTranId, v.tranId));
-    if (!payment) {
-      await finish('ignored', 'unknown_transaction');
-      res.json({ ok: true });
-      return;
-    }
-    let check;
     try {
-      check = await ctx.payments.checkTransaction(v.tranId);
-    } catch (error) {
-      await finish('failed', error instanceof Error ? error.message.slice(0, 200) : 'check failed');
-      throw new AppError('payment_provider_error', 503, 'Could not confirm the payment yet');
-    }
-    if (v.claimedStatus === 'approved' && check.status !== 'approved') {
-      await finish('rejected', 'status_mismatch');
-      ctx.logger.warn({ provider: ctx.payments.name, tranId: v.tranId, checked: check.status }, 'Webhook claimed a payment the provider does not confirm');
+      const [payment] = await db.select({ id: payments.id, status: payments.status }).from(payments).where(eq(payments.providerTranId, v.tranId));
+      if (!payment) {
+        await finish('ignored', 'unknown_transaction');
+        res.json({ ok: true });
+        return;
+      }
+      // One provider check per payment per couple of seconds, however many pushbacks arrive.
+      const claimed = await db
+        .update(payments)
+        .set({ lastCheckedAt: now() })
+        .where(
+          and(
+            eq(payments.id, payment.id),
+            inArray(payments.status, ['pending', 'cancelled']),
+            or(isNull(payments.lastCheckedAt), lt(payments.lastCheckedAt, new Date(Date.now() - WEBHOOK_CHECK_INTERVAL_MS))),
+          ),
+        )
+        .returning({ id: payments.id });
+      if (claimed.length === 0) {
+        await finish('ignored', payment.status === 'pending' || payment.status === 'cancelled' ? 'throttled' : `already_${payment.status}`);
+        res.json({ ok: true });
+        return;
+      }
+      let check;
+      try {
+        check = await ctx.payments.checkTransaction(v.tranId);
+      } catch (error) {
+        await finish('failed', error instanceof Error ? error.message.slice(0, 200) : 'check failed');
+        throw new AppError('payment_provider_error', 503, 'Could not confirm the payment yet');
+      }
+      if (v.claimedStatus === 'approved' && check.status !== 'approved') {
+        await finish('rejected', 'status_mismatch');
+        ctx.logger.warn({ provider: ctx.payments.name, tranId: v.tranId, checked: check.status }, 'Webhook claimed a payment the provider does not confirm');
+        res.json({ ok: true });
+        return;
+      }
+      await applyProviderResult({ db, now }, v.tranId, check, 'webhook');
+      await finish('processed');
       res.json({ ok: true });
-      return;
+    } catch (error) {
+      if (!(error instanceof AppError)) await finish('failed', error instanceof Error ? error.message.slice(0, 200) : 'processing failed').catch(() => {});
+      throw error;
     }
-    await applyProviderResult({ db, now }, v.tranId, check, 'webhook');
-    await finish('processed');
-    res.json({ ok: true });
   });
 
   return router;

@@ -25,7 +25,13 @@ function maskPhones(value: unknown, depth = 0): unknown {
   return out;
 }
 
-const SECRET_PATHS = ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]'];
+/** Never logged: sign-in tokens, cookies, and guest order access tokens. */
+export const REDACT_PATHS = [
+  'req.headers.authorization',
+  'req.headers.cookie',
+  'req.headers["x-order-token"]',
+  'res.headers["set-cookie"]',
+];
 
 export function createLogger(
   cfg: Pick<Config, 'logLevel' | 'nodeEnv'>,
@@ -34,7 +40,7 @@ export function createLogger(
   const options: pino.LoggerOptions = {
     level: cfg.logLevel,
     base: { service: 'sport-backend' },
-    redact: { paths: SECRET_PATHS, censor: '[redacted]' },
+    redact: { paths: REDACT_PATHS, censor: '[redacted]' },
     formatters: {
       log: (object) => maskPhones(object) as Record<string, unknown>,
     },

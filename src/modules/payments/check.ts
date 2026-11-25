@@ -1,4 +1,4 @@
-import { and, eq, isNull, lt, or } from 'drizzle-orm';
+import { and, eq, inArray, isNull, lt, or } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import { payments, type PaymentRow } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
@@ -22,7 +22,8 @@ export async function refreshPayment(
     .where(
       and(
         eq(payments.id, payment.id),
-        eq(payments.status, 'pending'),
+        // Cancelled attempts too: an old QR can still be paid, and that payment must be accepted.
+        inArray(payments.status, ['pending', 'cancelled']),
         or(isNull(payments.lastCheckedAt), lt(payments.lastCheckedAt, new Date(now.getTime() - minInterval))),
       ),
     )

@@ -78,6 +78,16 @@ describe('PayWayProvider', () => {
     expect(calls[0]!.body.hash).toBe(independentHash(CHECK_FIELDS, calls[0]!.body));
   });
 
+  it('treats an unknown transaction (e.g. an abandoned card checkout) as pending, not an error', async () => {
+    const { fetchImpl } = recorder({ status: { code: '4', message: 'Transaction not found' } });
+    expect(await new PayWayProvider(cfg, fetchImpl).checkTransaction('SC26117Q4K9-1')).toMatchObject({ status: 'pending', amountCents: null });
+  });
+
+  it('treats an unknown status string as pending', async () => {
+    const { fetchImpl } = recorder({ status: { code: '00' }, data: { payment_status: 'SOMETHING_NEW' } });
+    expect((await new PayWayProvider(cfg, fetchImpl).checkTransaction('x')).status).toBe('pending');
+  });
+
   it('turns an HTTP failure into payment_provider_error', async () => {
     const { fetchImpl } = recorder({ error: 'boom' }, 500);
     await expect(new PayWayProvider(cfg, fetchImpl).checkTransaction('x')).rejects.toMatchObject({ code: 'payment_provider_error', status: 502 });

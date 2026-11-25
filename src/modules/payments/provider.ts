@@ -34,6 +34,19 @@ export interface WebhookVerification {
   reason?: string;
   /** What the webhook claims; never trusted without checkTransaction. */
   claimedStatus: ProviderStatus | null;
+  /** The known pushback fields only (what gets stored). */
+  payload: Record<string, string>;
+}
+
+/** Keeps only the named string/number fields, each cut to 200 characters. */
+export function pickFields(body: unknown, keys: readonly string[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!body || typeof body !== 'object') return out;
+  for (const k of keys) {
+    const v = (body as Record<string, unknown>)[k];
+    if (typeof v === 'string' || typeof v === 'number') out[k] = String(v).slice(0, 200);
+  }
+  return out;
 }
 
 /** A payment service: create a payment, ask its status, cancel it, recognise its webhooks. */

@@ -1,4 +1,4 @@
-export type Template = 'order_placed' | 'payment_received' | 'status_changed' | 'needs_refund';
+export type Template = 'order_placed' | 'payment_received' | 'status_changed' | 'needs_refund' | 'payment_unverified';
 
 export interface OrderNotice {
   number: string;
@@ -57,6 +57,10 @@ export function render(template: Template, n: OrderNotice, channel: 'telegram' |
     case 'status_changed':
       subject = `Order ${n.number}: ${words(n.status)}`;
       lines = [`Hi ${n.contactName},`, STATUS_COPY[n.status] ?? `Your order ${n.number} is now ${words(n.status)}.`, `Order ${n.number} · status: ${words(n.status)}`];
+      break;
+    case 'payment_unverified':
+      subject = `⚠️ Check payment: ${n.number}`;
+      lines = [`⚠️ Order ${n.number} expired but PayWay could not be reached to confirm it was unpaid.`, `Check ${usd(n.totalCents)} for this order in the PayWay portal; if it was paid, refund or contact the customer.`, `Contact: ${n.contactName} ${n.contactPhone} via ${n.contactChannel}`];
       break;
     case 'needs_refund':
       subject = `🔴 URGENT refund needed: ${n.number}`;

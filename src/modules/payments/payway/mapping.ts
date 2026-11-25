@@ -78,4 +78,6 @@ export const STATUS_MAP: Record<string, 'pending' | 'approved' | 'declined' | 'r
 export const PUSHBACK_SUCCESS = '0';
 /** Fields of the pushback that a hash, when PayWay sends one, covers (in order). */
 export const PUSHBACK_HASH_FIELDS = ['tran_id', 'apv', 'status'] as const;
+/** Pushback fields worth keeping (nothing personal). */
+export const PUSHBACK_FIELDS = ['tran_id', 'apv', 'status', 'return_params'] as const;
 export const QR_IMAGE_TEMPLATE = 'template3_color';

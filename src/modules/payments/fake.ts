@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { AppError } from '../../lib/errors.js';
-import type { CreateTransactionInput, PaymentInstructions, PaymentProvider, ProviderStatus, TransactionCheck, WebhookVerification } from './provider.js';
+import { pickFields, type CreateTransactionInput, type PaymentInstructions, type PaymentProvider, type ProviderStatus, type TransactionCheck, type WebhookVerification } from './provider.js';
 
 const FAKE_SECRET = 'fake-payment-provider-dev-secret';
 
@@ -10,12 +10,18 @@ export class FakePaymentProvider implements PaymentProvider {
   readonly created: CreateTransactionInput[] = [];
   readonly cancelled: string[] = [];
   checkCalls = 0;
+  private failingChecks = false;
   private readonly state = new Map<string, { status: ProviderStatus; amountCents: number }>();
   private failCreates = 0;
   private readonly publicApiUrl: string;
 
   constructor(opts: { publicApiUrl?: string } = {}) {
     this.publicApiUrl = (opts.publicApiUrl ?? 'http://localhost:3000').replace(/\/+$/, '');
+  }
+
+  /** Every checkTransaction throws payment_provider_error (an outage) until switched off. */
+  failAllChecks(on: boolean): void {
+    this.failingChecks = on;
   }
 
   failNextCreate(): void {
@@ -53,6 +59,7 @@ export class FakePaymentProvider implements PaymentProvider {
 
   async checkTransaction(tranId: string): Promise<TransactionCheck> {
     this.checkCalls += 1;
+    if (this.failingChecks) throw new AppError('payment_provider_error', 502, 'The payment service is not responding; please try again');
     const s = this.state.get(tranId);
     if (!s) return { status: 'pending', amountCents: null, raw: { fake: true, known: false } };
     return { status: s.status, amountCents: s.amountCents, raw: { fake: true } };
@@ -68,7 +75,7 @@ export class FakePaymentProvider implements PaymentProvider {
     const signature = headers['x-fake-signature'] ?? '';
     const expected = Buffer.from(this.sign(rawBody.toString('utf8')));
     const given = Buffer.from(signature);
-    let body: { tran_id?: unknown; status?: unknown } = {};
+    let body: { tran_id?: unknown; status?: unknown; apv?: unknown } = {};
     try {
       body = JSON.parse(rawBody.toString('utf8')) as typeof body;
     } catch {
@@ -76,8 +83,8 @@ export class FakePaymentProvider implements PaymentProvider {
     }
     const tranId = typeof body.tran_id === 'string' ? body.tran_id : null;
     const claimed = typeof body.status === 'string' ? (body.status as ProviderStatus) : null;
-    const eventId = `${tranId ?? 'unknown'}:${claimed ?? ''}`;
+    const eventId = `${tranId ?? 'unknown'}:${claimed ?? ''}${typeof body.apv === 'string' ? `:${body.apv}` : ''}`;
     const valid = tranId !== null && expected.length === given.length && timingSafeEqual(expected, given);
-    return { valid, tranId, eventId, claimedStatus: claimed, reason: valid ? undefined : 'signature_mismatch' };
+    return { valid, tranId, eventId, claimedStatus: claimed, reason: valid ? undefined : 'signature_mismatch', payload: pickFields(body, ['tran_id', 'status', 'apv']) };
   }
 }

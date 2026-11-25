@@ -15,6 +15,8 @@ import { releaseAllocations } from '../modules/stock/locking.js';
 export const JOBS_LOCK_KEY = 727001;
 const GUEST_CART_DAYS = 60;
 const EXPIRABLE: OrderStatus[] = ['pending_payment', 'awaiting_pickup_payment'];
+/** If the payment service can't be reached, a hold ends anyway this long after it was due (ops are alerted). */
+export const UNVERIFIED_EXPIRY_GRACE_MS = 2 * 60 * 60 * 1000;
 
 export interface SweepDeps {
   database: Database;
@@ -38,16 +40,22 @@ export interface SweepResult {
  */
 export async function expireOrder(deps: Omit<SweepDeps, 'notifiers' | 'logger'>, orderId: string): Promise<boolean> {
   const { db } = deps.database;
-  const pending = await db.select().from(payments).where(and(eq(payments.orderId, orderId), eq(payments.status, 'pending')));
-  for (const p of pending) {
+  // Every attempt that could still turn out paid, cancelled ones included (an old QR can be paid late).
+  const open = await db.select().from(payments).where(and(eq(payments.orderId, orderId), inArray(payments.status, ['pending', 'cancelled'])));
+  let unverified = false;
+  for (const p of open) {
     try {
       const check = await deps.payments.checkTransaction(p.providerTranId);
       if (check.status !== 'pending') await applyProviderResult({ db, now: deps.now }, p.providerTranId, check, 'sweeper');
     } catch (error) {
-      // Provider unreachable: we can't prove it wasn't paid, so keep the hold until the next run.
-      if (error instanceof AppError) return false;
-      throw error;
+      if (!(error instanceof AppError)) throw error;
+      unverified = true;
     }
+  }
+  if (unverified) {
+    // Provider unreachable: keep the hold for a while, then end it anyway so stock can't leak forever.
+    const [o] = await db.select({ reservedUntil: orders.reservedUntil }).from(orders).where(eq(orders.id, orderId));
+    if (!o?.reservedUntil || o.reservedUntil.getTime() + UNVERIFIED_EXPIRY_GRACE_MS > deps.now().getTime()) return false;
   }
 
   const cancelled = await db.transaction(async (tx) => {
@@ -70,6 +78,10 @@ export async function expireOrder(deps: Omit<SweepDeps, 'notifiers' | 'logger'>,
     }
     await recordEvent(tx, { orderId, from: order.status, to: 'expired', kind: 'status', actor: 'system', note: 'Payment not received in time' });
     await enqueueOrderNotifications(tx, 'status_changed', orderId);
+    if (unverified) {
+      await recordEvent(tx, { orderId, kind: 'flag', actor: 'system', note: 'Expired without a payment check: verify in the PayWay portal' });
+      await enqueueOrderNotifications(tx, 'payment_unverified', orderId);
+    }
     return tx
       .update(payments)
       .set({ status: 'expired', updatedAt: sql`now()` })
@@ -98,7 +110,7 @@ export async function sweepOnce(deps: SweepDeps): Promise<SweepResult> {
           .select({ payment: payments })
           .from(payments)
           .innerJoin(orders, eq(orders.id, payments.orderId))
-          .where(and(eq(payments.status, 'pending'), eq(orders.status, 'pending_payment')))
+          .where(and(inArray(payments.status, ['pending', 'cancelled']), eq(orders.status, 'pending_payment')))
           .orderBy(sql`${payments.lastCheckedAt} asc nulls first`)
           .limit(50);
         for (const { payment } of due) {

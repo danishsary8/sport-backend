@@ -24,7 +24,7 @@ import { branchesRouter } from './modules/branches/router.js';
 import { cartRouter } from './modules/cart/router.js';
 import { catalogRouter } from './modules/catalog/router.js';
 import { checkoutRouter } from './modules/checkout/router.js';
-import { orderPaymentsRouter, webhookRouter } from './modules/payments/router.js';
+import { orderPaymentsRouter, WEBHOOK_BODY_LIMIT, webhookRouter } from './modules/payments/router.js';
 import { customerOrdersRouter } from './modules/orders/customerRouter.js';
 import { devPaymentsRouter } from './modules/payments/devRouter.js';
 import { geoRouter } from './modules/geo/router.js';
@@ -71,6 +71,11 @@ export function createApp(deps: AppDeps): express.Express {
     }),
   );
 
+  const keepRawBody = (req: express.Request, _res: unknown, buf: Buffer) => {
+    req.rawBody = buf;
+  };
+  // Payment pushbacks are tiny: refuse anything bigger before the general parser accepts 1 MB.
+  app.use('/v1/webhooks', express.json({ limit: WEBHOOK_BODY_LIMIT, verify: keepRawBody }));
   app.use(
     express.json({
       limit: '1mb',

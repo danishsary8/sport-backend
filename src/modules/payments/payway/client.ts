@@ -1,7 +1,7 @@
 import { AppError } from '../../../lib/errors.js';
-import { TRAN_ID_PATTERN, type CreateTransactionInput, type PaymentInstructions, type PaymentProvider, type TransactionCheck, type WebhookVerification } from '../provider.js';
+import { pickFields, TRAN_ID_PATTERN, type CreateTransactionInput, type PaymentInstructions, type PaymentProvider, type TransactionCheck, type WebhookVerification } from '../provider.js';
 import { paywayHash, safeEqualB64 } from './hash.js';
-import { CHECK_FIELDS, PAYWAY_PATHS, PURCHASE_FIELDS, PUSHBACK_HASH_FIELDS, PUSHBACK_SUCCESS, QR_FIELDS, QR_IMAGE_TEMPLATE, STATUS_MAP } from './mapping.js';
+import { CHECK_FIELDS, PAYWAY_PATHS, PUSHBACK_FIELDS, PURCHASE_FIELDS, PUSHBACK_HASH_FIELDS, PUSHBACK_SUCCESS, QR_FIELDS, QR_IMAGE_TEMPLATE, STATUS_MAP } from './mapping.js';
 
 export interface PayWayConfig {
   merchantId: string;
@@ -124,8 +124,9 @@ export class PayWayProvider implements PaymentProvider {
     const res = await this.post(PAYWAY_PATHS.check, body);
     const data = (res.data ?? {}) as { payment_status?: unknown; total_amount?: unknown };
     const remote = String(data.payment_status ?? '').toUpperCase();
-    const status = STATUS_MAP[remote];
-    if (!status) throw providerError();
+    // An unknown transaction (e.g. a card checkout the shopper never opened) or a status this code doesn't
+    // know yet is "not paid": the order may expire normally. Only APPROVED ever confirms an order.
+    const status = STATUS_MAP[remote] ?? 'pending';
     const amount = Number(data.total_amount);
     return { status, amountCents: Number.isFinite(amount) ? Math.round(amount * 100) : null, raw: res };
   }
@@ -140,18 +141,19 @@ export class PayWayProvider implements PaymentProvider {
     try {
       body = JSON.parse(rawBody.toString('utf8')) as Record<string, unknown>;
     } catch {
-      return { valid: false, tranId: null, eventId: 'invalid', reason: 'malformed', claimedStatus: null };
+      return { valid: false, tranId: null, eventId: 'invalid', reason: 'malformed', claimedStatus: null, payload: {} };
     }
+    const payload = pickFields(body, PUSHBACK_FIELDS);
     const tranId = typeof body.tran_id === 'string' && TRAN_ID_PATTERN.test(body.tran_id) ? body.tran_id : null;
     const status = body.status === undefined || body.status === null ? '' : String(body.status);
     const apv = body.apv === undefined || body.apv === null ? '' : String(body.apv);
     const eventId = `${tranId ?? 'invalid'}:${status}:${apv}`;
-    if (!tranId) return { valid: false, tranId: null, eventId, reason: 'malformed', claimedStatus: null };
+    if (!tranId) return { valid: false, tranId: null, eventId, reason: 'malformed', claimedStatus: null, payload };
     if (typeof body.hash === 'string') {
       const values: Record<string, string> = { tran_id: tranId, apv, status };
       const expected = paywayHash(PUSHBACK_HASH_FIELDS.map((f) => values[f] ?? ''), this.cfg.apiKey);
-      if (!safeEqualB64(expected, body.hash)) return { valid: false, tranId, eventId, reason: 'signature_mismatch', claimedStatus: null };
+      if (!safeEqualB64(expected, body.hash)) return { valid: false, tranId, eventId, reason: 'signature_mismatch', claimedStatus: null, payload };
     }
-    return { valid: true, tranId, eventId, claimedStatus: status === PUSHBACK_SUCCESS ? 'approved' : null };
+    return { valid: true, tranId, eventId, claimedStatus: status === PUSHBACK_SUCCESS ? 'approved' : null, payload };
   }
 }

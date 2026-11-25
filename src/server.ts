@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { createApp } from './app.js';
 import { ConfigError, loadConfig } from './config.js';
+import { createDb } from './db/client.js';
 import { createLogger } from './lib/logger.js';
 
 function start(): void {
@@ -16,7 +17,8 @@ function start(): void {
   }
 
   const logger = createLogger(config);
-  const app = createApp({ config, logger });
+  const { db, pool } = createDb(config.databaseUrl);
+  const app = createApp({ config, logger, db });
   const server = app.listen(config.port, () => {
     logger.info({ port: config.port }, 'Sport Castle API listening');
   });
@@ -25,7 +27,9 @@ function start(): void {
     logger.info({ signal }, 'Shutting down');
     const force = setTimeout(() => process.exit(1), 10_000);
     force.unref();
-    server.close(() => process.exit(0));
+    server.close(() => {
+      pool.end().finally(() => process.exit(0));
+    });
   };
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));

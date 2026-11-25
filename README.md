@@ -6,7 +6,7 @@ The commerce backend for Sport Castle, a Phnom Penh football / futsal / F1 store
 - Plans: `docs/superpowers/plans/`
 - Behaviour research: `sport-heaven/docs/research/zando-behavior-reference.md`
 
-**Status:** phases 1–3 done: foundation (config, logging, errors, security baseline, probes, migrations, CI); auth & accounts (Firebase phone/Google sign-in, roles, profile, addresses, geo, branches, admin roles); catalog (products, sizes, per-branch stock with audit trail, filters, search, collections, home, wishlist, staff counter sales, admin product API). Cart, checkout and payments arrive in phases 4–6; pre-split code waiting to be ported sits in `legacy/` (not built, not tested).
+**Status:** phases 1–4 done: foundation (config, logging, errors, security baseline, probes, migrations, CI); auth & accounts (Firebase phone/Google sign-in, roles, profile, addresses, geo, branches, admin roles); catalog (products, sizes, per-branch stock with audit trail, filters, search, collections, home, wishlist, staff counter sales, admin product API). cart & pricing (server-priced guest/member carts, team discount, member perks, promo codes, delivery rates, admin pricing). Checkout and payments arrive in phases 5–6; pre-split code waiting to be ported sits in `legacy/` (not built, not tested).
 
 ## Requirements
 
@@ -80,6 +80,24 @@ Customers sign in on the frontend with Firebase (phone number + SMS code, or Goo
 
 Stock rules: customers only ever see `ok`, `low` (with 1–3 left) or `out`. The website holds back a safety buffer (setting `online_safety_buffer`, default 1 per size per branch) so a unit just sold in a shop isn't sold online too. Every stock change is recorded in `stock_movements`.
 
+## Cart and pricing
+
+- The server prices everything. Clients send only product variant ids, quantities, print choices and a promo code; any price sent by a client is ignored.
+- Guests get a bag through an `sc_cart` cookie (HttpOnly, SameSite=Lax, signed with `COOKIE_SECRET`, 60 days). **Serve the API from the same site as the storefront** (e.g. `api.example.com` for `example.com`) so browsers send it. Signed-in members' bags are stored on their account, and a guest bag is merged in when they sign in (`POST /v1/auth/session` → `cartMerged`).
+- Bags don't hold stock; stock is held when an order is placed (phase 5).
+- Rules, in order: item price + printing ($8 + patch) → 10% team discount on 5+ jerseys/F1 → member perks (Silver 10% off, Gold free Phnom Penh delivery, Pro free printing; only for members with a verified phone) → one promo code (if a code and the member discount both apply, the cheaper result wins) → delivery → KHR total (nearest 100 riel).
+- Delivery: Phnom Penh rider $2.50, free from $50 after discounts; province courier **$3.00 placeholder — confirm the real price** with `PUT /v1/admin/shipping-rates/:id`; store pickup free.
+- Pricing settings (`khr_rate`, `custom_print_fees`, `team_discount_rule`, `loyalty_rules`) are seeded with the storefront's current values and edited with `PUT /v1/admin/settings/pricing/:key`.
+
+| Method & path | Who | Purpose |
+|---|---|---|
+| `GET /v1/cart?fulfillment=&shippingMethodId=&provinceCode=&pickupBranchId=&lang=` | anyone | Bag with lines, problems (`unavailable`, `exceeds_stock`), full price breakdown and `checkoutReady` |
+| `POST /v1/cart/items`, `PATCH/DELETE /v1/cart/items/:id` | anyone | Add (with optional `customPrint`), change size/quantity, remove |
+| `PUT/DELETE /v1/cart/promo` | anyone | Enter or clear a promo code (the response explains if it doesn't apply) |
+| `GET/POST /v1/admin/promotions`, `PATCH /v1/admin/promotions/:id` | admin | Promo codes |
+| `GET /v1/admin/shipping-rates`, `PUT /v1/admin/shipping-rates/:id` | admin | Delivery fees |
+| `GET /v1/admin/settings/pricing`, `PUT /v1/admin/settings/pricing/:key` | admin | Pricing rules |
+
 ## HTTP conventions
 
 - API routes live under `/v1`. Probes: `GET /health` (liveness) and `GET /ready` (database reachable → 200, otherwise 503).
@@ -98,7 +116,7 @@ src/
   middleware/          request id, validation, rate limiting
   db/                  client, schema, migrator
   context.ts           shared dependencies + auth middleware chains for routers
-  modules/<feature>/   routers + services (auth, account, users, admin, geo, branches, catalog, stock, wishlist, health)
+  modules/<feature>/   routers + services (auth, account, users, admin, geo, branches, catalog, stock, wishlist, pricing, cart, health)
   db/seed/             reference data (branches, geo) + seed script
 drizzle/               committed SQL migrations
 test/unit, test/integration

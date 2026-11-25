@@ -15,6 +15,8 @@ import {
 } from './middleware/rateLimit.js';
 import { requestId } from './middleware/requestId.js';
 import { accountRouter } from './modules/account/router.js';
+import { adminProductsRouter } from './modules/admin/productsRouter.js';
+import { adminStockRouter } from './modules/admin/stockRouter.js';
 import { adminUsersRouter } from './modules/admin/usersRouter.js';
 import { authRouter } from './modules/auth/router.js';
 import { branchesRouter } from './modules/branches/router.js';
@@ -93,6 +95,8 @@ export function createApp(deps: AppDeps): express.Express {
   v1.use(branchesRouter(ctx));
   v1.use(catalogRouter(ctx));
   v1.use(adminUsersRouter(ctx));
+  v1.use(adminStockRouter(ctx));
+  v1.use(adminProductsRouter(ctx));
   app.use('/v1', v1);
 
   app.use(notFoundHandler);

@@ -15,6 +15,7 @@ import {
   type ProductFlags,
 } from '../../db/schema/index.js';
 import { sizeSort } from './sizes.js';
+import { skuBase } from './sku.js';
 import { buildSearchText, slugify } from './searchText.js';
 
 /** The subset of the storefront's Product type the importer reads. */
@@ -60,11 +61,6 @@ export const STOCK_LEVEL_UNITS: Record<string, number> = { 'In Stock': 10, 'Limi
 
 const toCents = (usd: number) => Math.round(usd * 100);
 
-function skuBase(slug: string, size: string): string {
-  const prefix = slug.toUpperCase().replace(/[^A-Z0-9]+/g, '-').slice(0, 28).replace(/-+$/, '');
-  const sizeCode = size.toUpperCase().replace(/[^A-Z0-9]+/g, '').slice(0, 10) || 'OS';
-  return `${prefix}-${sizeCode}`;
-}
 
 function attributesOf(p: FrontendProduct): ProductAttributes {
   const a: ProductAttributes = {

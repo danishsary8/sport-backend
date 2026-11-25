@@ -36,6 +36,8 @@ export interface Config {
   notificationFromEmail: string | undefined;
   /** Runs the per-minute sweeper (payments, expiry, notifications). */
   jobsEnabled: boolean;
+  /** Test sign-in tokens instead of Firebase (end-to-end tests). Refused in production. */
+  authTestMode: boolean;
 }
 
 export class ConfigError extends Error {
@@ -126,6 +128,7 @@ const envSchema = z
     RESEND_API_KEY: optionalText,
     NOTIFICATION_FROM_EMAIL: optionalText,
     JOBS_ENABLED: booleanText,
+    AUTH_TEST_MODE: booleanText,
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && env.CORS_ORIGINS.length === 0) {
@@ -141,6 +144,9 @@ const envSchema = z
           ctx.addIssue({ code: 'custom', path: [key], message: 'is required in production' });
         }
       }
+    }
+    if (env.NODE_ENV === 'production' && env.AUTH_TEST_MODE) {
+      ctx.addIssue({ code: 'custom', path: ['AUTH_TEST_MODE'], message: 'must not be enabled in production' });
     }
     if ((env.PAYWAY_MERCHANT_ID === undefined) !== (env.PAYWAY_API_KEY === undefined)) {
       const missing = env.PAYWAY_MERCHANT_ID === undefined ? 'PAYWAY_MERCHANT_ID' : 'PAYWAY_API_KEY';
@@ -206,5 +212,6 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     resendApiKey: e.RESEND_API_KEY,
     notificationFromEmail: e.NOTIFICATION_FROM_EMAIL,
     jobsEnabled: e.JOBS_ENABLED ?? true,
+    authTestMode: e.AUTH_TEST_MODE ?? false,
   };
 }

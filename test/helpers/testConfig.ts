@@ -30,6 +30,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     resendApiKey: undefined,
     notificationFromEmail: undefined,
     jobsEnabled: false,
+    authTestMode: false,
     ...overrides,
   };
 }

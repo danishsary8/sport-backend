@@ -5,6 +5,7 @@ import type { Config } from './config/env.js';
 import { createContext } from './context.js';
 import type { Database } from './db/client.js';
 import type { IdentityProvider } from './lib/identity.js';
+import { isTestIdentity } from './lib/testIdentity.js';
 import { errorHandler, notFoundHandler } from './lib/errors.js';
 import type { Logger } from './lib/logger.js';
 import {
@@ -62,6 +63,9 @@ export interface AppDeps {
 
 export function createApp(deps: AppDeps): express.Express {
   const { config, logger } = deps;
+  if (config.nodeEnv === 'production' && isTestIdentity(deps.identity)) {
+    throw new Error('The test sign-in provider can never be used in production');
+  }
   const app = express();
 
   app.disable('x-powered-by');

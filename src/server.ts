@@ -7,6 +7,7 @@ import { ConfigError, loadConfig } from './config/env.js';
 import { createDb, type Database } from './db/client.js';
 import { createFirebaseIdentity, createUnconfiguredIdentity } from './lib/identity.js';
 import { createLogger } from './lib/logger.js';
+import { createTestIdentity } from './lib/testIdentity.js';
 import { startScheduler } from './jobs/sweeper.js';
 import { resendNotifier } from './modules/notifications/resend.js';
 import { telegramNotifier } from './modules/notifications/telegram.js';
@@ -28,7 +29,10 @@ export async function start(env: NodeJS.ProcessEnv = process.env, hooks: { onDat
   const database = createDb(config, (err) => logger.error({ err }, 'Postgres pool error'));
   hooks.onDatabase?.(database);
   let identity = createUnconfiguredIdentity();
-  if (config.firebaseProjectId) {
+  if (config.authTestMode) {
+    identity = createTestIdentity();
+    logger.warn('AUTH_TEST_MODE is on: test sign-in tokens are accepted (never use this in production)');
+  } else if (config.firebaseProjectId) {
     identity = createFirebaseIdentity({ projectId: config.firebaseProjectId, serviceAccount: config.firebaseServiceAccount });
   } else {
     logger.warn('FIREBASE_PROJECT_ID is not set: sign-in endpoints will answer 503 auth_unavailable');

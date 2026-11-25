@@ -1,0 +1,152 @@
+[
+ {
+  "slug": "football-boots",
+  "name": "Football Boots & Soccer Cleats",
+  "description": "Fifteen elite studded soccer boots from Nike, Adidas (including the F50 Messi Signature Edition), Puma, Mizuno Japan, and New Balance — indexed by stud plate and gram weight for Cambodian pitches.",
+  "rule": {
+   "category": "boots"
+  },
+  "sort": 1
+ },
+ {
+  "slug": "jerseys-kits",
+  "name": "2026/27 Club & National Jerseys",
+  "description": "Authentic player-grade Home, Away, Third, Retro, and Limited Edition kits across Europe, South America, Asia/ASEAN national teams, and Top 5 club leagues — with full European sizing.",
+  "rule": {
+   "category": "jerseys"
+  },
+  "sort": 2
+ },
+ {
+  "slug": "ucl-2026-27",
+  "name": "2026/27 UEFA Champions League Drop",
+  "description": "Europe’s flagship clubs under floodlights. Complete 2026/27 Home, Away, and Collector Editions eligible for official UCL starball sleeve patches.",
+  "rule": {
+   "category": "jerseys",
+   "tag": [
+    "ucl"
+   ]
+  },
+  "sort": 3
+ },
+ {
+  "slug": "f1-motorsport",
+  "name": "2026 Formula 1 Paddock Collection",
+  "description": "Official 2026 team jerseys (2 distinct colorways per constructor) and full-zip paddock jackets from Scuderia Ferrari, Oracle Red Bull Racing, Mercedes-AMG Petronas, and McLaren F1 Team.",
+  "rule": {
+   "category": "f1"
+  },
+  "sort": 4
+ },
+ {
+  "slug": "phnom-penh-turf",
+  "name": "Phnom Penh 5v5 & 7v7 Turf Specialist",
+  "description": "Low-profile conical AG studs and multi-directional TF rubber outsoles chosen by Phnom Penh 7v7 league players to protect knees on firm artificial surfaces.",
+  "rule": {
+   "category": "boots",
+   "surface": [
+    "TF",
+    "AG"
+   ]
+  },
+  "sort": 5
+ },
+ {
+  "slug": "match-balls",
+  "name": "FIFA Quality Pro Match & Futsal Balls",
+  "description": "Seamless thermally bonded match spheres for 11v11 grass leagues alongside calibrated low-bounce futsal balls for indoor court tournaments.",
+  "rule": {
+   "category": "balls"
+  },
+  "sort": 6
+ },
+ {
+  "slug": "gk-essentials",
+  "name": "Goalkeeper Gloves & Pitch Essentials",
+  "description": "High-humidity German contact latex palms, silicone-locked TruSox grip socks, and featherweight protection engineered for 90-minute focus.",
+  "rule": {
+   "category": "essentials"
+  },
+  "sort": 7
+ },
+ {
+  "slug": "best-sellers",
+  "name": "Best Sellers — Phnom Penh Most Wanted",
+  "description": "The most-requested boots, authentic match jerseys, and Formula 1 teamwear across our Sonthormuk, Sen Sok, and Chomkadong branches.",
+  "rule": {
+   "tag": [
+    "best_seller"
+   ]
+  },
+  "sort": 8
+ },
+ {
+  "slug": "new-arrivals",
+  "name": "New Arrivals — Fresh 2026/27 Season Drops",
+  "description": "Freshly arrived 2026/27 official releases — from Europe, South America, and Asia/ASEAN national strips to Ferrari, Red Bull, Mercedes, and McLaren paddock jackets.",
+  "rule": {
+   "tag": [
+    "new"
+   ]
+  },
+  "sort": 9
+ },
+ {
+  "slug": "national-teams",
+  "name": "National Team Jerseys — Europe, South America & Asia / ASEAN",
+  "description": "Filter international matchwear clearly by region: Europe (France, Spain, Germany, Italy), South America (Argentina, Brazil), and Asia / ASEAN (Japan, South Korea, Cambodia).",
+  "rule": {
+   "category": "jerseys",
+   "league": [
+    "International"
+   ]
+  },
+  "sort": 10
+ },
+ {
+  "slug": "retro-jerseys",
+  "name": "Retro Classics & Centenary Archive Kits",
+  "description": "Iconic tournament silhouettes and club centenary reissues tailored in heavyweight vintage jacquard with optional retro player numbering.",
+  "rule": {
+   "category": "jerseys",
+   "tag": [
+    "retro"
+   ]
+  },
+  "sort": 11
+ },
+ {
+  "slug": "limited-edition",
+  "name": "Limited Edition & Collector Releases",
+  "description": "Small-batch collector jerseys, signature athlete boots, and special Grand Prix liveries stocked in limited quantities in Phnom Penh.",
+  "rule": {
+   "tag": [
+    "limited"
+   ]
+  },
+  "sort": 12
+ },
+ {
+  "slug": "f1-jackets",
+  "name": "2026 Formula 1 Official Paddock Jackets",
+  "description": "Official pit-wall softshell outerwear across all four top Formula 1 constructors — built for trackside style and Phnom Penh monsoon evenings.",
+  "rule": {
+   "category": "f1",
+   "garmentType": [
+    "jacket"
+   ]
+  },
+  "sort": 13
+ },
+ {
+  "slug": "sale",
+  "name": "Atelier Archive & Matchday Markdowns",
+  "description": "Curated markdowns on flagship silhouettes — stackable with code CASTLE10 for an extra 10% off at checkout.",
+  "rule": {
+   "tag": [
+    "sale"
+   ]
+  },
+  "sort": 14
+ }
+]

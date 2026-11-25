@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import type { Db } from '../client.js';
-import { branches, categories, geoCommunes, geoDistricts, geoProvinces, settings } from '../schema/index.js';
+import { branches, categories, collections, geoCommunes, geoDistricts, geoProvinces, homeSections, settings } from '../schema/index.js';
+import collectionData from './data/collections.json' with { type: 'json' };
 import branchData from './data/branches.json' with { type: 'json' };
 import communeData from './data/communes.json' with { type: 'json' };
 import districtData from './data/districts.json' with { type: 'json' };
@@ -24,6 +25,18 @@ export const CATEGORY_SEED = [
 ];
 
 /** Settings created once with defaults; never overwritten by later seeds (admins may change them). */
+/** Starting home page; only inserted when there are no sections, so admin edits are kept. */
+const DEFAULT_HOME_SECTIONS = [
+  {
+    type: 'hero' as const,
+    sort: 1,
+    payload: { title: { en: 'Matchday gear for Phnom Penh' }, subtitle: { en: 'Boots, kits and F1 teamwear across 3 branches' }, imagePath: null, link: { collection: 'new-arrivals' } },
+  },
+  { type: 'product_rail' as const, sort: 2, payload: { title: { en: 'New arrivals' }, query: { tag: ['new'], sort: 'new' } } },
+  { type: 'category_grid' as const, sort: 3, payload: { title: { en: 'Shop by category' }, categories: ['boots', 'jerseys', 'f1', 'balls', 'essentials'] } },
+  { type: 'product_rail' as const, sort: 4, payload: { title: { en: 'Best sellers' }, query: { tag: ['best_seller'] } } },
+];
+
 const DEFAULT_SETTINGS: { key: string; value: Record<string, unknown> }[] = [
   { key: 'online_safety_buffer', value: { units: 1 } },
 ];
@@ -76,6 +89,24 @@ export async function seed(db: Db): Promise<{ branches: number; provinces: numbe
       .values(CATEGORY_SEED)
       .onConflictDoUpdate({ target: categories.slug, set: { nameI18n: sql`excluded.name_i18n`, sort: sql`excluded.sort` } });
     await tx.insert(settings).values(DEFAULT_SETTINGS).onConflictDoNothing();
+
+    await tx
+      .insert(collections)
+      .values(
+        collectionData.map((c) => ({
+          slug: c.slug,
+          nameI18n: { en: c.name },
+          descriptionI18n: { en: c.description },
+          rule: c.rule,
+          sort: c.sort,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: collections.slug,
+        set: { nameI18n: sql`excluded.name_i18n`, descriptionI18n: sql`excluded.description_i18n`, rule: sql`excluded.rule`, sort: sql`excluded.sort` },
+      });
+    const existingSections = await tx.select({ id: homeSections.id }).from(homeSections).limit(1);
+    if (existingSections.length === 0) await tx.insert(homeSections).values(DEFAULT_HOME_SECTIONS);
 
     const names = { nameKm: sql`excluded.name_km`, nameEn: sql`excluded.name_en` };
     await tx

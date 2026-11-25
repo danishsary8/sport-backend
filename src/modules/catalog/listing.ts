@@ -31,6 +31,9 @@ export const catalogFilterShape = {
   league: many,
   surface: many,
   kitType: many,
+  garmentType: many,
+  /** new | best_seller | limited | signature | retro | ucl | sale (repeatable, OR). */
+  tag: many,
   priceMin: cents,
   priceMax: cents,
   discount: z.enum(['1', '2', '3']).optional(),
@@ -133,7 +136,20 @@ export function filterConditions(f: CatalogFilters, exclude?: FilterKey): SQL {
     const lowered = f.color!.map((c) => c.toLowerCase());
     parts.push(sql`exists (select 1 from product_colors pc where pc.product_id = base.id and lower(pc.name) in ${lowered})`);
   }
-  for (const key of ['league', 'surface', 'kitType'] as const) {
+  if (use('tag') && f.tag!.length) {
+    const tagSql: Record<string, SQL> = {
+      new: sql`(base.flags->>'newArrival')::boolean`,
+      best_seller: sql`(base.flags->>'bestSeller')::boolean`,
+      limited: sql`(base.flags->>'limitedEdition')::boolean`,
+      signature: sql`(base.flags->>'signatureEdition')::boolean`,
+      retro: sql`(base.attributes->>'isRetro')::boolean`,
+      ucl: sql`(base.attributes->>'isChampionsLeague')::boolean`,
+      sale: sql`base.discount_pct > 0`,
+    };
+    const known = f.tag!.map((t) => tagSql[t]).filter((x): x is SQL => x !== undefined);
+    parts.push(known.length ? sql`(${sql.join(known.map((k) => sql`coalesce(${k}, false)`), sql` or `)})` : sql`false`);
+  }
+  for (const key of ['league', 'surface', 'kitType', 'garmentType'] as const) {
     if (use(key) && f[key]!.length) parts.push(sql`base.attributes->>${key} in ${f[key]}`);
   }
   if (use('priceMin')) parts.push(sql`base.price >= ${f.priceMin}`);

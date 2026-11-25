@@ -44,7 +44,7 @@ export function systemHealthRouter(ctx: AppContext): Router {
     const csv = buildConnectionLogsCsv(getRecentConnectionAttemptLogs(snapshot.recentChecks, 20), thresholdMs);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${buildConnectionLogsCsvFilename(new Date())}"`);
-    res.send(`﻿${csv}`);
+    res.send(`\uFEFF${csv}`);
   });
 
   return router;

@@ -1,15 +1,10 @@
 import { and, eq, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
-import { cartItems, carts, type CartRow, type UserRow } from '../../db/schema/index.js';
+import { cartItems, carts, type CartRow } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
-import { availabilityOf, type Availability } from '../catalog/availability.js';
-import { pick, type Lang } from '../catalog/i18n.js';
 import { safetyBuffer } from '../catalog/listing.js';
-import { assetUrl } from '../catalog/view.js';
-import { deliveryRate, findPromotion, loadRules, tierFor, type DeliveryChoice } from '../pricing/context.js';
-import { priceCart } from '../pricing/engine.js';
+import { type DeliveryChoice } from '../pricing/context.js';
 import { printKey, type CustomPrint } from '../pricing/print.js';
-import type { Breakdown, PriceLineInput } from '../pricing/types.js';
 import type { Tx } from '../stock/service.js';
 import { newGuestToken, type CartOwner } from './owner.js';
 

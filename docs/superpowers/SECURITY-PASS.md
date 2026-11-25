@@ -1,0 +1,17 @@
+# Security pass (phase 7, Task 8)
+
+Date: 2026-11-25. Scope: the whole `src/` tree of sport-backend.
+
+| Check | Result | Evidence |
+|---|---|---|
+| Dependencies (`npm audit`) | No high or critical issues. 4 moderate advisories in `esbuild` ≤ 0.24.2, pulled in only by `drizzle-kit` (a dev tool that never runs in production). | `npm audit` |
+| Security headers | Helmet defaults, plus for a JSON API `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` and `Cross-Origin-Resource-Policy: same-site`. The dev-only payment page gets its own CSP allowing an inline style and a same-origin form. `X-Powered-By` is off. | `test/integration/securityHeaders.test.ts` |
+| CORS | Origins come only from `CORS_ORIGINS`; credentials are sent only to those origins. | `securityHeaders.test.ts` "sends credentials headers only to allowed origins" |
+| Input validation | Every POST/PUT/PATCH/DELETE route has `validate({ body })` or takes no body. The exceptions are listed and justified: bodyless routes, the payment webhook (shape-checked and re-verified with the provider), and the pricing-settings route (validated in the handler with the setting's own schema). Unknown keys are stripped everywhere. | `test/unit/writeValidation.test.ts` |
+| SQL | All queries go through Drizzle or the parameterised `sql` template. The only `sql.raw` builds CHECK constraints from constant enum lists in `src/db/schema/orders.ts` (no user input). | `grep -rn "sql.raw(" src` |
+| Personal data in logs | The logger masks any `*phone*` field, and redacts `Authorization`, `Cookie`, `Set-Cookie` and `X-Order-Token`. Unexpected errors (HTTP handler and sweeper) are logged through `safeError`, which drops Drizzle query parameters and Postgres row `detail`. Every `logger.*` call site was read by hand: they log ids, codes, statuses and admin changes, never names, phones, emails or addresses. Webhook payloads are stored with whitelisted fields only. | `test/unit/logRedaction.test.ts`, `test/integration/placeOrder.test.ts` "never writes the customer phone into the logs" |
+| Personal data in public responses | Tracking masks the name, phone and street. Public Q&A shows only the author name the person typed. Order views never include allocations or staff notes. Admin logs mask email recipients. | `orderTracking.test.ts`, `questions.test.ts`, `adminOverview.test.ts` |
+| Rate limits | General 120/min/IP; orders 10/min/IP + 5/min/member; sign-in 20/min/IP; tracking 10/min/IP; questions 5/min/IP; the webhook is exempt but signature-gated, body-capped at 16 KB and throttled per payment. | `rateLimits.test.ts`, `orderTracking.test.ts`, `questions.test.ts`, `phase5Fixes.test.ts` |
+| Test-only features | The fake payment provider and its dev routes exist only outside production. The test sign-in (`AUTH_TEST_MODE`) is refused by config validation and by `createApp` in production. | `paymentRoutes.test.ts`, `testIdentity.test.ts` |
+| Money | Prices, discounts, fees and totals come only from `priceCart` on the server. Clients send ids and quantities. Order totals are checked by a DB constraint. | `placeOrder.test.ts` "ignores prices sent by the client", `orders_money_check` |
+| Lint | ESLint with typescript-eslint, including `no-floating-promises`, `no-misused-promises` and `await-thenable`, is clean and runs in CI. | `npm run lint` |

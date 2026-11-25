@@ -1,7 +1,7 @@
 import { and, asc, eq, gt, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { carts, idempotencyKeys, orderItemAllocations, orderItems, orders, payments, promotions, type OrderStatus } from '../db/schema/index.js';
-import { AppError } from '../lib/errors.js';
+import { AppError, safeError } from '../lib/errors.js';
 import type { Logger } from '../lib/logger.js';
 import type { Notifier } from '../modules/notifications/notifier.js';
 import { enqueueOrderNotifications, processOutbox } from '../modules/notifications/outbox.js';
@@ -137,7 +137,7 @@ export async function sweepOnce(input: SweepDeps & { shouldStop?: () => boolean 
       try {
         result.notifications = await processOutbox(db, deps.notifiers, now);
       } catch (error) {
-        deps.logger.error({ err: error }, 'Sweeper: notifications failed');
+        deps.logger.error({ err: safeError(error) }, 'Sweeper: notifications failed');
       }
 
       try {
@@ -167,7 +167,7 @@ export async function sweepOnce(input: SweepDeps & { shouldStop?: () => boolean 
           result.checked += 1;
         }
       } catch (error) {
-        deps.logger.error({ err: error }, 'Sweeper: payment checks failed');
+        deps.logger.error({ err: safeError(error) }, 'Sweeper: payment checks failed');
       }
 
       try {
@@ -182,11 +182,11 @@ export async function sweepOnce(input: SweepDeps & { shouldStop?: () => boolean 
           try {
             if (await expireOrder(deps, o.id)) result.expired += 1;
           } catch (error) {
-            deps.logger.error({ err: error, orderId: o.id }, 'Sweeper: could not expire order');
+            deps.logger.error({ err: safeError(error), orderId: o.id }, 'Sweeper: could not expire order');
           }
         }
       } catch (error) {
-        deps.logger.error({ err: error }, 'Sweeper: expiry failed');
+        deps.logger.error({ err: safeError(error) }, 'Sweeper: expiry failed');
       }
 
       try {
@@ -198,7 +198,7 @@ export async function sweepOnce(input: SweepDeps & { shouldStop?: () => boolean 
         // Idempotency keys only need to outlive a client's retries (spec: 24 hours).
         await db.delete(idempotencyKeys).where(lt(idempotencyKeys.createdAt, new Date(now.getTime() - 86_400_000)));
       } catch (error) {
-        deps.logger.error({ err: error }, 'Sweeper: guest cart cleanup failed');
+        deps.logger.error({ err: safeError(error) }, 'Sweeper: guest cart cleanup failed');
       }
     } finally {
       await client.query('select pg_advisory_unlock($1)', [JOBS_LOCK_KEY]);
@@ -220,7 +220,7 @@ export function startScheduler(deps: SweepDeps & { intervalMs?: number; stopTime
       .then((r) => {
         if (r.expired || r.checked || r.notifications.sent || r.notifications.failed || r.guestCartsDeleted) deps.logger.info({ sweep: r }, 'Sweeper run');
       })
-      .catch((error: unknown) => deps.logger.error({ err: error }, 'Sweeper run failed'))
+      .catch((error: unknown) => deps.logger.error({ err: safeError(error) }, 'Sweeper run failed'))
       .finally(() => {
         current = null;
       });

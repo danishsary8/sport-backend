@@ -29,6 +29,7 @@ export function devPaymentsRouter(ctx: AppContext): Router | null {
 
   router.get('/dev/payments/:tranId/checkout', (req, res) => {
     const tranId = escapeHtml(String(req.params.tranId));
+    res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'");
     res
       .type('html')
       .send(

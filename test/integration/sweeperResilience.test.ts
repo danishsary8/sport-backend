@@ -1,4 +1,3 @@
-import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Database } from '../../src/db/client.js';
 import { seed } from '../../src/db/seed/index.js';

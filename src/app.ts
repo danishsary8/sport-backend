@@ -74,7 +74,13 @@ export function createApp(deps: AppDeps): express.Express {
 
   app.use(requestId);
   app.use(httpLogger(logger));
-  app.use(helmet());
+  // A JSON API: nothing may load or frame its responses; other helmet defaults stay on.
+  app.use(
+    helmet({
+      contentSecurityPolicy: { useDefaults: false, directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
+      crossOriginResourcePolicy: { policy: 'same-site' },
+    }),
+  );
 
   const allowed = new Set(config.corsOrigins);
   app.use(

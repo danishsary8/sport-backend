@@ -20,7 +20,7 @@ afterAll(closeTestDb);
 describe('importCatalog', () => {
   it('imports every product and size', async () => {
     const result = await importCatalog(database.db, products);
-    expect(result).toMatchObject({ products: 80, variants: totalSizes, created: 80, updated: 0 });
+    expect(result).toMatchObject({ products: 80, variants: totalSizes, created: 80, skipped: 0 });
     expect((await one('select count(*)::int as n from products')).n).toBe(80);
     expect((await one('select count(*)::int as n from variants')).n).toBe(totalSizes);
   });
@@ -82,13 +82,24 @@ describe('importCatalog', () => {
         (select v.id from variants v join products p on p.id = v.product_id where p.slug = 'cambodia-national-team-home-jersey-varaman' and v.size_label = 'M')
        and branch_id = 'sonthormuk'`,
     );
+    await q(
+      `update products set name_i18n = '{"en":"Renamed by admin"}' where slug = 'cambodia-national-team-home-jersey-varaman'`,
+    );
+    await q(
+      `update variants set price_cents = 2999 where product_id = (select id from products where slug = 'cambodia-national-team-home-jersey-varaman')`,
+    );
     const again = await importCatalog(database.db, products);
-    expect(again).toMatchObject({ products: 80, created: 0, updated: 80 });
-    expect((await one('select count(*)::int as n from variants')).n).toBe(totalSizes);
+    expect(again).toMatchObject({ products: 80, created: 0, skipped: 80 });
     const kept = await one(
+      `select p.name_i18n->>'en' as name, min(v.price_cents) as price from products p join variants v on v.product_id = p.id
+       where p.slug = 'cambodia-national-team-home-jersey-varaman' group by p.id`,
+    );
+    expect(kept).toEqual({ name: 'Renamed by admin', price: 2999 });
+    expect((await one('select count(*)::int as n from variants')).n).toBe(totalSizes);
+    const keptStock = await one(
       `select on_hand from stock s join variants v on v.id = s.variant_id join products p on p.id = v.product_id
        where p.slug = 'cambodia-national-team-home-jersey-varaman' and v.size_label = 'M' and s.branch_id = 'sonthormuk'`,
     );
-    expect(kept.on_hand).toBe(7);
+    expect(keptStock.on_hand).toBe(7);
   });
 });

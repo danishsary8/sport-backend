@@ -76,6 +76,16 @@ describe('counter sales', () => {
     expect((await api('post', '/stock/sale', t.staffAll, { branchId: 'chomkadong', lines: [{ variantId, qty: 1 }] })).status).toBe(200);
   });
 
+  it('answers 404 for a variant that does not exist', async () => {
+    const ghost = '00000000-0000-4000-8000-000000000000';
+    const sale = await api('post', '/stock/sale', t.staffSensok, { lines: [{ variantId: ghost, qty: 1 }] });
+    expect(sale.status).toBe(404);
+    const adjust = await api('post', '/stock/adjust', t.staffSensok, { variantId: ghost, branchId: 'sensok', delta: 1, note: 'x' });
+    expect(adjust.status).toBe(404);
+    const transfer = await api('post', '/stock/transfer', t.staffSensok, { variantId: ghost, from: 'sensok', to: 'sonthormuk', qty: 1 });
+    expect(transfer.status).toBe(404);
+  });
+
   it('explains a sale that exceeds the shelf', async () => {
     const res = await api('post', '/stock/sale', t.staffSensok, { lines: [{ variantId, qty: 99 }] });
     expect(res.status).toBe(409);

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
-import { stock, stockMovements, type StockRow } from '../../db/schema/index.js';
+import { stock, stockMovements, variants, type StockRow } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
 
 export type StockReason =
@@ -34,7 +34,13 @@ export interface Movement {
  * (on_hand ≥ 0, reserved ≥ 0, reserved ≤ on_hand), applies the change and writes the audit row,
  * all inside the caller's transaction.
  */
+async function assertVariantExists(tx: Tx, variantId: string): Promise<void> {
+  const [row] = await tx.select({ id: variants.id }).from(variants).where(eq(variants.id, variantId));
+  if (!row) throw new AppError('not_found', 404, 'Unknown product variant', { variantId });
+}
+
 export async function applyMovement(tx: Tx, m: Movement): Promise<StockRow> {
+  await assertVariantExists(tx, m.variantId);
   await tx.insert(stock).values({ variantId: m.variantId, branchId: m.branchId }).onConflictDoNothing();
   const [current] = await tx
     .select()
@@ -134,6 +140,7 @@ export async function transferStock(
   const refId = `XFER-${randomUUID().slice(0, 8).toUpperCase()}`;
   const [first, second] = [input.from, input.to].sort();
   await db.transaction(async (tx) => {
+    await assertVariantExists(tx, input.variantId);
     // Lock both rows in a stable order, then apply out before in.
     for (const branchId of [first!, second!]) {
       await tx.insert(stock).values({ variantId: input.variantId, branchId }).onConflictDoNothing();

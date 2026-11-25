@@ -16,15 +16,18 @@ const bool = z
   .transform((v) => v === 'true' || v === '1')
   .optional();
 
-const cents = z.coerce.number().int().min(0).max(10_000_000).optional();
+/** A cleared form field arrives as '' — treat it as not set. */
+const blankToUndefined = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? undefined : v);
+const cents = z.preprocess(blankToUndefined, z.coerce.number().int().min(0).max(10_000_000).optional());
+const optionalText = z.preprocess(blankToUndefined, z.string().trim().max(80).optional());
 
 export const SORTS = ['popular', 'new', 'price_asc', 'price_desc', 'discount'] as const;
 /** discount=1|2|3 → at least 10%, 30%, 50% off. */
 export const DISCOUNT_BANDS: Record<string, number> = { '1': 10, '2': 30, '3': 50 };
 
 export const catalogFilterShape = {
-  category: z.string().trim().max(80).optional(),
-  collection: z.string().trim().max(80).optional(),
+  category: optionalText,
+  collection: optionalText,
   brand: many,
   size: many,
   color: many,
@@ -58,7 +61,6 @@ export type CatalogQuery = z.infer<typeof catalogQuerySchema>;
 export type CatalogFilters = Omit<CatalogQuery, 'sort' | 'page' | 'pageSize' | 'lang' | 'collection'>;
 export type FilterKey = keyof CatalogFilters;
 
-const collectionRuleSchema = z.object(catalogFilterShape).partial();
 
 /** Merges a collection's saved rule under the explicit params (explicit params win). */
 export async function resolveFilters(db: Db, query: CatalogQuery): Promise<CatalogFilters> {
@@ -69,8 +71,13 @@ export async function resolveFilters(db: Db, query: CatalogQuery): Promise<Catal
   );
   const row = result.rows[0];
   if (!row) throw new AppError('not_found', 404, 'Collection not found');
-  const rule = collectionRuleSchema.parse(row.rule ?? {});
-  const merged: Record<string, unknown> = { ...rule };
+  // A saved rule with a bad field (e.g. a typo in the admin) shouldn't break the page: skip that field.
+  const merged: Record<string, unknown> = {};
+  const shape = catalogFilterShape as Record<string, z.ZodType>;
+  for (const [key, value] of Object.entries((row.rule as Record<string, unknown>) ?? {})) {
+    const parsed = shape[key]?.safeParse(value);
+    if (parsed?.success && parsed.data !== undefined) merged[key] = parsed.data;
+  }
   for (const [k, v] of Object.entries(explicit)) if (v !== undefined) merged[k] = v;
   return merged as CatalogFilters;
 }

@@ -86,12 +86,16 @@ export async function home(db: Db, lang: Lang, assetBase: string, buffer: number
       }
       if (s.type === 'product_rail') {
         const parsed = catalogQuerySchema.safeParse({ ...(payload.query as object), page: '1', pageSize: '12', lang });
+        payload.products = [];
         if (parsed.success) {
-          const filters = await resolveFilters(db, parsed.data);
-          const { rows } = await listProducts(db, filters, { ...parsed.data, buffer });
-          payload.products = rows.map((r) => toCard(r, lang, assetBase));
-        } else {
-          payload.products = [];
+          try {
+            const filters = await resolveFilters(db, parsed.data);
+            const { rows } = await listProducts(db, filters, { ...parsed.data, buffer });
+            payload.products = rows.map((r) => toCard(r, lang, assetBase));
+          } catch (error) {
+            // A rail pointing at a retired collection must not take the whole home page down.
+            if (!(error instanceof AppError)) throw error;
+          }
         }
       }
       return { id: s.id, type: s.type, payload };

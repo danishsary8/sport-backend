@@ -91,15 +91,16 @@ function flagsOf(p: FrontendProduct): ProductFlags {
 }
 
 /**
- * Upserts the storefront catalog by slug. Idempotent: re-running updates descriptive data and
- * prices, adds new sizes, and never touches stock of variants that already exist.
+ * Adds storefront products that aren't in the database yet (matched by slug). Products that
+ * already exist are skipped entirely, so re-running never reverts admin edits to names, prices
+ * or stock. Use the admin API to change existing products.
  */
 export async function importCatalog(
   db: Db,
   input: FrontendProduct[],
-): Promise<{ products: number; variants: number; created: number; updated: number }> {
+): Promise<{ products: number; variants: number; created: number; skipped: number }> {
   let created = 0;
-  let updated = 0;
+  let skipped = 0;
   let variantCount = 0;
 
   await db.transaction(async (tx) => {
@@ -108,6 +109,12 @@ export async function importCatalog(
     const usedSkus = new Set((await tx.select({ sku: variants.sku }).from(variants)).map((v) => v.sku));
 
     for (const p of input) {
+      const [existingProduct] = await tx.select({ id: products.id }).from(products).where(eq(products.slug, p.slug));
+      if (existingProduct) {
+        skipped += 1;
+        continue;
+      }
+
       const categoryId = categoryIds.get(p.category);
       if (!categoryId) throw new Error(`Unknown category "${p.category}" for ${p.slug}`);
 
@@ -133,16 +140,8 @@ export async function importCatalog(
         status: 'active' as const,
         searchText: buildSearchText([p.name, p.shortName, p.brand, p.club, p.league, p.colorway, p.category]),
       };
-      const [product] = await tx
-        .insert(products)
-        .values(values)
-        .onConflictDoUpdate({
-          target: products.slug,
-          set: { ...values, slug: undefined, status: undefined, updatedAt: sql`now()` },
-        })
-        .returning({ id: products.id, created: sql<boolean>`(xmax = 0)` });
-      if (product!.created) created += 1;
-      else updated += 1;
+      const [product] = await tx.insert(products).values(values).returning({ id: products.id });
+      created += 1;
       const productId = product!.id;
 
       let [color] = await tx
@@ -205,5 +204,5 @@ export async function importCatalog(
     }
   });
 
-  return { products: input.length, variants: variantCount, created, updated };
+  return { products: input.length, variants: variantCount, created, skipped };
 }

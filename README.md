@@ -43,7 +43,7 @@ npm test
 | `npm run db:generate` | Generate a SQL migration from schema changes into `drizzle/` (commit it) |
 | `npm run db:migrate` | Apply migrations (run after `build`) |
 | `npm run db:seed` | Load branches, Cambodian provinces/districts/communes, categories, collections, default home sections (idempotent) |
-| `npm run catalog:import` | Import the storefront catalog (idempotent; never overwrites counted stock) |
+| `npm run catalog:import` | Add storefront products that are not in the database yet. Existing products are skipped, so admin edits to names, prices and stock are never reverted |
 
 ## Configuration
 

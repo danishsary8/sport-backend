@@ -72,7 +72,7 @@ export async function buildFacets(db: Db, f: CatalogFilters, lang: Lang, buffer:
     attribute('league'),
     attribute('surface'),
     attribute('kitType'),
-    db.execute<{ price: number }>(sql`with ${cte} select base.price from base where ${where('priceMin')} and ${filterConditions({ ...f, priceMin: undefined }, 'priceMax')}`),
+    db.execute<{ price: number }>(sql`with ${cte} select base.price from base where ${filterConditions({ ...f, priceMin: undefined, priceMax: undefined })}`),
     db.execute<{ d: number }>(sql`with ${cte} select coalesce(base.discount_pct, 0) as d from base where ${where('discount')}`),
     db.execute<{ n: number }>(sql`with ${cte} select count(*)::int as n from base where ${where('inStockOnly')} and base.units > 0`),
   ]);

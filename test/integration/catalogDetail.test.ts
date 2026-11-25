@@ -132,4 +132,20 @@ describe('menu, collections and home', () => {
     expect(rail.payload.products.length).toBeGreaterThan(0);
     expect(rail.payload.products.length).toBeLessThanOrEqual(12);
   });
+
+  it('keeps the home page up when a rail points at a retired or broken collection', async () => {
+    await database.pool.query(`insert into collections (slug, name_i18n, rule, active) values
+      ('retired', '{"en":"Retired"}', '{"category":"boots"}', false),
+      ('broken', '{"en":"Broken"}', '{"priceMin":"abc","category":"boots"}', true)`);
+    await database.pool.query(`insert into home_sections (type, sort, payload) values
+      ('product_rail', 90, '{"title":{"en":"Old"},"query":{"collection":"retired"}}'),
+      ('product_rail', 91, '{"title":{"en":"Typo"},"query":{"collection":"broken"}}')`);
+    const res = await request(app).get('/v1/catalog/home');
+    expect(res.status).toBe(200);
+    expect(res.body.sections.some((s: { payload: { products: unknown[] } }) => s.payload.products?.length > 0)).toBe(true);
+
+    const broken = await request(app).get('/v1/catalog/products?collection=broken&pageSize=48');
+    expect(broken.status).toBe(200);
+    expect(broken.body.products.every((p: { category: string }) => p.category === 'boots')).toBe(true);
+  });
 });

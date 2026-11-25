@@ -152,4 +152,18 @@ describe('GET /v1/catalog/filters', () => {
     const buckets = facet(res, 'price').range!.buckets;
     expect(buckets.reduce((n, b) => n + b.count, 0)).toBe(res.body.total);
   });
+
+  it('keeps the price facet independent of the chosen price range', async () => {
+    const all = facet(await facets('?category=boots'), 'price').range!;
+    const capped = facet(await facets('?category=boots&priceMax=5000'), 'price').range! as unknown as typeof all & { max: number };
+    expect(capped.buckets.map((b) => b.count)).toEqual(all.buckets.map((b) => b.count));
+    expect(capped.max).toBe((all as unknown as { max: number }).max);
+  });
+});
+
+describe('empty parameters', () => {
+  it('treats cleared filters as not set', async () => {
+    expect((await list('?priceMax=&priceMin=&category=&collection=')).body.total).toBe(80);
+    expect((await list('?priceMax=%20')).body.total).toBe(80);
+  });
 });

@@ -27,7 +27,7 @@ import { enqueueOrderNotifications, enqueueRmaNotification } from '../notificati
 import { recordEvent } from '../orders/events.js';
 import { loadRules } from '../pricing/context.js';
 import { settingNumber } from '../settings/payments.js';
-import { commitAllocations, releaseAllocations, reserveAllocations, restockAllocations } from '../stock/locking.js';
+import { commitAllocations, lockStock, releaseAllocations, reserveAllocations, restockAllocations } from '../stock/locking.js';
 import { isNonReturnable, loadReturnRules, newRmaNumber, refundForLine, returnWindowOpen } from './rules.js';
 
 export const rmaCreateSchema = z.object({
@@ -160,7 +160,8 @@ export async function createRma(db: Db, user: UserRow, input: RmaCreateInput, no
         fail('non_returnable');
         continue;
       }
-      const total = (used.get(item.id) ?? 0) + (requested.get(item.id) ?? 0) + line.qty;
+      const prior = (used.get(item.id) ?? 0) + (requested.get(item.id) ?? 0);
+      const total = prior + line.qty;
       if (total > item.qty) {
         fail('qty_exceeded');
         continue;
@@ -185,7 +186,7 @@ export async function createRma(db: Db, user: UserRow, input: RmaCreateInput, no
         }
         accepted.push({ line, item, refund: 0, exchange: plan.allocations.map((a) => ({ branchId: a.branchId, qty: a.qty })) });
       } else {
-        accepted.push({ line, item, refund: refundForLine(item.lineTotalCents, item.qty, line.qty) });
+        accepted.push({ line, item, refund: refundForLine(item.lineTotalCents, item.qty, line.qty, prior) });
       }
     }
     if (problems.length > 0) throw new AppError('return_not_allowed', 400, "Some items can't be returned", problems);
@@ -202,6 +203,11 @@ export async function createRma(db: Db, user: UserRow, input: RmaCreateInput, no
       }
     }
     if (!rma) throw new Error('Could not allocate a return number');
+    // Lock every stock row this request holds, in the one global order, before touching any of them.
+    await lockStock(
+      tx,
+      accepted.flatMap((x) => (x.exchange ?? []).map((p) => ({ variantId: x.line.exchangeVariantId!, branchId: p.branchId }))),
+    );
     for (const a of accepted) {
       // An exchange split across stores is stored as one row per store.
       const parts = a.exchange ?? [{ branchId: null as string | null, qty: a.line.qty }];
@@ -305,6 +311,8 @@ export async function decideRma(
           .limit(1);
         restock.push({ variantId: oi!.variantId, branchId: chosen ?? sentFrom?.branchId ?? order.pickupBranchId ?? 'sonthormuk', qty: item.qty });
       }
+      // One sorted lock over every row this decision touches (returned units and the exchange size).
+      await lockStock(tx, [...restock, ...exchangeAllocs]);
       await restockAllocations(tx, restock, rma.number, 'rma_restock', actor.id);
 
       if (rma.resolution === 'size_exchange') {

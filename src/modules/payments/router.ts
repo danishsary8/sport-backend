@@ -138,20 +138,34 @@ export function webhookRouter(ctx: AppContext): Router {
         res.json({ ok: true });
         return;
       }
-      // One provider check per payment per couple of seconds, however many pushbacks arrive.
-      const claimed = await db
-        .update(payments)
-        .set({ lastCheckedAt: now() })
-        .where(
-          and(
-            eq(payments.id, payment.id),
-            inArray(payments.status, ['pending', 'cancelled']),
-            or(isNull(payments.lastCheckedAt), lt(payments.lastCheckedAt, new Date(Date.now() - WEBHOOK_CHECK_INTERVAL_MS))),
-          ),
-        )
-        .returning({ id: payments.id });
+      // One provider check per payment per couple of seconds, however many pushbacks arrive. A pushback
+      // that lands inside the window waits it out once rather than being dropped.
+      const claim = () =>
+        db
+          .update(payments)
+          .set({ lastCheckedAt: now() })
+          .where(
+            and(
+              eq(payments.id, payment.id),
+              // Anything not yet approved: a cancelled or expired attempt can still be paid late.
+              inArray(payments.status, ['pending', 'cancelled', 'expired', 'declined']),
+              or(isNull(payments.lastCheckedAt), lt(payments.lastCheckedAt, new Date(Date.now() - WEBHOOK_CHECK_INTERVAL_MS))),
+            ),
+          )
+          .returning({ id: payments.id });
+      if (payment.status === 'approved' || payment.status === 'refunded') {
+        await finish('ignored', `already_${payment.status}`);
+        res.json({ ok: true });
+        return;
+      }
+      let claimed = await claim();
       if (claimed.length === 0) {
-        await finish('ignored', payment.status === 'pending' || payment.status === 'cancelled' ? 'throttled' : `already_${payment.status}`);
+        await new Promise((r) => setTimeout(r, WEBHOOK_CHECK_INTERVAL_MS));
+        claimed = await claim();
+      }
+      if (claimed.length === 0) {
+        // Still busy: store as failed so PayWay's redelivery is processed (the poll and sweeper also cover it).
+        await finish('failed', 'throttled');
         res.json({ ok: true });
         return;
       }

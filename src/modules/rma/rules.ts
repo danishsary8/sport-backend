@@ -30,9 +30,14 @@ export function isNonReturnable(p: { categorySlug: string; productSlug: string; 
   return p.productSlug.toLowerCase().split('-').some((word) => blocked.has(word));
 }
 
-/** The paid share of a line for `returnQty` of its units. Discounts are already inside the line total. */
-export function refundForLine(lineTotalCents: number, itemQty: number, returnQty: number): number {
-  return Math.round((lineTotalCents * returnQty) / itemQty);
+/**
+ * The paid share of a line for `returnQty` of its units, after `alreadyReturned` units were refunded
+ * before. Computed cumulatively, so all the refunds of one line add up to exactly what was paid.
+ * Discounts are already inside the line total.
+ */
+export function refundForLine(lineTotalCents: number, itemQty: number, returnQty: number, alreadyReturned = 0): number {
+  const upTo = (n: number) => Math.round((lineTotalCents * n) / itemQty);
+  return upTo(alreadyReturned + returnQty) - upTo(alreadyReturned);
 }
 
 export async function loadReturnRules(db: Exec): Promise<ReturnRules> {

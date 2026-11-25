@@ -21,6 +21,7 @@ import type { Lang } from '../catalog/i18n.js';
 import { pick } from '../catalog/i18n.js';
 import { awardLoyalty, reverseLoyalty } from '../loyalty/award.js';
 import { recordEvent } from './events.js';
+import { enqueueOrderNotifications } from '../notifications/outbox.js';
 import { loadOrderView } from './load.js';
 import { transitionOrder, assertStaffTransition } from './transition.js';
 import type { OrderView } from './view.js';
@@ -204,8 +205,16 @@ export async function cancelOrder(tx: Tx, order: OrderRow, actor: string, reason
         await reverseLoyalty(tx, order.userId, earned.delta, Math.max(0, order.totalCents - order.shippingCents), 'order_cancelled', order.id, rules, `Order ${order.number} cancelled`);
       }
     }
+    if (order.promotionId) {
+      // The code wasn't really used: give the use back so a one-per-customer code works again.
+      const removed = await tx.delete(promotionRedemptions).where(eq(promotionRedemptions.orderId, order.id)).returning({ id: promotionRedemptions.id });
+      if (removed.length > 0) {
+        await tx.update(promotions).set({ usedCount: sql`greatest(0, ${promotions.usedCount} - 1)` }).where(eq(promotions.id, order.promotionId));
+      }
+    }
     await tx.update(orders).set({ needsRefund: true }).where(eq(orders.id, order.id));
     await recordEvent(tx, { orderId: order.id, kind: 'flag', actor, note: 'Needs refund: paid order cancelled' });
+    await enqueueOrderNotifications(tx, 'needs_refund', order.id, { reason: `paid order cancelled: ${reason}` });
   }
   await transitionOrder(tx, order, 'cancelled', actor, reason);
   return toClose;

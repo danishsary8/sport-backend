@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNotNull, lt, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { carts, orderItemAllocations, orderItems, orders, payments, promotions, type OrderStatus } from '../db/schema/index.js';
 import { AppError } from '../lib/errors.js';
@@ -14,7 +14,8 @@ import { releaseAllocations } from '../modules/stock/locking.js';
 
 export const JOBS_LOCK_KEY = 727001;
 const GUEST_CART_DAYS = 60;
-const EXPIRABLE: OrderStatus[] = ['pending_payment', 'awaiting_pickup_payment'];
+/** Unpaid orders whose hold can run out (an unpaid pickup order may already be marked ready). */
+const EXPIRABLE: OrderStatus[] = ['pending_payment', 'awaiting_pickup_payment', 'ready_for_pickup'];
 /** If the payment service can't be reached, a hold ends anyway this long after it was due (ops are alerted). */
 export const UNVERIFIED_EXPIRY_GRACE_MS = 2 * 60 * 60 * 1000;
 
@@ -115,6 +116,18 @@ export async function sweepOnce(deps: SweepDeps): Promise<SweepResult> {
           .limit(50);
         for (const { payment } of due) {
           await refreshPayment({ db, payments: deps.payments, now: deps.now }, payment, { minIntervalMs: 30_000, source: 'sweeper' });
+          result.checked += 1;
+        }
+        // Safety net for late payments: attempts of orders that expired in the last day, every 10 minutes.
+        const late = await db
+          .select({ payment: payments })
+          .from(payments)
+          .innerJoin(orders, eq(orders.id, payments.orderId))
+          .where(and(inArray(payments.status, ['expired', 'cancelled']), eq(orders.status, 'expired'), gt(orders.updatedAt, new Date(now.getTime() - 86_400_000))))
+          .orderBy(sql`${payments.lastCheckedAt} asc nulls first`)
+          .limit(50);
+        for (const { payment } of late) {
+          await refreshPayment({ db, payments: deps.payments, now: deps.now }, payment, { minIntervalMs: 10 * 60_000, source: 'sweeper' });
           result.checked += 1;
         }
       } catch (error) {

@@ -111,10 +111,12 @@ describe('webhook abuse', () => {
     expect(Object.keys(payload).sort()).toEqual(['status', 'tran_id']);
   });
 
-  it('asks the provider at most once per couple of seconds per payment, however many pushbacks arrive', async () => {
+  it('asks the provider at most once per couple of seconds per payment, however many pushbacks arrive', { timeout: 15_000 }, async () => {
     const { body } = await placeGuestOrder(ctx.app, address, { variantId: jerseyM, qty: 1 });
     const before = ctx.payments.checkCalls;
-    for (let i = 0; i < 5; i++) await webhook({ tran_id: body.payment!.tranId, status: 'pending', apv: String(i) }).expect(200);
-    expect(ctx.payments.checkCalls - before).toBe(1);
+    const results = await Promise.all(Array.from({ length: 5 }, (_, i) => webhook({ tran_id: body.payment!.tranId, status: 'pending', apv: String(i) })));
+    expect(results.every((r) => r.status === 200)).toBe(true);
+    // The first is checked at once; the rest wait out the window once, and only one of them gets to check.
+    expect(ctx.payments.checkCalls - before).toBeLessThanOrEqual(2);
   });
 });

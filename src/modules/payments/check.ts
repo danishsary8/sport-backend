@@ -23,7 +23,7 @@ export async function refreshPayment(
       and(
         eq(payments.id, payment.id),
         // Cancelled attempts too: an old QR can still be paid, and that payment must be accepted.
-        inArray(payments.status, ['pending', 'cancelled']),
+        inArray(payments.status, ['pending', 'cancelled', 'expired', 'declined']),
         or(isNull(payments.lastCheckedAt), lt(payments.lastCheckedAt, new Date(now.getTime() - minInterval))),
       ),
     )

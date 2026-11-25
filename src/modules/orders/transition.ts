@@ -6,7 +6,7 @@ import { enqueueOrderNotifications } from '../notifications/outbox.js';
 import { recordEvent } from './events.js';
 import { canTransition } from './statusMachine.js';
 
-const NEEDS_PAYMENT: OrderStatus[] = ['out_for_delivery', 'delivered', 'completed'];
+const NEEDS_PAYMENT: OrderStatus[] = ['confirmed', 'printing', 'out_for_delivery', 'delivered', 'completed'];
 const TELL_CUSTOMER: OrderStatus[] = ['printing', 'ready_for_pickup', 'out_for_delivery', 'delivered', 'completed', 'cancelled'];
 
 const refuse = (order: OrderRow, to: OrderStatus, why: string) =>
@@ -17,7 +17,13 @@ export function assertStaffTransition(order: OrderRow, to: OrderStatus): void {
   if (!canTransition(order.status, to)) {
     throw refuse(order, to, `An order can't go from ${order.status.replaceAll('_', ' ')} to ${to.replaceAll('_', ' ')}`);
   }
+  // Expiry belongs to the payment clock: staff can neither expire an order nor revive an expired one
+  // (a late payment revives it automatically, with its stock).
+  if (to === 'expired' || order.status === 'expired') throw refuse(order, to, 'Expired orders are handled automatically');
   if (NEEDS_PAYMENT.includes(to) && order.paymentStatus !== 'paid') throw refuse(order, to, 'This order has not been paid yet');
+  if (to === 'ready_for_pickup' && order.paymentStatus !== 'paid' && order.status !== 'awaiting_pickup_payment') {
+    throw refuse(order, to, 'This order has not been paid yet');
+  }
   if (to === 'ready_for_pickup' && order.fulfillment !== 'pickup') throw refuse(order, to, 'This order is for delivery, not pickup');
   if (to === 'out_for_delivery' && order.fulfillment !== 'delivery') throw refuse(order, to, 'This order is for pickup, not delivery');
 }

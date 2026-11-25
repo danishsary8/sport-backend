@@ -7,7 +7,7 @@ const ALLOWED: Record<OrderStatus, OrderStatus[]> = {
   awaiting_pickup_payment: ['ready_for_pickup', 'expired', 'cancelled'],
   confirmed: ['printing', 'ready_for_pickup', 'out_for_delivery', 'cancelled'],
   printing: ['ready_for_pickup', 'out_for_delivery', 'cancelled'],
-  ready_for_pickup: ['completed', 'cancelled'],
+  ready_for_pickup: ['completed', 'cancelled', 'expired'],
   out_for_delivery: ['delivered'],
   delivered: ['completed'],
   expired: ['confirmed', 'printing'],

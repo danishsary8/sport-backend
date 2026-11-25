@@ -1,4 +1,4 @@
-import { and, eq, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, ne, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import type { Tx } from '../../db/exec.js';
 import {
@@ -62,6 +62,8 @@ async function reReserve(tx: Tx, order: OrderRow): Promise<boolean> {
     order.fulfillment === 'pickup' ? { fulfillment: 'pickup', branchId: order.pickupBranchId! } : { fulfillment: 'delivery' },
   );
   if (!plan.ok) return false;
+  // Promotion before stock: the same lock order as order placement.
+  if (order.promotionId) await tx.update(promotions).set({ usedCount: sql`${promotions.usedCount} + 1` }).where(eq(promotions.id, order.promotionId));
   try {
     await tx.transaction(async (sp) => {
       await reserveAllocations(sp, plan.allocations, order.number);
@@ -71,10 +73,12 @@ async function reReserve(tx: Tx, order: OrderRow): Promise<boolean> {
       await sp.insert(orderItemAllocations).values(plan.allocations.map((a) => ({ orderItemId: a.lineId, branchId: a.branchId, qty: a.qty })));
     });
   } catch (error) {
-    if (error instanceof AppError && error.code === 'stock_changed') return false;
+    if (error instanceof AppError && error.code === 'stock_changed') {
+      if (order.promotionId) await tx.update(promotions).set({ usedCount: sql`greatest(0, ${promotions.usedCount} - 1)` }).where(eq(promotions.id, order.promotionId));
+      return false;
+    }
     throw error;
   }
-  if (order.promotionId) await tx.update(promotions).set({ usedCount: sql`${promotions.usedCount} + 1` }).where(eq(promotions.id, order.promotionId));
   return true;
 }
 
@@ -113,7 +117,12 @@ async function fulfil(tx: Tx, order: OrderRow, payment: PaymentRow, now: Date): 
  */
 export async function applyProviderResult(deps: { db: Db; now: () => Date }, tranId: string, check: TransactionCheck, source: ConfirmSource): Promise<ConfirmResult> {
   return deps.db.transaction(async (tx) => {
-    const [payment] = await tx.select().from(payments).where(eq(payments.providerTranId, tranId)).for('update');
+    const [found] = await tx.select({ id: payments.id, orderId: payments.orderId }).from(payments).where(eq(payments.providerTranId, tranId));
+    if (!found) return 'unknown';
+    // Lock every attempt of the order in attempt order, then the order: the same order expiry and staff
+    // actions use, so two attempts confirmed at once can't deadlock.
+    await tx.select({ id: payments.id }).from(payments).where(eq(payments.orderId, found.orderId)).orderBy(asc(payments.attempt)).for('update');
+    const [payment] = await tx.select().from(payments).where(eq(payments.id, found.id));
     if (!payment) return 'unknown';
     const [order] = await tx.select().from(orders).where(eq(orders.id, payment.orderId)).for('update');
     if (!order) return 'unknown';

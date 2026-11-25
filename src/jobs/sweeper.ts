@@ -71,12 +71,13 @@ export async function expireOrder(deps: Omit<SweepDeps, 'notifiers' | 'logger'>,
       .from(orderItemAllocations)
       .innerJoin(orderItems, eq(orderItems.id, orderItemAllocations.orderItemId))
       .where(eq(orderItems.orderId, orderId));
-    await releaseAllocations(tx, allocations, order.number);
-    assertTransition(order.status, 'expired');
-    await tx.update(orders).set({ status: 'expired', reservedUntil: null, updatedAt: sql`now()` }).where(eq(orders.id, orderId));
+    // Promotion before stock: the same lock order as order placement.
     if (order.promotionId) {
       await tx.update(promotions).set({ usedCount: sql`greatest(0, ${promotions.usedCount} - 1)` }).where(eq(promotions.id, order.promotionId));
     }
+    await releaseAllocations(tx, allocations, order.number);
+    assertTransition(order.status, 'expired');
+    await tx.update(orders).set({ status: 'expired', reservedUntil: null, updatedAt: sql`now()` }).where(eq(orders.id, orderId));
     await recordEvent(tx, { orderId, from: order.status, to: 'expired', kind: 'status', actor: 'system', note: 'Payment not received in time' });
     await enqueueOrderNotifications(tx, 'status_changed', orderId);
     if (unverified) {
@@ -94,8 +95,34 @@ export async function expireOrder(deps: Omit<SweepDeps, 'notifiers' | 'logger'>,
   return true;
 }
 
+/**
+ * Wraps the provider for one run: after the first failure, further calls fail at once, so an outage
+ * costs one timeout per run instead of one per order.
+ */
+function breakerFor(provider: PaymentProvider): PaymentProvider {
+  let down = false;
+  const guard = <A extends unknown[], R>(fn: (...a: A) => Promise<R>) => async (...a: A): Promise<R> => {
+    if (down) throw new AppError('payment_provider_error', 502, 'Payment service unavailable (skipped for this run)');
+    try {
+      return await fn(...a);
+    } catch (error) {
+      if (error instanceof AppError) down = true;
+      throw error;
+    }
+  };
+  return {
+    name: provider.name,
+    createTransaction: guard(provider.createTransaction.bind(provider)),
+    checkTransaction: guard(provider.checkTransaction.bind(provider)),
+    cancelTransaction: guard(provider.cancelTransaction.bind(provider)),
+    verifyWebhook: provider.verifyWebhook.bind(provider),
+  };
+}
+
 /** One pass of the background work. Only one instance runs it at a time (Postgres advisory lock). */
-export async function sweepOnce(deps: SweepDeps): Promise<SweepResult> {
+export async function sweepOnce(input: SweepDeps & { shouldStop?: () => boolean }): Promise<SweepResult> {
+  const deps = { ...input, payments: breakerFor(input.payments) };
+  const stopping = () => input.shouldStop?.() === true;
   const result: SweepResult = { locked: false, checked: 0, expired: 0, notifications: { sent: 0, failed: 0, skipped: 0 }, guestCartsDeleted: 0 };
   const { db } = deps.database;
   const client = await deps.database.pool.connect();
@@ -106,6 +133,13 @@ export async function sweepOnce(deps: SweepDeps): Promise<SweepResult> {
     try {
       const now = deps.now();
 
+      // Notifications first: they don't depend on the payment service.
+      try {
+        result.notifications = await processOutbox(db, deps.notifiers, now);
+      } catch (error) {
+        deps.logger.error({ err: error }, 'Sweeper: notifications failed');
+      }
+
       try {
         const due = await db
           .select({ payment: payments })
@@ -115,6 +149,7 @@ export async function sweepOnce(deps: SweepDeps): Promise<SweepResult> {
           .orderBy(sql`${payments.lastCheckedAt} asc nulls first`)
           .limit(50);
         for (const { payment } of due) {
+          if (stopping()) break;
           await refreshPayment({ db, payments: deps.payments, now: deps.now }, payment, { minIntervalMs: 30_000, source: 'sweeper' });
           result.checked += 1;
         }
@@ -127,6 +162,7 @@ export async function sweepOnce(deps: SweepDeps): Promise<SweepResult> {
           .orderBy(sql`${payments.lastCheckedAt} asc nulls first`)
           .limit(50);
         for (const { payment } of late) {
+          if (stopping()) break;
           await refreshPayment({ db, payments: deps.payments, now: deps.now }, payment, { minIntervalMs: 10 * 60_000, source: 'sweeper' });
           result.checked += 1;
         }
@@ -142,6 +178,7 @@ export async function sweepOnce(deps: SweepDeps): Promise<SweepResult> {
           .orderBy(asc(orders.reservedUntil))
           .limit(100);
         for (const o of expiring) {
+          if (stopping()) break;
           try {
             if (await expireOrder(deps, o.id)) result.expired += 1;
           } catch (error) {
@@ -150,12 +187,6 @@ export async function sweepOnce(deps: SweepDeps): Promise<SweepResult> {
         }
       } catch (error) {
         deps.logger.error({ err: error }, 'Sweeper: expiry failed');
-      }
-
-      try {
-        result.notifications = await processOutbox(db, deps.notifiers, now);
-      } catch (error) {
-        deps.logger.error({ err: error }, 'Sweeper: notifications failed');
       }
 
       try {
@@ -179,13 +210,13 @@ export async function sweepOnce(deps: SweepDeps): Promise<SweepResult> {
 }
 
 /** Runs sweepOnce every interval (default 1 minute). stop() waits for a run in progress. */
-export function startScheduler(deps: SweepDeps & { intervalMs?: number }): { stop(): Promise<void>; runNow(): Promise<void> } {
+export function startScheduler(deps: SweepDeps & { intervalMs?: number; stopTimeoutMs?: number }): { stop(): Promise<void>; runNow(): Promise<void> } {
   let current: Promise<void> | null = null;
   let stopped = false;
   const tick = (): Promise<void> => {
     if (current) return current;
     if (stopped) return Promise.resolve();
-    current = sweepOnce(deps)
+    current = sweepOnce({ ...deps, shouldStop: () => stopped })
       .then((r) => {
         if (r.expired || r.checked || r.notifications.sent || r.notifications.failed || r.guestCartsDeleted) deps.logger.info({ sweep: r }, 'Sweeper run');
       })
@@ -202,7 +233,8 @@ export function startScheduler(deps: SweepDeps & { intervalMs?: number }): { sto
     async stop() {
       stopped = true;
       clearInterval(timer);
-      if (current) await current;
+      // Wait for the run to reach a safe point, but not for a hung payment-service call.
+      if (current) await Promise.race([current, new Promise((r) => setTimeout(r, deps.stopTimeoutMs ?? 1_500).unref())]);
     },
   };
 }

@@ -100,6 +100,21 @@ describe('GET /v1/products', () => {
   });
 });
 
+describe('cursor misuse', () => {
+  it('a cursor from one sort used with another sort → 400, not 500', async () => {
+    const first = await request(app).get('/v1/products?sort=price-asc&limit=2');
+    const res = await request(app).get(`/v1/products?sort=newest&cursor=${first.body.nextCursor}`);
+    expect(res.status).toBe(400);
+    expect(res.headers['content-type']).toMatch(/application\/problem\+json/);
+  });
+
+  it('a well-formed cursor with the wrong value type → 400, not 500', async () => {
+    const forged = Buffer.from(JSON.stringify(['not-a-number', 'some-slug'])).toString('base64url');
+    const res = await request(app).get(`/v1/products?sort=price-asc&cursor=${forged}`);
+    expect(res.status).toBe(400);
+  });
+});
+
 describe('GET /v1/products/:slug', () => {
   it('returns detail with sizes and priceCents', async () => {
     const res = await request(app).get('/v1/products/real-madrid-2026-27-home-authentic-jersey');

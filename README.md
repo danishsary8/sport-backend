@@ -24,7 +24,7 @@ Response (trimmed to the main fields of each item):
     { "slug": "chelsea-2026-27-home-authentic-jersey", "name": "Chelsea 2026/27 Home Jersey", "priceCents": 9500, "kitType": "home" },
     { "slug": "manchester-united-2026-27-home-jersey", "name": "Manchester United 2026/27 Home Jersey", "priceCents": 9500, "kitType": "home" }
   ],
-  "nextCursor": "Wzk1MDAsIm1hbmNoZXN0ZXItdW5pdGVkLTIwMjYtMjctaG9tZS1qZXJzZXkiXQ"
+  "nextCursor": "WyJwcmljZS1hc2MiLDk1MDAsIm1hbmNoZXN0ZXItdW5pdGVkLTIwMjYtMjctaG9tZS1qZXJzZXkiXQ"
 }
 ```
 

@@ -1,6 +1,6 @@
 import type { Db } from '../../db/client.js';
 import { ApiError } from '../../lib/errors.js';
-import { decodeCursor, encodeCursor } from '../../lib/pagination.js';
+import { decodeCursor, encodeCursor, type CursorValue } from '../../lib/pagination.js';
 import { findProductBySlug, listProducts, sortKey, stockBySize, type ProductRow } from './repository.js';
 import { SLUG_PARAM, type ProductDetail, type ProductListQuery, type ProductSummary } from './schemas.js';
 
@@ -39,12 +39,28 @@ function toSummary(row: ProductRow): ProductSummary {
   };
 }
 
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A cursor is [sort, sortValue, slug]; it is only valid with the sort that produced it. */
+function readCursor(cursor: string, sort: ProductListQuery['sort']): CursorValue[] {
+  const [cursorSort, value, slug] = decodeCursor(cursor);
+  const wrong = (message: string) =>
+    ApiError.badRequest('The cursor does not match this request. Start again without a cursor.', [
+      { path: 'cursor', message },
+    ]);
+  if (cursorSort !== sort) throw wrong(`Cursor was created for sort "${String(cursorSort)}"`);
+  const valueOk = sort === 'newest' ? typeof value === 'string' && DATE.test(value) : typeof value === 'number';
+  if (!valueOk || typeof slug !== 'string' || !SLUG_PARAM.test(slug)) throw wrong('Cursor values are not valid');
+  return [value as CursorValue, slug];
+}
+
 export async function getProductPage(db: Db, query: ProductListQuery) {
-  const after = query.cursor ? decodeCursor(query.cursor) : null;
+  const after = query.cursor ? readCursor(query.cursor, query.sort) : null;
   const rows = await listProducts(db, query, after);
   const page = rows.slice(0, query.limit);
   const last = page.at(-1);
-  const nextCursor = rows.length > query.limit && last ? encodeCursor([sortKey(last, query.sort), last.slug]) : null;
+  const nextCursor =
+    rows.length > query.limit && last ? encodeCursor([query.sort, sortKey(last, query.sort), last.slug]) : null;
   return { items: page.map(toSummary), nextCursor };
 }
 

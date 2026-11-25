@@ -18,7 +18,12 @@ export function decodeCursor(cursor: string): CursorValue[] {
   } catch {
     throw invalid();
   }
-  if (!Array.isArray(parsed) || parsed.length !== 2 || !parsed.every((v) => typeof v === 'string' || typeof v === 'number')) {
+  if (
+    !Array.isArray(parsed) ||
+    parsed.length < 1 ||
+    parsed.length > 4 ||
+    !parsed.every((v) => typeof v === 'string' || typeof v === 'number')
+  ) {
     throw invalid();
   }
   return parsed as CursorValue[];

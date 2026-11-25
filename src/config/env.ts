@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizePhone } from '../lib/phone.js';
 
 export interface Config {
   nodeEnv: 'development' | 'test' | 'production';
@@ -9,6 +10,9 @@ export interface Config {
   cookieSecret: string;
   logLevel: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace';
   firebaseProjectId: string | undefined;
+  firebaseServiceAccount: Record<string, unknown> | undefined;
+  bootstrapAdminPhones: string[];
+  bootstrapAdminEmails: string[];
 }
 
 export class ConfigError extends Error {
@@ -31,6 +35,19 @@ const booleanText = z
   .enum(['true', 'false', '1', '0'])
   .optional()
   .transform((v) => (v === undefined ? undefined : v === 'true' || v === '1'));
+
+/** Comma-separated list → trimmed, mapped values. */
+function listOf(map: (value: string, ctx: z.RefinementCtx) => string) {
+  return optionalText.transform((v, ctx) =>
+    v
+      ? v
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .map((item) => map(item, ctx))
+      : [],
+  );
+}
 
 const envSchema = z
   .object({
@@ -55,6 +72,23 @@ const envSchema = z
       .min(32, 'must be at least 32 characters'),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
     FIREBASE_PROJECT_ID: optionalText,
+    FIREBASE_SERVICE_ACCOUNT_JSON: optionalText.transform((v, ctx) => {
+      if (v === undefined) return undefined;
+      try {
+        const parsed: unknown = JSON.parse(v);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+      } catch {
+        // fall through
+      }
+      ctx.addIssue({ code: 'custom', message: 'must be the service account JSON object' });
+      return z.NEVER;
+    }),
+    BOOTSTRAP_ADMIN_PHONES: listOf((value, ctx) => {
+      const phone = normalizePhone(value);
+      if (!phone) ctx.addIssue({ code: 'custom', message: `"${value}" is not a valid phone number` });
+      return phone ?? '';
+    }),
+    BOOTSTRAP_ADMIN_EMAILS: listOf((value) => value.toLowerCase()),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && env.CORS_ORIGINS.length === 0) {
@@ -63,6 +97,13 @@ const envSchema = z
         path: ['CORS_ORIGINS'],
         message: 'must list at least one origin in production',
       });
+    }
+    if (env.NODE_ENV === 'production') {
+      for (const key of ['FIREBASE_PROJECT_ID', 'FIREBASE_SERVICE_ACCOUNT_JSON'] as const) {
+        if (env[key] === undefined) {
+          ctx.addIssue({ code: 'custom', path: [key], message: 'is required in production' });
+        }
+      }
     }
     if (env.NODE_ENV === 'production' && /change-me/i.test(env.COOKIE_SECRET)) {
       ctx.addIssue({
@@ -95,5 +136,8 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     cookieSecret: e.COOKIE_SECRET,
     logLevel: e.LOG_LEVEL,
     firebaseProjectId: e.FIREBASE_PROJECT_ID,
+    firebaseServiceAccount: e.FIREBASE_SERVICE_ACCOUNT_JSON,
+    bootstrapAdminPhones: e.BOOTSTRAP_ADMIN_PHONES,
+    bootstrapAdminEmails: e.BOOTSTRAP_ADMIN_EMAILS,
   };
 }

@@ -13,6 +13,9 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     cookieSecret: 'test-cookie-secret-test-cookie-secret',
     logLevel: 'fatal',
     firebaseProjectId: undefined,
+    firebaseServiceAccount: undefined,
+    bootstrapAdminPhones: [],
+    bootstrapAdminEmails: [],
     ...overrides,
   };
 }

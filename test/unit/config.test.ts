@@ -38,7 +38,13 @@ describe('loadConfig', () => {
 
   it('requires CORS_ORIGINS in production and defaults SSL on', () => {
     expect(issuesFor({ ...base, NODE_ENV: 'production' }).join('\n')).toContain('CORS_ORIGINS');
-    const cfg = loadConfig({ ...base, NODE_ENV: 'production', CORS_ORIGINS: 'https://shop.example' });
+    const cfg = loadConfig({
+      ...base,
+      NODE_ENV: 'production',
+      CORS_ORIGINS: 'https://shop.example',
+      FIREBASE_PROJECT_ID: 'p',
+      FIREBASE_SERVICE_ACCOUNT_JSON: '{"project_id":"p"}',
+    });
     expect(cfg.databaseSsl).toBe(true);
   });
 
@@ -70,5 +76,35 @@ describe('loadConfig', () => {
       COOKIE_SECRET: 'change-me-to-32-or-more-random-characters',
     };
     expect(issuesFor(env).join('\n')).toContain('COOKIE_SECRET');
+  });
+
+  it('requires Firebase credentials in production', () => {
+    const prod = { ...base, NODE_ENV: 'production', CORS_ORIGINS: 'https://shop.example' };
+    const issues = issuesFor(prod).join('\n');
+    expect(issues).toContain('FIREBASE_PROJECT_ID');
+    expect(issues).toContain('FIREBASE_SERVICE_ACCOUNT_JSON');
+  });
+
+  it('rejects a service account that is not valid JSON', () => {
+    expect(issuesFor({ ...base, FIREBASE_SERVICE_ACCOUNT_JSON: '{nope' }).join('\n')).toContain(
+      'FIREBASE_SERVICE_ACCOUNT_JSON',
+    );
+  });
+
+  it('parses a service account and bootstrap admin lists', () => {
+    const sa = { project_id: 'p', client_email: 'x@p.iam.gserviceaccount.com', private_key: 'k' };
+    const cfg = loadConfig({
+      ...base,
+      FIREBASE_SERVICE_ACCOUNT_JSON: JSON.stringify(sa),
+      BOOTSTRAP_ADMIN_PHONES: '012 345 678, +85596889217',
+      BOOTSTRAP_ADMIN_EMAILS: ' Owner@Example.com ',
+    });
+    expect(cfg.firebaseServiceAccount).toEqual(sa);
+    expect(cfg.bootstrapAdminPhones).toEqual(['+85512345678', '+85596889217']);
+    expect(cfg.bootstrapAdminEmails).toEqual(['owner@example.com']);
+  });
+
+  it('rejects an invalid bootstrap admin phone', () => {
+    expect(issuesFor({ ...base, BOOTSTRAP_ADMIN_PHONES: '123' }).join('\n')).toContain('BOOTSTRAP_ADMIN_PHONES');
   });
 });

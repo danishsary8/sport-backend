@@ -68,7 +68,11 @@ const envSchema = z
 
 /** Validates environment variables; throws ConfigError listing every problem. */
 export function loadConfig(env: NodeJS.ProcessEnv): Config {
-  const parsed = envSchema.safeParse(env);
+  // `KEY=` lines (as in .env.example) arrive as '' — treat them as unset so defaults apply.
+  const cleaned = Object.fromEntries(
+    Object.entries(env).filter(([, value]) => value !== undefined && value.trim() !== ''),
+  );
+  const parsed = envSchema.safeParse(cleaned);
   if (!parsed.success) {
     throw new ConfigError(
       parsed.error.issues.map((issue) => `${issue.path.join('.') || 'env'}: ${issue.message}`),

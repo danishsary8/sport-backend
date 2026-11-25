@@ -53,4 +53,12 @@ describe('loadConfig', () => {
   it('reports every bad variable at once', () => {
     expect(issuesFor({ PORT: 'abc' }).length).toBeGreaterThanOrEqual(2);
   });
+
+  it('treats empty variables (as in .env.example) as unset', () => {
+    const cfg = loadConfig({ ...base, DATABASE_SSL: '', LOG_LEVEL: '', NODE_ENV: '', PORT: '', FIREBASE_PROJECT_ID: '' });
+    expect(cfg.databaseSsl).toBe(false);
+    expect(cfg.logLevel).toBe('info');
+    expect(cfg.nodeEnv).toBe('development');
+    expect(cfg.port).toBe(3000);
+  });
 });

@@ -22,7 +22,7 @@ export function adminUsersRouter(ctx: AppContext): Router {
   });
 
   router.patch('/admin/users/:id/role', ...admin, validate({ body: roleChangeSchema }), async (req, res) => {
-    const user = await changeRole(db, req.user!, String(req.params.id), req.body);
+    const user = await changeRole(db, req.user!, String(req.params.id), req.body, ctx.bootstrapAdmins);
     ctx.logger.info({ actorId: req.user!.id, targetId: user.id, role: user.role }, 'User role changed');
     res.json({ user: toUserView(user) });
   });

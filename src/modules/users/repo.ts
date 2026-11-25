@@ -57,7 +57,14 @@ export async function upsertFromClaims(
           role: promote ? 'admin' : sql`${users.role}`,
           updatedAt: sql`now()`,
         },
-        setWhere: sql`${users.deletedAt} is null`,
+        // Only write when the token says something new; most requests change nothing.
+        setWhere: sql`${users.deletedAt} is null and (
+          ${users.phoneE164} is distinct from excluded.phone_e164
+          or (excluded.email is not null and ${users.email} is distinct from excluded.email)
+          or (excluded.photo_url is not null and ${users.photoUrl} is distinct from excluded.photo_url)
+          or (${users.fullName} is null and excluded.full_name is not null)
+          or (${promote} and ${users.role} <> 'admin')
+        )`,
       })
       .returning({ ...getTableColumns(users), created: sql<boolean>`(xmax = 0)` });
 

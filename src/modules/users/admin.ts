@@ -2,6 +2,7 @@ import { and, count, desc, eq, ilike, isNull, or, sql, type SQL } from 'drizzle-
 import { z } from 'zod';
 import type { Db } from '../../db/client.js';
 import { branches, USER_ROLES, users, type UserRow } from '../../db/schema/index.js';
+import type { BootstrapAdmins } from './repo.js';
 import { AppError } from '../../lib/errors.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -50,10 +51,18 @@ export async function searchUsers(db: Db, search: UserSearch): Promise<{ users: 
   return { users: rows, total: totals?.n ?? 0 };
 }
 
-export async function changeRole(db: Db, actor: UserRow, targetId: string, change: RoleChange): Promise<UserRow> {
+export async function changeRole(db: Db, actor: UserRow, targetId: string, change: RoleChange, bootstrap: BootstrapAdmins = { phones: [], emails: [] }): Promise<UserRow> {
   if (!UUID.test(targetId)) throw new AppError('not_found', 404, 'User not found');
   if (targetId === actor.id) {
     throw new AppError('cannot_change_own_role', 409, 'Ask another admin to change your role');
+  }
+  if (change.role !== 'admin') {
+    const [target] = await db.select({ phone: users.phoneE164, email: users.email }).from(users).where(eq(users.id, targetId));
+    const listed = target && ((target.phone && bootstrap.phones.includes(target.phone)) || (target.email && bootstrap.emails.includes(target.email.toLowerCase())));
+    if (listed) {
+      // They would be made admin again at their next sign-in; the env list is the source of truth.
+      throw new AppError('bootstrap_admin', 409, 'This person is a bootstrap admin: remove them from BOOTSTRAP_ADMIN_PHONES / BOOTSTRAP_ADMIN_EMAILS first');
+    }
   }
   const staffBranchId = change.role === 'staff' ? (change.staffBranchId ?? null) : null;
   if (staffBranchId) {

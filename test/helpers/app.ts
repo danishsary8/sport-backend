@@ -11,7 +11,7 @@ import { testConfig } from './testConfig.js';
 export function memberApp(
   database: Database,
   fake = fakeIdentity(),
-  opts: { payments?: FakePaymentProvider; logger?: Logger; config?: Partial<Config>; routeLimits?: boolean; notifiers?: { telegram: Notifier; email: Notifier } } = {},
+  opts: { payments?: FakePaymentProvider; logger?: Logger; config?: Partial<Config>; routeLimits?: boolean; bootstrapAdmins?: { phones: string[]; emails: string[] }; notifiers?: { telegram: Notifier; email: Notifier } } = {},
 ) {
   const payments = opts.payments ?? new FakePaymentProvider();
   const app = createApp({
@@ -19,7 +19,7 @@ export function memberApp(
     logger: opts.logger ?? createLogger({ logLevel: 'fatal', nodeEnv: 'test' }),
     db: database,
     identity: fake.provider,
-    bootstrapAdmins: { phones: [], emails: [] },
+    bootstrapAdmins: opts.bootstrapAdmins ?? { phones: [], emails: [] },
     rateLimit: { enabled: false, routes: opts.routeLimits ?? false },
     payments,
     notifiers: opts.notifiers ?? { telegram: new FakeNotifier('telegram'), email: new FakeNotifier('email') },

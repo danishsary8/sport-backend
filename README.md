@@ -6,7 +6,14 @@ The commerce backend for Sport Castle, a Phnom Penh football / futsal / F1 store
 - Plans: `docs/superpowers/plans/`
 - Behaviour research: `sport-heaven/docs/research/zando-behavior-reference.md`
 
-**Status:** phases 1–6 done: foundation; auth & accounts; catalog with per-branch stock; server-priced carts; checkout with ABA PayWay (KHQR/card), stock held while paying and a per-minute sweeper; post-purchase (order tracking, member order history, staff order operations, returns and exchanges, loyalty points and insights, product Q&A, admin overview, logs and system health). Phase 7 (hardening) is next. Where every piece of the old pre-split code went: `docs/superpowers/LEGACY-PORT.md`.
+**Status:** phases 1–7 done.
+
+- Foundation; auth & accounts; catalog with per-branch stock; server-priced carts.
+- Checkout with ABA PayWay (KHQR/card), stock held while paying, and a per-minute sweeper.
+- Post-purchase: tracking, member history, staff order desk, returns and exchanges, loyalty, Q&A, admin overview, logs and system health.
+- Hardening: per-route rate limits, a lint gate, a security pass, a load-tested order path, an OpenAPI contract and a test sign-in for end-to-end tests.
+
+Deploying: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). Before taking real payments: [`docs/PAYWAY-SANDBOX-CHECKLIST.md`](docs/PAYWAY-SANDBOX-CHECKLIST.md). API contract: [`docs/api/openapi.json`](docs/api/openapi.json). Security review: [`docs/superpowers/SECURITY-PASS.md`](docs/superpowers/SECURITY-PASS.md). Where the old pre-split code went: [`docs/superpowers/LEGACY-PORT.md`](docs/superpowers/LEGACY-PORT.md).
 
 ## Requirements
 
@@ -38,11 +45,14 @@ npm test
 | `npm run dev` | Run from source with reload (tsx) |
 | `npm run build` | Compile `src/` to `dist/` |
 | `npm start` | Run the compiled server |
-| `npm run typecheck` | Type-check source and tests |
+| `npm run typecheck` | Type-check source, tests and scripts |
+| `npm run lint` | ESLint (typescript-eslint, no floating promises) |
 | `npm test` / `test:unit` / `test:int` | All tests / pure unit tests / tests against Postgres |
 | `npm run db:generate` | Generate a SQL migration from schema changes into `drizzle/` (commit it) |
 | `npm run db:migrate` | Apply migrations (run after `build`) |
 | `npm run db:seed` | Load branches, Cambodian provinces/districts/communes, categories, collections, default home sections (idempotent) |
+| `npm run contracts:openapi` | Regenerate `docs/api/openapi.json` from `src/contracts` (CI checks it is current) |
+| `npm run loadtest` | 50 concurrent checkouts for 10 units against `sport_test` (resets it): exactly 10 orders |
 | `npm run catalog:import` | Add storefront products that are not in the database yet. Existing products are skipped, so admin edits to names, prices and stock are never reverted |
 
 ## Configuration
@@ -55,9 +65,11 @@ Customers sign in on the frontend with Firebase (phone number + SMS code, or Goo
 
 - `POST /v1/auth/session`: call right after sign-in; creates or refreshes the user and returns it.
 - Roles: `customer`, `staff` (optionally limited to one branch), `admin`. Numbers/emails in `BOOTSTRAP_ADMIN_PHONES` / `BOOTSTRAP_ADMIN_EMAILS` become admin when they sign in.
+- Verified tokens are cached for up to 5 minutes: disabling or revoking a user in Firebase takes up to 5 minutes to lock them out.
+- **End-to-end tests:** with `AUTH_TEST_MODE=true` (refused in production) the API accepts test tokens `test:<uid>:<phone|->:<email|->[:<name>]`, e.g. `Authorization: Bearer test:e2e-alice:+85512000001:-`.
 - Without `FIREBASE_PROJECT_ID`, sign-in routes answer `503 auth_unavailable` (fine for local work on public routes). Production requires `FIREBASE_PROJECT_ID` and `FIREBASE_SERVICE_ACCOUNT_JSON` (enables revoked-token checks and account deletion).
 
-## Endpoints (so far)
+## Endpoints
 
 | Method & path | Who | Purpose |
 |---|---|---|
@@ -68,8 +80,8 @@ Customers sign in on the frontend with Firebase (phone number + SMS code, or Goo
 | `GET /v1/me`, `PATCH /v1/me`, `DELETE /v1/me` | signed in | Profile; deletion anonymises the account and removes the Firebase user |
 | `GET/POST /v1/me/addresses`, `PATCH/DELETE /v1/me/addresses/:id`, `POST /v1/me/addresses/:id/default` | signed in | Delivery addresses (max 20, one default) |
 | `GET /v1/admin/users?q=&role=&page=&pageSize=`, `PATCH /v1/admin/users/:id/role` | admin | Find users, set customer/staff/admin and staff branch |
-| `GET /v1/catalog/products?category=&collection=&brand=&size=&league=&surface=&kitType=&garmentType=&tag=&priceMin=&priceMax=&discount=&inStockOnly=&q=&sort=&page=&pageSize=&lang=` | anyone | Product listing (repeat a param for OR; prices in cents) |
-| `GET /v1/catalog/filters?<same>` | anyone | Facets with counts for the current filters |
+| `GET /v1/catalog/products?category=&collection=&brand=&size=&color=&league=&surface=&kitType=&garmentType=&tag=&priceMin=&priceMax=&discount=&inStockOnly=&q=&sort=&page=&pageSize=&lang=` | anyone | Product listing (repeat a param for OR; prices in cents; `tag` is one of new, best_seller, limited, signature, retro, ucl, sale; search ignores accents) |
+| `GET /v1/catalog/filters?<same>` | anyone | Facets with counts for the current filters: category, brand, size, colour, league, surface, kit, type, highlights (tags), price buckets, discount, availability |
 | `GET /v1/catalog/products/:slug` | anyone | Detail: sizes with availability (`ok`/`low`/`out`) per branch, images, related |
 | `GET /v1/search/suggest?q=` | anyone | Type-ahead (min 2 characters; debounce on the client) |
 | `GET /v1/catalog/menu`, `/catalog/collections/:slug`, `/catalog/home` | anyone | Navigation, collection info, home sections |
@@ -161,7 +173,8 @@ Guests prove access to their order with the `orderAccessToken` (24 h) in an `X-O
 - API routes live under `/v1`. Probes: `GET /health` (liveness) and `GET /ready` (database reachable → 200, otherwise 503).
 - Errors always look like `{"error":{"code":"…","message":"…","details":…}}`. A 500 also carries `requestId`, which matches the `X-Request-Id` response header and the logs.
 - Request bodies are limited to 1 MB; unknown JSON fields are stripped by validation.
-- `/v1` is rate limited to 120 requests per minute per IP.
+- Rate limits per minute: all of `/v1` 120 per IP; placing orders 10 per IP and 5 per signed-in member; sign-in 20 per IP; tracking 10 per IP; questions 5 per IP. A 429 carries `Retry-After`. Counters are in memory per server. With more than one server, plug a Redis-backed `RateLimitStore` into `createApp` (see `docs/DEPLOYMENT.md`).
+- Guest bag cookie: serve the API on the shop's registrable domain, and don't let third parties host pages on subdomains of it (a sibling subdomain could plant a bag cookie). The worst case is showing someone a different guest bag, never an order or account.
 
 ## Layout
 
@@ -176,12 +189,16 @@ src/
   context.ts           shared dependencies + auth middleware chains for routers
   modules/<feature>/   routers + services (auth, account, users, admin, geo, branches, catalog, stock, wishlist, pricing, cart, checkout, orders, payments, loyalty, rma, questions, notifications, settings, health)
   jobs/                per-minute sweeper (payments, expiry, notifications, old guest bags)
+  contracts/           Zod response/request schemas (the API contract; → docs/api/openapi.json)
   db/seed/             reference data (branches, geo) + seed script
 drizzle/               committed SQL migrations
 test/unit, test/integration
+scripts/               openapi.ts (contract → OpenAPI), loadtest.ts
 ```
 
 ## Docker
+
+Full production runbook: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ```bash
 docker build -t sport-backend .

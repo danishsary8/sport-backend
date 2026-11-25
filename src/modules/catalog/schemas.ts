@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '../../lib/zod.js';
 
 const SLUG = /^[a-z0-9-]{1,80}$/;
 const MAX_VALUES = 20;
@@ -50,12 +50,14 @@ export const ProductListQuerySchema = z.object({
 });
 export type ProductListQuery = z.infer<typeof ProductListQuerySchema>;
 
-export const ProductMediaSchema = z.object({
-  front: z.string(),
-  back: z.string().optional(),
-  gallery: z.array(z.string()).optional(),
-  details: z.array(z.string()).optional(),
-});
+export const ProductMediaSchema = z
+  .object({
+    front: z.string(),
+    back: z.string().optional(),
+    gallery: z.array(z.string()).optional(),
+    details: z.array(z.string()).optional(),
+  })
+  .openapi('ProductMedia', { description: 'Image paths. `back` exists when a real back photo has been added.' });
 
 export const ProductSummarySchema = z.object({
   id: z.string().uuid(),
@@ -78,14 +80,40 @@ export const ProductSummarySchema = z.object({
   customizable: z.boolean(),
   rating: z.number(),
   reviewCount: z.number().int(),
+}).openapi('ProductSummary', {
+  description: 'A product as shown in lists. Prices are integer cents (USD).',
+  example: {
+    id: '0193a3c4-5d6e-7f80-9a1b-2c3d4e5f6a7b',
+    slug: 'real-madrid-2026-27-home-authentic-jersey',
+    name: 'Real Madrid 2026/27 Home Jersey',
+    brand: 'Adidas',
+    category: 'jerseys',
+    league: 'La Liga',
+    team: 'Real Madrid',
+    teamType: 'club',
+    season: '2026/27',
+    kitType: 'home',
+    priceCents: 9800,
+    originalPriceCents: null,
+    image: '/src/assets/images/jersey_madrid_2627_home.jpg',
+    imageBack: null,
+    versions: ['Fan', 'Player'],
+    fits: ['Men', 'Women', 'Kids'],
+    sleeves: ['Short', 'Long'],
+    customizable: true,
+    rating: 4.9,
+    reviewCount: 214,
+  },
 });
 export type ProductSummary = z.infer<typeof ProductSummarySchema>;
 
-export const SizeStockSchema = z.object({
-  size: z.string(),
-  quantity: z.number().int(),
-  inStock: z.boolean(),
-});
+export const SizeStockSchema = z
+  .object({
+    size: z.string(),
+    quantity: z.number().int().openapi({ description: 'Units across all three branches' }),
+    inStock: z.boolean(),
+  })
+  .openapi('SizeStock');
 
 export const ProductDetailSchema = ProductSummarySchema.extend({
   shortName: z.string(),
@@ -95,12 +123,31 @@ export const ProductDetailSchema = ProductSummarySchema.extend({
   facts: z.record(z.string(), z.unknown()),
   media: ProductMediaSchema,
   sizes: z.array(SizeStockSchema),
-});
+}).openapi('ProductDetail');
 export type ProductDetail = z.infer<typeof ProductDetailSchema>;
 
-export const ProductListResponseSchema = z.object({
-  items: z.array(ProductSummarySchema),
-  nextCursor: z.string().nullable(),
+export const ProductListResponseSchema = z
+  .object({
+    items: z.array(ProductSummarySchema),
+    nextCursor: z.string().nullable().openapi({ description: 'Pass as `cursor` to get the next page; null on the last page.' }),
+  })
+  .openapi('ProductList');
+
+const listParam = (description: string, example: string) =>
+  z.string().optional().openapi({ description: `${description} Comma-separated; values combine with OR.`, example });
+
+/** Documentation view of the list query (the validating schema above uses transforms). */
+export const ProductListQueryDocSchema = z.object({
+  category: listParam(`One of ${CATEGORIES.join(', ')}.`, 'jerseys'),
+  league: listParam('League slug.', 'premier-league,la-liga'),
+  team: listParam('Team slug.', 'real-madrid'),
+  season: listParam('Season slug, or `retro`.', '2026-27'),
+  kit: listParam(`One of ${KIT_TYPES.join(', ')}.`, 'home'),
+  brand: listParam('Brand slug.', 'adidas'),
+  q: z.string().optional().openapi({ description: 'Search in name, team and brand (1–80 characters).', example: 'madrid' }),
+  sort: z.enum(SORTS).optional().openapi({ description: 'Default `featured`.' }),
+  limit: z.number().int().min(1).max(60).optional().openapi({ description: 'Page size, 1–60. Default 24.' }),
+  cursor: z.string().optional().openapi({ description: '`nextCursor` from the previous page.' }),
 });
 
 export const SLUG_PARAM = /^[a-z0-9-]{1,120}$/;

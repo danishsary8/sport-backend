@@ -1,10 +1,12 @@
 import { sql } from 'drizzle-orm';
 import express, { type Express } from 'express';
+import { apiReference } from '@scalar/express-api-reference';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 import type { Config } from './config.js';
 import type { Db } from './db/client.js';
 import { createErrorHandler, notFoundHandler } from './lib/errors.js';
+import { buildOpenApiDocument } from './lib/openapi.js';
 import type { Logger } from './lib/logger.js';
 import { requestId } from './lib/request-id.js';
 import { catalogRoutes } from './modules/catalog/routes.js';
@@ -43,8 +45,30 @@ export function createApp(deps: AppDeps): Express {
       customProps: (req) => ({ requestId: (req as express.Request).id }),
     }),
   );
+  // Interactive docs need inline scripts and the Scalar CDN; every other route keeps Helmet's strict policy.
+  app.use(
+    '/docs',
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
+          fontSrc: ["'self'", 'https:', 'data:'],
+          imgSrc: ["'self'", 'data:', 'https:'],
+          connectSrc: ["'self'"],
+        },
+      },
+    }),
+    apiReference({ url: '/openapi.json', pageTitle: 'Sport Castle API' }),
+  );
   app.use(helmet());
   app.use(express.json({ limit: '100kb' }));
+
+  const openApiDocument = buildOpenApiDocument(deps.config);
+  app.get('/openapi.json', (_req, res) => {
+    res.json(openApiDocument);
+  });
 
   app.use(healthRoutes({ checkDb: deps.checkDb ?? defaultCheckDb(deps.db) }));
   app.use('/v1', catalogRoutes(deps.db));

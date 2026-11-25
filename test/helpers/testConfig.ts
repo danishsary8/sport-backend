@@ -16,6 +16,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     firebaseServiceAccount: undefined,
     bootstrapAdminPhones: [],
     bootstrapAdminEmails: [],
+    assetBaseUrl: '/assets/',
     ...overrides,
   };
 }

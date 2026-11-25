@@ -13,6 +13,8 @@ export interface Config {
   firebaseServiceAccount: Record<string, unknown> | undefined;
   bootstrapAdminPhones: string[];
   bootstrapAdminEmails: string[];
+  /** Prefix for catalog image paths, e.g. https://cdn.example.com/ (default /assets/). */
+  assetBaseUrl: string;
 }
 
 export class ConfigError extends Error {
@@ -89,6 +91,7 @@ const envSchema = z
       return phone ?? '';
     }),
     BOOTSTRAP_ADMIN_EMAILS: listOf((value) => value.toLowerCase()),
+    ASSET_BASE_URL: z.string().trim().max(300).default('/assets/'),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && env.CORS_ORIGINS.length === 0) {
@@ -139,5 +142,6 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     firebaseServiceAccount: e.FIREBASE_SERVICE_ACCOUNT_JSON,
     bootstrapAdminPhones: e.BOOTSTRAP_ADMIN_PHONES,
     bootstrapAdminEmails: e.BOOTSTRAP_ADMIN_EMAILS,
+    assetBaseUrl: e.ASSET_BASE_URL,
   };
 }

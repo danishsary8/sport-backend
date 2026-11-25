@@ -22,6 +22,7 @@ import { authRouter } from './modules/auth/router.js';
 import { branchesRouter } from './modules/branches/router.js';
 import { catalogRouter } from './modules/catalog/router.js';
 import { geoRouter } from './modules/geo/router.js';
+import { wishlistRouter } from './modules/wishlist/router.js';
 import { healthRouter } from './modules/health/router.js';
 import type { BootstrapAdmins } from './modules/users/repo.js';
 
@@ -94,6 +95,7 @@ export function createApp(deps: AppDeps): express.Express {
   v1.use(geoRouter(ctx));
   v1.use(branchesRouter(ctx));
   v1.use(catalogRouter(ctx));
+  v1.use(wishlistRouter(ctx));
   v1.use(adminUsersRouter(ctx));
   v1.use(adminStockRouter(ctx));
   v1.use(adminProductsRouter(ctx));

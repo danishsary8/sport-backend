@@ -6,7 +6,7 @@ The commerce backend for Sport Castle, a Phnom Penh football / futsal / F1 store
 - Plans: `docs/superpowers/plans/`
 - Behaviour research: `sport-heaven/docs/research/zando-behavior-reference.md`
 
-**Status:** phases 1–2 done: foundation (config, logging, errors, security baseline, probes, migrations, CI) and auth & accounts (Firebase phone/Google sign-in, roles, profile, addresses, geo, branches, admin roles). Catalog, cart, checkout and payments arrive in phases 3–6; pre-split code waiting to be ported sits in `legacy/` (not built, not tested).
+**Status:** phases 1–3 done: foundation (config, logging, errors, security baseline, probes, migrations, CI); auth & accounts (Firebase phone/Google sign-in, roles, profile, addresses, geo, branches, admin roles); catalog (products, sizes, per-branch stock with audit trail, filters, search, collections, home, wishlist, staff counter sales, admin product API). Cart, checkout and payments arrive in phases 4–6; pre-split code waiting to be ported sits in `legacy/` (not built, not tested).
 
 ## Requirements
 
@@ -20,6 +20,7 @@ npm ci
 cp .env.example .env            # then edit DATABASE_URL / COOKIE_SECRET
 createdb sport_dev              # or: psql -c 'CREATE DATABASE sport_dev;'
 npm run build && npm run db:migrate && npm run db:seed
+npm run catalog:import          # 80 storefront products; stock starts as estimates flagged for counting
 npm run dev                     # http://localhost:3000/health
 ```
 
@@ -41,7 +42,8 @@ npm test
 | `npm test` / `test:unit` / `test:int` | All tests / pure unit tests / tests against Postgres |
 | `npm run db:generate` | Generate a SQL migration from schema changes into `drizzle/` (commit it) |
 | `npm run db:migrate` | Apply migrations (run after `build`) |
-| `npm run db:seed` | Load branches + Cambodian provinces/districts/communes (idempotent) |
+| `npm run db:seed` | Load branches, Cambodian provinces/districts/communes, categories, collections, default home sections (idempotent) |
+| `npm run catalog:import` | Import the storefront catalog (idempotent; never overwrites counted stock) |
 
 ## Configuration
 
@@ -66,6 +68,17 @@ Customers sign in on the frontend with Firebase (phone number + SMS code, or Goo
 | `GET /v1/me`, `PATCH /v1/me`, `DELETE /v1/me` | signed in | Profile; deletion anonymises the account and removes the Firebase user |
 | `GET/POST /v1/me/addresses`, `PATCH/DELETE /v1/me/addresses/:id`, `POST /v1/me/addresses/:id/default` | signed in | Delivery addresses (max 20, one default) |
 | `GET /v1/admin/users?q=&role=&page=&pageSize=`, `PATCH /v1/admin/users/:id/role` | admin | Find users, set customer/staff/admin and staff branch |
+| `GET /v1/catalog/products?category=&collection=&brand=&size=&league=&surface=&kitType=&garmentType=&tag=&priceMin=&priceMax=&discount=&inStockOnly=&q=&sort=&page=&pageSize=&lang=` | anyone | Product listing (repeat a param for OR; prices in cents) |
+| `GET /v1/catalog/filters?<same>` | anyone | Facets with counts for the current filters |
+| `GET /v1/catalog/products/:slug` | anyone | Detail: sizes with availability (`ok`/`low`/`out`) per branch, images, related |
+| `GET /v1/search/suggest?q=` | anyone | Type-ahead (min 2 characters; debounce on the client) |
+| `GET /v1/catalog/menu`, `/catalog/collections/:slug`, `/catalog/home` | anyone | Navigation, collection info, home sections |
+| `GET /v1/me/wishlist`, `PUT/DELETE /v1/me/wishlist/:idOrSlug` | signed in | Wishlist (max 200) |
+| `GET /v1/admin/stock/lookup?q=`, `GET /v1/admin/stock?productId=`, `GET /v1/admin/stock/movements?variantId=` | staff, admin | Real stock numbers and history |
+| `POST /v1/admin/stock/sale`, `/stock/adjust`, `/stock/transfer` | staff, admin | Counter sales, counted corrections, branch transfers (branch-scoped staff: own branch only) |
+| `GET/POST /v1/admin/products`, `GET/PATCH /v1/admin/products/:id`, `POST /v1/admin/products/:id/variants`, `PUT /v1/admin/products/:id/variants/:variantId` | admin | Product management and prices |
+
+Stock rules: customers only ever see `ok`, `low` (with 1–3 left) or `out`. The website holds back a safety buffer (setting `online_safety_buffer`, default 1 per size per branch) so a unit just sold in a shop isn't sold online too. Every stock change is recorded in `stock_movements`.
 
 ## HTTP conventions
 
@@ -85,7 +98,7 @@ src/
   middleware/          request id, validation, rate limiting
   db/                  client, schema, migrator
   context.ts           shared dependencies + auth middleware chains for routers
-  modules/<feature>/   routers + services (auth, account, users, admin, geo, branches, health)
+  modules/<feature>/   routers + services (auth, account, users, admin, geo, branches, catalog, stock, wishlist, health)
   db/seed/             reference data (branches, geo) + seed script
 drizzle/               committed SQL migrations
 test/unit, test/integration

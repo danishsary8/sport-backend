@@ -29,6 +29,7 @@ import { customerOrdersRouter } from './modules/orders/customerRouter.js';
 import { adminOrdersRouter } from './modules/orders/adminRouter.js';
 import { rmaRouter } from './modules/rma/router.js';
 import { loyaltyRouter } from './modules/loyalty/router.js';
+import { questionsRouter } from './modules/questions/router.js';
 import { devPaymentsRouter } from './modules/payments/devRouter.js';
 import { geoRouter } from './modules/geo/router.js';
 import { wishlistRouter } from './modules/wishlist/router.js';
@@ -116,6 +117,7 @@ export function createApp(deps: AppDeps): express.Express {
   v1.use(geoRouter(ctx));
   v1.use(branchesRouter(ctx));
   v1.use(catalogRouter(ctx));
+  v1.use(questionsRouter(ctx));
   v1.use(wishlistRouter(ctx));
   v1.use(cartRouter(ctx));
   v1.use(checkoutRouter(ctx));

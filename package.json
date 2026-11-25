@@ -17,7 +17,8 @@
     "test:int": "vitest run test/integration",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node dist/db/migrate.js",
-    "db:seed": "node dist/db/seed/run.js"
+    "db:seed": "node dist/db/seed/run.js",
+    "catalog:import": "node dist/db/seed/importCatalog.js"
   },
   "dependencies": {
     "cors": "^2.8.6",

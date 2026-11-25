@@ -1,11 +1,13 @@
 import { sql } from 'drizzle-orm';
 import express, { type Express } from 'express';
 import { apiReference } from '@scalar/express-api-reference';
+import cors from 'cors';
+import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 import type { Config } from './config.js';
 import type { Db } from './db/client.js';
-import { createErrorHandler, notFoundHandler } from './lib/errors.js';
+import { ApiError, createErrorHandler, notFoundHandler } from './lib/errors.js';
 import { buildOpenApiDocument } from './lib/openapi.js';
 import type { Logger } from './lib/logger.js';
 import { requestId } from './lib/request-id.js';
@@ -37,6 +39,8 @@ export function createApp(deps: AppDeps): Express {
   const { logger } = deps;
   const app = express();
   app.disable('x-powered-by');
+  // Render (and most hosts) sit behind one proxy; trust it so rate limits see the real client IP.
+  app.set('trust proxy', 1);
   app.use(requestId);
   app.use(
     pinoHttp({
@@ -71,6 +75,24 @@ export function createApp(deps: AppDeps): Express {
   });
 
   app.use(healthRoutes({ checkDb: deps.checkDb ?? defaultCheckDb(deps.db) }));
+  const allowed = new Set(deps.config.corsOrigins);
+  app.use(
+    '/v1',
+    cors({
+      origin: (origin, callback) => callback(null, origin ? allowed.has(origin) : false),
+      credentials: true,
+      exposedHeaders: ['X-Request-Id', 'RateLimit', 'RateLimit-Policy', 'Retry-After'],
+      maxAge: 600,
+    }),
+    rateLimit({
+      windowMs: 60_000,
+      limit: deps.config.rateLimitPerMinute,
+      standardHeaders: 'draft-8',
+      legacyHeaders: false,
+      handler: (_req, _res, next) =>
+        next(new ApiError(429, 'rate-limited', 'Too Many Requests', 'Too many requests. Please wait a minute and try again.')),
+    }),
+  );
   app.use('/v1', catalogRoutes(deps.db));
 
   app.use(notFoundHandler);

@@ -10,6 +10,11 @@ import { langSchema, pick, type Lang } from '../catalog/i18n.js';
 import { deliveryRate, type DeliveryChoice } from '../pricing/context.js';
 import { availablePaymentMethods, paymentMethodsEnabled } from '../settings/payments.js';
 import { pricedCheckout } from './pricing.js';
+import { requestHash, withIdempotency } from './idempotency.js';
+import { placeOrderSchema, type PlaceOrderInput } from './orderInput.js';
+import { placeOrder } from './placeOrder.js';
+import { AppError } from '../../lib/errors.js';
+import { resolveClientIp } from '../../middleware/rateLimit.js';
 
 const DELIVERY_METHODS = ['pp_rider', 'province_courier'] as const;
 
@@ -73,6 +78,22 @@ export function checkoutRouter(ctx: AppContext): Router {
       pickupBranches,
       paymentMethods: availablePaymentMethods(await paymentMethodsEnabled(db), input.fulfillment),
     });
+  });
+
+  router.post('/orders', ...ctx.guestOrMember, validate({ body: placeOrderSchema }), async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const key = req.get('idempotency-key')?.trim() ?? '';
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) {
+      throw new AppError('idempotency_key_required', 400, 'Send a unique Idempotency-Key (a UUID) with every order');
+    }
+    const owner = cartOwner(req, ctx.config);
+    const scope = owner.kind === 'member' ? `user:${owner.userId}` : owner.token ? `guest:${owner.token}` : `ip:${resolveClientIp(req)}`;
+    const input = req.body as PlaceOrderInput;
+    const result = await withIdempotency(db, scope, key, requestHash(input), async () => ({
+      status: 201,
+      body: await placeOrder({ db, payments: ctx.payments, config: ctx.config, now: () => new Date() }, owner, req.user, input),
+    }));
+    res.status(result.status).json(result.body);
   });
 
   return router;

@@ -92,7 +92,7 @@ function invalid(path: string, message: string): AppError {
 }
 
 /** The commune must sit in the district, and the district in the province. */
-async function assertHierarchy(db: Executor, p: string, d: string, c: string): Promise<void> {
+export async function assertHierarchy(db: Executor, p: string, d: string, c: string): Promise<void> {
   const [district] = await db
     .select({ provinceCode: geoDistricts.provinceCode })
     .from(geoDistricts)

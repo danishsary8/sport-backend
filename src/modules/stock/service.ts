@@ -3,6 +3,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import { stock, stockMovements, variants, type StockRow } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
+import { lockStock } from './locking.js';
 
 export type StockReason =
   | 'import'
@@ -97,9 +98,11 @@ export async function recordSale(
   input: { branchId: string; lines: { variantId: string; qty: number }[]; actorUserId?: string | null; note?: string },
 ): Promise<{ saleId: string; lines: { variantId: string; onHand: number }[] }> {
   const saleId = `SALE-${randomUUID().slice(0, 8).toUpperCase()}`;
-  // Lock rows in a stable order so two multi-line sales can't deadlock.
-  const lines = [...input.lines].sort((a, b) => a.variantId.localeCompare(b.variantId));
+  const lines = input.lines;
   return db.transaction(async (tx) => {
+    // Lock every row first, in the shared (variant, branch) order, so sales and orders can't deadlock.
+    for (const line of lines) await assertVariantExists(tx, line.variantId);
+    await lockStock(tx, lines.map((l) => ({ variantId: l.variantId, branchId: input.branchId })));
     const result: { variantId: string; onHand: number }[] = [];
     for (const line of lines) {
       const row = await applyMovement(tx, {
@@ -138,14 +141,10 @@ export async function transferStock(
   input: { variantId: string; from: string; to: string; qty: number; actorUserId?: string | null },
 ): Promise<{ refId: string }> {
   const refId = `XFER-${randomUUID().slice(0, 8).toUpperCase()}`;
-  const [first, second] = [input.from, input.to].sort();
   await db.transaction(async (tx) => {
     await assertVariantExists(tx, input.variantId);
-    // Lock both rows in a stable order, then apply out before in.
-    for (const branchId of [first!, second!]) {
-      await tx.insert(stock).values({ variantId: input.variantId, branchId }).onConflictDoNothing();
-      await tx.select().from(stock).where(and(eq(stock.variantId, input.variantId), eq(stock.branchId, branchId))).for('update');
-    }
+    // Lock both rows in the shared order, then apply out before in.
+    await lockStock(tx, [input.from, input.to].map((branchId) => ({ variantId: input.variantId, branchId })));
     const common = { variantId: input.variantId, refId, actorUserId: input.actorUserId };
     await applyMovement(tx, { ...common, branchId: input.from, deltaOnHand: -input.qty, reason: 'transfer_out' });
     await applyMovement(tx, { ...common, branchId: input.to, deltaOnHand: input.qty, reason: 'transfer_in' });

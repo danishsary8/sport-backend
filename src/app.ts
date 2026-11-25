@@ -1,0 +1,73 @@
+import cors from 'cors';
+import express, { Router } from 'express';
+import helmet from 'helmet';
+import { pinoHttp } from 'pino-http';
+import type { Config } from './config/env.js';
+import { errorHandler, notFoundHandler } from './lib/errors.js';
+import type { Logger } from './lib/logger.js';
+import {
+  createRateLimitMiddleware,
+  DEFAULT_GENERAL_MAX_REQUESTS,
+  DEFAULT_RATE_LIMIT_WINDOW_MS,
+} from './middleware/rateLimit.js';
+import { requestId } from './middleware/requestId.js';
+
+export interface AppDeps {
+  config: Config;
+  logger: Logger;
+  db: { ping(): Promise<void> };
+  rateLimit?: { enabled: boolean; generalMax?: number };
+}
+
+export function createApp(deps: AppDeps): express.Express {
+  const { config, logger } = deps;
+  const app = express();
+
+  app.disable('x-powered-by');
+  // One reverse proxy hop (load balancer) so req.ip is the real client address.
+  app.set('trust proxy', 1);
+
+  app.use(requestId);
+  app.use(
+    pinoHttp({
+      logger,
+      genReqId: (req) => (req as express.Request).id,
+      customLogLevel: (_req, res, err) => (err || res.statusCode >= 500 ? 'error' : 'info'),
+    }),
+  );
+  app.use(helmet());
+
+  const allowed = new Set(config.corsOrigins);
+  app.use(
+    cors({
+      origin: (origin, callback) => callback(null, origin !== undefined && allowed.has(origin)),
+      credentials: true,
+    }),
+  );
+
+  app.use(
+    express.json({
+      limit: '1mb',
+      verify: (req, _res, buf) => {
+        (req as express.Request).rawBody = Buffer.from(buf);
+      },
+    }),
+  );
+
+  const v1 = Router();
+  if (deps.rateLimit?.enabled !== false) {
+    v1.use(
+      createRateLimitMiddleware({
+        bucket: 'api-general',
+        windowMs: DEFAULT_RATE_LIMIT_WINDOW_MS,
+        maxRequests: deps.rateLimit?.generalMax ?? DEFAULT_GENERAL_MAX_REQUESTS,
+      }),
+    );
+  }
+  // Feature routers are mounted on v1 from phase 2 onwards.
+  app.use('/v1', v1);
+
+  app.use(notFoundHandler);
+  app.use(errorHandler(logger));
+  return app;
+}

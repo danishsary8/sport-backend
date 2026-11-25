@@ -65,3 +65,29 @@ export async function placeGuestOrder(
   const res = await agent.post('/v1/orders').set(idem()).send(guestOrder(address, over)).expect(201);
   return { agent, body: res.body as { order: { number: string; status: string; pricing: { totalCents: number; shippingCents: number } }; payment: { tranId: string; attempt: number } | null; orderAccessToken: string | null } };
 }
+
+/** Signs in a user with the given role (and optional staff branch) and returns their bearer token. */
+export async function staffToken(
+  app: Express,
+  database: Database,
+  fake: { token(c: { uid: string; phone?: string | null; email?: string | null }): string },
+  uid: string,
+  role: 'staff' | 'admin' | 'customer',
+  branch: string | null = null,
+): Promise<string> {
+  const token = fake.token({ uid, phone: `+8551${String(Math.abs(hash(uid))).padStart(7, '0').slice(0, 7)}` });
+  await request(app).post('/v1/auth/session').set({ Authorization: `Bearer ${token}` }).expect(200);
+  await database.pool.query('update users set role = $2, staff_branch_id = $3 where firebase_uid = $1', [uid, role, branch]);
+  return token;
+}
+
+function hash(s: string): number {
+  let h = 0;
+  for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0;
+  return h;
+}
+
+/** Approves the order's payment through the dev route. */
+export async function payOrder(app: Express, tranId: string): Promise<void> {
+  await request(app).post(`/v1/dev/payments/${tranId}/approve`).expect(200);
+}

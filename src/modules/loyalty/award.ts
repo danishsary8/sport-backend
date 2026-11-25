@@ -33,3 +33,28 @@ export async function awardLoyalty(tx: Tx, order: OrderRow, rules: LoyaltyRules)
   const tier = tierForSpend(account!.lifetimeSpendCents, rules.tiers);
   if (tier !== account!.tier) await tx.update(loyaltyAccounts).set({ tier }).where(eq(loyaltyAccounts.userId, order.userId));
 }
+
+/**
+ * Takes back points and spend (cancelled order, refunded return). The balance never goes below zero;
+ * the tier is recomputed from the reduced lifetime spend.
+ */
+export async function reverseLoyalty(
+  tx: Tx,
+  userId: string,
+  points: number,
+  spendCents: number,
+  reason: 'order_cancelled' | 'rma_reversal',
+  orderId: string | null,
+  rules: LoyaltyRules,
+  note?: string,
+): Promise<void> {
+  const [account] = await tx.select().from(loyaltyAccounts).where(eq(loyaltyAccounts.userId, userId)).for('update');
+  if (!account) return;
+  const take = Math.min(points, account.pointsBalance);
+  const spend = Math.max(0, account.lifetimeSpendCents - spendCents);
+  await tx.insert(loyaltyLedger).values({ userId, delta: -take, reason, orderId, note: note ?? null });
+  await tx
+    .update(loyaltyAccounts)
+    .set({ pointsBalance: account.pointsBalance - take, lifetimeSpendCents: spend, tier: tierForSpend(spend, rules.tiers), updatedAt: sql`now()` })
+    .where(eq(loyaltyAccounts.userId, userId));
+}

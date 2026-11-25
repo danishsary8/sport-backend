@@ -72,20 +72,39 @@ export async function reserveAllocations(
   }
 }
 
-/** Gives held units back to the shop (order expired or cancelled). */
-export async function releaseAllocations(tx: Tx, allocs: StockAllocation[], refId: string): Promise<void> {
+/** Gives held units back to the shop (order expired or cancelled, exchange rejected). */
+export async function releaseAllocations(
+  tx: Tx,
+  allocs: StockAllocation[],
+  refId: string,
+  reason: 'order_release' | 'exchange_release' = 'order_release',
+): Promise<void> {
   const lines = merged(allocs);
   await lockStock(tx, lines);
   for (const l of lines) {
-    await applyMovement(tx, { variantId: l.variantId, branchId: l.branchId, deltaOnHand: 0, deltaReserved: -l.qty, reason: 'order_release', refId });
+    await applyMovement(tx, { variantId: l.variantId, branchId: l.branchId, deltaOnHand: 0, deltaReserved: -l.qty, reason, refId });
   }
 }
 
-/** Paid: the held units leave the shelf. */
-export async function commitAllocations(tx: Tx, allocs: StockAllocation[], refId: string): Promise<void> {
+/** Paid (or exchange approved): the held units leave the shelf. */
+export async function commitAllocations(
+  tx: Tx,
+  allocs: StockAllocation[],
+  refId: string,
+  reason: 'order_commit' | 'exchange_commit' = 'order_commit',
+): Promise<void> {
   const lines = merged(allocs);
   await lockStock(tx, lines);
   for (const l of lines) {
-    await applyMovement(tx, { variantId: l.variantId, branchId: l.branchId, deltaOnHand: -l.qty, deltaReserved: -l.qty, reason: 'order_commit', refId });
+    await applyMovement(tx, { variantId: l.variantId, branchId: l.branchId, deltaOnHand: -l.qty, deltaReserved: -l.qty, reason, refId });
+  }
+}
+
+/** Units come back onto the shelf: a paid order cancelled before dispatch, or an approved return. */
+export async function restockAllocations(tx: Tx, allocs: StockAllocation[], refId: string, reason: 'order_cancel' | 'rma_restock', actorUserId?: string | null): Promise<void> {
+  const lines = merged(allocs);
+  await lockStock(tx, lines);
+  for (const l of lines) {
+    await applyMovement(tx, { variantId: l.variantId, branchId: l.branchId, deltaOnHand: l.qty, reason, refId, actorUserId });
   }
 }

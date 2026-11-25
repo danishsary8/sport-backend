@@ -36,3 +36,20 @@ describe('database client', () => {
     await broken.close();
   }, 6000);
 });
+
+describe('pool recovery', () => {
+  it('frees connections stuck on slow queries so the database becomes ready again', async () => {
+    const small = createDb({ databaseUrl: TEST_DATABASE_URL, databaseSsl: false }, () => {}, {
+      queryTimeoutMs: 1000,
+      maxConnections: 3,
+    });
+    // Occupy every connection with a query that would run for 30s.
+    const stuck = Array.from({ length: 3 }, () => small.pool.query('select pg_sleep(30)').catch(() => 'timed out'));
+    const started = Date.now();
+    // The ping has to wait for a free connection; it succeeds once the stuck queries time out.
+    await expect(small.ping()).resolves.toBeUndefined();
+    expect(Date.now() - started).toBeLessThan(3000);
+    expect(await Promise.all(stuck)).toEqual(['timed out', 'timed out', 'timed out']);
+    await small.close();
+  }, 10_000);
+});

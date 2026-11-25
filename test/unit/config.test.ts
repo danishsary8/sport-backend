@@ -61,4 +61,14 @@ describe('loadConfig', () => {
     expect(cfg.nodeEnv).toBe('development');
     expect(cfg.port).toBe(3000);
   });
+
+  it('rejects the .env.example placeholder COOKIE_SECRET in production', () => {
+    const env = {
+      ...base,
+      NODE_ENV: 'production',
+      CORS_ORIGINS: 'https://shop.example',
+      COOKIE_SECRET: 'change-me-to-32-or-more-random-characters',
+    };
+    expect(issuesFor(env).join('\n')).toContain('COOKIE_SECRET');
+  });
 });

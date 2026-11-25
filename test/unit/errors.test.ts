@@ -98,3 +98,18 @@ describe('redactPhone', () => {
     expect(redactPhone('+85512345678')).toBe('***678');
   });
 });
+
+describe('async route errors', () => {
+  it('turns a rejected async handler into a 500 response instead of crashing', async () => {
+    const app = express();
+    app.use(requestId);
+    app.get('/async-throw', async () => {
+      await Promise.resolve();
+      throw new Error('async kaboom');
+    });
+    app.use(errorHandler(createLogger({ logLevel: 'fatal', nodeEnv: 'test' })));
+    const res = await request(app).get('/async-throw').timeout(2000);
+    expect(res.status).toBe(500);
+    expect(res.body.error.code).toBe('internal_error');
+  });
+});

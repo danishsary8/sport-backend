@@ -64,6 +64,13 @@ const envSchema = z
         message: 'must list at least one origin in production',
       });
     }
+    if (env.NODE_ENV === 'production' && /change-me/i.test(env.COOKIE_SECRET)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['COOKIE_SECRET'],
+        message: 'is still the .env.example placeholder; generate a random secret',
+      });
+    }
   });
 
 /** Validates environment variables; throws ConfigError listing every problem. */

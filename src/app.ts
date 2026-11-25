@@ -24,6 +24,8 @@ import { branchesRouter } from './modules/branches/router.js';
 import { cartRouter } from './modules/cart/router.js';
 import { catalogRouter } from './modules/catalog/router.js';
 import { checkoutRouter } from './modules/checkout/router.js';
+import { orderPaymentsRouter, webhookRouter } from './modules/payments/router.js';
+import { devPaymentsRouter } from './modules/payments/devRouter.js';
 import { geoRouter } from './modules/geo/router.js';
 import { wishlistRouter } from './modules/wishlist/router.js';
 import { healthRouter } from './modules/health/router.js';
@@ -80,6 +82,7 @@ export function createApp(deps: AppDeps): express.Express {
   app.use(healthRouter(deps.db));
 
   const v1 = Router();
+  const unlimited = Router();
   if (deps.rateLimit?.enabled !== false) {
     v1.use(
       createRateLimitMiddleware({
@@ -105,10 +108,16 @@ export function createApp(deps: AppDeps): express.Express {
   v1.use(wishlistRouter(ctx));
   v1.use(cartRouter(ctx));
   v1.use(checkoutRouter(ctx));
+  v1.use(orderPaymentsRouter(ctx));
+  const dev = devPaymentsRouter(ctx);
+  if (dev) v1.use(dev);
+  unlimited.use(webhookRouter(ctx));
   v1.use(adminUsersRouter(ctx));
   v1.use(adminStockRouter(ctx));
   v1.use(adminProductsRouter(ctx));
   v1.use(adminPricingRouter(ctx));
+  // Payment webhooks are signature-checked and re-verified, so they skip the per-IP limiter.
+  app.use('/v1', unlimited);
   app.use('/v1', v1);
 
   app.use(notFoundHandler);

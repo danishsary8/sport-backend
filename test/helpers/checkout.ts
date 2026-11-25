@@ -49,3 +49,19 @@ export async function setStockAt(database: Database, variant: string, perBranch:
     await database.pool.query('update stock set on_hand = $3 where variant_id = $1 and branch_id = $2', [variant, branch, n]);
   }
 }
+
+import request from 'supertest';
+import type { Express } from 'express';
+
+/** Guest bag with one line → placed order. Returns the agent (cookie jar) and the 201 body. */
+export async function placeGuestOrder(
+  app: Express,
+  address: Awaited<ReturnType<typeof phnomPenhAddress>>,
+  line: { variantId: string; qty: number; customPrint?: Record<string, unknown> },
+  over: Record<string, unknown> = {},
+) {
+  const agent = request.agent(app);
+  await agent.post('/v1/cart/items').send(line).expect(200);
+  const res = await agent.post('/v1/orders').set(idem()).send(guestOrder(address, over)).expect(201);
+  return { agent, body: res.body as { order: { number: string; status: string; pricing: { totalCents: number; shippingCents: number } }; payment: { tranId: string; attempt: number } | null; orderAccessToken: string | null } };
+}

@@ -43,6 +43,13 @@
       "when": 1795627212628,
       "tag": "0005_checkout_payments",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795629773329,
+      "tag": "0006_post_purchase",
+      "breakpoints": true
     }
   ]
 }

@@ -55,6 +55,7 @@ const DEFAULT_SETTINGS: { key: string; value: Record<string, unknown> }[] = [
   { key: 'payment_methods_enabled', value: { aba_khqr: true, card: true, acleda: false, wing: false, cash_on_pickup: false } },
   { key: 'reservation_minutes', value: { minutes: 30 } },
   { key: 'cash_on_pickup_hours', value: { hours: 48 } },
+  { key: 'return_rules', value: { exchangeDays: 30, refundDays: 14, nonReturnable: ['socks', 'underwear'] } },
   {
     key: 'custom_print_fees',
     value: { baseCents: 800, patches: { none: 0, ucl: 500, cpl: 400, aff: 400, champions: 500, 'f1-paddock': 500 } },

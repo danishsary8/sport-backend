@@ -15,7 +15,10 @@ export type StockReason =
   | 'order_release'
   | 'order_commit'
   | 'rma_restock'
-  | 'exchange_reserve';
+  | 'exchange_reserve'
+  | 'exchange_commit'
+  | 'exchange_release'
+  | 'order_cancel';
 
 export type { Tx } from '../../db/exec.js';
 import type { Tx } from '../../db/exec.js';

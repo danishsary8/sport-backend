@@ -102,6 +102,8 @@ export const orders = pgTable(
     note: text('note'),
     reservedUntil: timestamp('reserved_until', { withTimezone: true }),
     paidAt: timestamp('paid_at', { withTimezone: true }),
+    /** First delivery (or pickup completion): starts the return windows. */
+    deliveredAt: timestamp('delivered_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -252,7 +254,7 @@ export const loyaltyLedger = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     delta: integer('delta').notNull(),
-    reason: text('reason').$type<'order_paid' | 'rma_reversal' | 'admin'>().notNull(),
+    reason: text('reason').$type<'order_paid' | 'rma_reversal' | 'order_cancelled' | 'admin'>().notNull(),
     orderId: uuid('order_id').references(() => orders.id, { onDelete: 'set null' }),
     note: text('note'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -260,7 +262,7 @@ export const loyaltyLedger = pgTable(
   (t) => [
     index('loyalty_ledger_user_idx').on(t.userId, t.createdAt),
     uniqueIndex('loyalty_ledger_order_paid_idx').on(t.orderId, t.reason).where(sql`${t.orderId} is not null and ${t.reason} = 'order_paid'`),
-    check('loyalty_ledger_reason_check', sql`${t.reason} in ('order_paid', 'rma_reversal', 'admin')`),
+    check('loyalty_ledger_reason_check', sql`${t.reason} in ('order_paid', 'rma_reversal', 'order_cancelled', 'admin')`),
   ],
 );
 

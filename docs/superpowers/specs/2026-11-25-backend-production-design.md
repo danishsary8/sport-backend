@@ -160,7 +160,7 @@ All money columns are `integer` cents (USD). The current `doublePrecision` money
 Input: cart lines (variant ids, qty, custom print), promo code, fulfillment, shipping method, province, user (for per-user promo limits). Output: `{ lines[], subtotal, discounts[], shipping, total, khr_total, messages[] }`, each discount and fee a labelled line.
 
 1. Unit price = `variants.price_cents` (current, active). Inactive or archived variant → line flagged `unavailable`, excluded from totals.
-2. Custom print (only if `products.is_customizable`): validated name (≤ 12 chars, A–Z 0–9 space . - ') and number (0–99); fee = base + patch fee from `settings.custom_print_fees` (today $8 + patch).
+2. Custom print (only if `products.is_customizable`): validated name (1–14 chars, A–Z 0–9 space . - ') and number (1–99); fee = base + patch fee from `settings.custom_print_fees` (today $8 + patch).
 3. Member tier (signed-in member with a verified phone; tier from `loyalty_accounts`, lifetime spend). Perks are cumulative:
    - Silver+ → **10% off** lines in eligible categories (`loyalty_rules.eligible_categories`: kits, boots, accessories; gift cards excluded).
    - Gold+ → **free `pp_rider` delivery**.
@@ -176,7 +176,7 @@ The old `CASTLE10` (10%) and `PPFREE` (free `pp_rider` delivery) codes are seede
 ## 10. Cart
 
 - `GET /v1/cart` → lines (product snapshot, size, color, qty, availability `ok|low|out|unavailable`, max_qty), pricing output, promo state.
-- `POST /v1/cart/items {variantId, qty, customPrint?}`: rejects with `409 {code:"insufficient_stock", available:n, message}` if qty exceeds availability across branches (pickup-specific checks happen at checkout).
+- `POST /v1/cart/items {variantId, qty, customPrint?}`: rejects with `409 {code:"insufficient_stock", message, details:{available:n}}` if qty exceeds availability across branches (pickup-specific checks happen at checkout).
 - `PATCH /v1/cart/items/:id {qty?, variantId?}`: in-place size/qty change. `DELETE /v1/cart/items/:id`.
 - `PUT /v1/cart/promo {code}` / `DELETE /v1/cart/promo`.
 - Merge on login: quantities are summed per (variant, print), capped at availability; the guest cart is deleted.

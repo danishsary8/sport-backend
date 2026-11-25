@@ -118,6 +118,25 @@ export async function seed(db: Db): Promise<{ branches: number; provinces: numbe
   }
 
   await db.transaction(async (tx) => {
+    // Geo first: shipping rates reference provinces.
+    const names = { nameKm: sql`excluded.name_km`, nameEn: sql`excluded.name_en` };
+    await tx
+      .insert(geoProvinces)
+      .values(provinces.map((p) => ({ code: p.code, nameKm: p.name, nameEn: p.en_name })))
+      .onConflictDoUpdate({ target: geoProvinces.code, set: names });
+    for (const batch of chunks(districts)) {
+      await tx
+        .insert(geoDistricts)
+        .values(batch.map((d) => ({ code: d.code, provinceCode: provinceOfDistrict(d.code), nameKm: d.name, nameEn: d.en_name })))
+        .onConflictDoUpdate({ target: geoDistricts.code, set: names });
+    }
+    for (const batch of chunks(communes)) {
+      await tx
+        .insert(geoCommunes)
+        .values(batch.map((c) => ({ code: c.code, districtCode: districtOfCommune(c.code), nameKm: c.name, nameEn: c.en_name })))
+        .onConflictDoUpdate({ target: geoCommunes.code, set: names });
+    }
+
     await tx
       .insert(branches)
       .values(branchData)
@@ -167,23 +186,6 @@ export async function seed(db: Db): Promise<{ branches: number; provinces: numbe
     const existingSections = await tx.select({ id: homeSections.id }).from(homeSections).limit(1);
     if (existingSections.length === 0) await tx.insert(homeSections).values(DEFAULT_HOME_SECTIONS);
 
-    const names = { nameKm: sql`excluded.name_km`, nameEn: sql`excluded.name_en` };
-    await tx
-      .insert(geoProvinces)
-      .values(provinces.map((p) => ({ code: p.code, nameKm: p.name, nameEn: p.en_name })))
-      .onConflictDoUpdate({ target: geoProvinces.code, set: names });
-    for (const batch of chunks(districts)) {
-      await tx
-        .insert(geoDistricts)
-        .values(batch.map((d) => ({ code: d.code, provinceCode: provinceOfDistrict(d.code), nameKm: d.name, nameEn: d.en_name })))
-        .onConflictDoUpdate({ target: geoDistricts.code, set: names });
-    }
-    for (const batch of chunks(communes)) {
-      await tx
-        .insert(geoCommunes)
-        .values(batch.map((c) => ({ code: c.code, districtCode: districtOfCommune(c.code), nameKm: c.name, nameEn: c.en_name })))
-        .onConflictDoUpdate({ target: geoCommunes.code, set: names });
-    }
   });
 
   return { branches: branchData.length, provinces: provinces.length, districts: districts.length, communes: communes.length };

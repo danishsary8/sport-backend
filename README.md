@@ -6,7 +6,7 @@ The commerce backend for Sport Castle, a Phnom Penh football / futsal / F1 store
 - Plans: `docs/superpowers/plans/`
 - Behaviour research: `sport-heaven/docs/research/zando-behavior-reference.md`
 
-**Status:** phases 1–4 done: foundation (config, logging, errors, security baseline, probes, migrations, CI); auth & accounts (Firebase phone/Google sign-in, roles, profile, addresses, geo, branches, admin roles); catalog (products, sizes, per-branch stock with audit trail, filters, search, collections, home, wishlist, staff counter sales, admin product API). cart & pricing (server-priced guest/member carts, team discount, member perks, promo codes, delivery rates, admin pricing); checkout & payments (orders with stock held for 30 minutes, ABA PayWay KHQR/card with a fake provider for development, webhook + poll + sweeper confirmation, loyalty points, notification outbox). Post-purchase (tracking, admin orders, returns) arrives in phase 6; pre-split code waiting to be ported sits in `legacy/` (not built, not tested).
+**Status:** phases 1–6 done: foundation; auth & accounts; catalog with per-branch stock; server-priced carts; checkout with ABA PayWay (KHQR/card), stock held while paying and a per-minute sweeper; post-purchase (order tracking, member order history, staff order operations, returns and exchanges, loyalty points and insights, product Q&A, admin overview, logs and system health). Phase 7 (hardening) is next. Where every piece of the old pre-split code went: `docs/superpowers/LEGACY-PORT.md`.
 
 ## Requirements
 
@@ -127,6 +127,35 @@ Guests prove access to their order with the `orderAccessToken` (24 h) in an `X-O
 
 **Notifications.** Messages are queued in `notification_outbox` with the order and sent by the job with retries (backing off up to an hour; given up after 8 tries). Ops get Telegram messages for new orders, payments and refunds needed (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`); customers who gave an email get payment and status emails through Resend (`RESEND_API_KEY`, `NOTIFICATION_FROM_EMAIL`). Unconfigured channels are skipped. A failed send never affects an order.
 
+## After the order
+
+- **Tracking:** `POST /v1/orders/track {orderNumber, phone}` (10 a minute per address) shows status, timeline, items and totals. Name, phone and street are masked. Members see their orders at `GET /v1/me/orders` and `GET /v1/me/orders/:number`.
+- **Staff order desk:** list and search by number or phone digits; filter by status, store, date or "needs refund". The order page shows the timeline (with who did what), payment attempts and a pick list per store. Staff move orders through the status machine; each change emails the customer if they gave an email. They can cancel (an unpaid order's hold is released; a paid order's items go back on the shelf, its points are taken back and it is flagged for refund), mark a refund done in the PayWay portal, take cash at the counter for pickup orders, and add internal notes. Staff tied to a store only see orders that touch that store.
+- **Returns:** members ask at `POST /v1/me/returns`.
+  - A size exchange (same product, same price) is possible up to 30 days after delivery or pickup. The new size is held at once.
+  - A refund or store credit is possible up to 14 days after delivery or pickup. The amount is what was actually paid for those items.
+  - Printed shirts and hygiene items (setting `return_rules.nonReturnable`: matched against the category, the garment type or a word in the product's web address, e.g. `socks`) can't be returned.
+  - Staff approve or reject. Approval puts the returned items back on the shelf, takes back the points and flags the refund (or "store credit to issue").
+- **Loyalty:** `GET /v1/me/loyalty` (points, tier, progress, perks, history) and `GET /v1/me/insights` (what you buy most). Admins can add or remove points with a note.
+- **Questions:** anyone can ask about a product (5 a minute per address). Questions appear only after staff answer and publish them.
+- **Admin overview, logs and health:** `GET /v1/admin/overview` (today's sales and everything waiting on staff), payment webhook and notification logs, a test message per channel, and `/v1/admin/system-health` (database latency, uptime, CSV).
+
+| Method & path | Who | Purpose |
+|---|---|---|
+| `POST /v1/orders/track` | anyone | Track an order with its number and phone |
+| `GET /v1/me/orders`, `GET /v1/me/orders/:number` | signed in | Order history and detail |
+| `GET /v1/admin/orders`, `GET /v1/admin/orders/:number` | staff, admin | Order desk and order page with pick list |
+| `POST /v1/admin/orders/:number/status` · `/cancel` · `/collect-cash` · `/refunded` · `/clear-refund-flag` · `/notes` | staff, admin | Order actions (all recorded with the staff member) |
+| `POST/GET /v1/me/returns` | signed in | Ask for and follow returns |
+| `GET /v1/admin/returns`, `GET /v1/admin/returns/:number`, `POST /v1/admin/returns/:number/decision` | staff, admin | Handle returns |
+| `GET /v1/me/loyalty`, `GET /v1/me/insights` | signed in | Points, tier, perks; buying insights |
+| `POST /v1/admin/users/:id/loyalty` | admin | Adjust points |
+| `GET/POST /v1/catalog/products/:slug/questions` | anyone | Published questions; ask one |
+| `GET /v1/admin/questions`, `PATCH /v1/admin/questions/:id` | staff, admin | Answer, publish, hide |
+| `GET /v1/admin/overview` | staff, admin | Dashboard numbers |
+| `GET /v1/admin/payments/webhooks`, `GET /v1/admin/notifications`, `POST /v1/admin/notifications/test` | admin | Logs and channel test |
+| `GET /v1/admin/system-health`, `/metrics`, `/logs.csv` | admin | Monitoring |
+
 ## HTTP conventions
 
 - API routes live under `/v1`. Probes: `GET /health` (liveness) and `GET /ready` (database reachable → 200, otherwise 503).
@@ -145,12 +174,11 @@ src/
   middleware/          request id, validation, rate limiting
   db/                  client, schema, migrator
   context.ts           shared dependencies + auth middleware chains for routers
-  modules/<feature>/   routers + services (auth, account, users, admin, geo, branches, catalog, stock, wishlist, pricing, cart, checkout, orders, payments, loyalty, notifications, settings, health)
+  modules/<feature>/   routers + services (auth, account, users, admin, geo, branches, catalog, stock, wishlist, pricing, cart, checkout, orders, payments, loyalty, rma, questions, notifications, settings, health)
   jobs/                per-minute sweeper (payments, expiry, notifications, old guest bags)
   db/seed/             reference data (branches, geo) + seed script
 drizzle/               committed SQL migrations
 test/unit, test/integration
-legacy/                pre-split code awaiting port (excluded)
 ```
 
 ## Docker

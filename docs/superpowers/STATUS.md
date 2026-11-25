@@ -8,8 +8,8 @@ After a context reset, trust this file, the plan ledgers (`.superpowers/sdd/<pla
 |---|---|---|---|---|
 | 0 | Bootstrap | (work order) | see git log | done |
 | 1 | Backend phase 5: checkout, orders, payments | `plans/2026-11-25-phase-5-checkout-payments.md` | 10c4ecd | done (review: 5 Important fixed) |
-| 2 | Backend phase 6: post-purchase | `plans/2026-11-25-phase-6-post-purchase.md` | – | in progress (tasks 1–2 done) |
-| 3 | Backend phase 7: hardening + deferred minors | `plans/2026-11-25-phase-7-hardening.md` | – | not started |
+| 2 | Backend phase 6: post-purchase | `plans/2026-11-25-phase-6-post-purchase.md` | bfea8ba | done (review: 2 Critical + 5 Important fixed) |
+| 3 | Backend phase 7: hardening + deferred minors | `plans/2026-11-25-phase-7-hardening.md` | – | in progress (tasks 1–2 done) |
 | 4 | Backend completeness audit | `BACKEND-AUDIT.md` | – | not started |
 | 5 | Frontend design | `sport-heaven/docs/superpowers/specs/…` | – | not started |
 | 6 | Frontend build | `sport-heaven/docs/superpowers/plans/…` | – | not started |
@@ -21,7 +21,8 @@ After a context reset, trust this file, the plan ledgers (`.superpowers/sdd/<pla
 | When | Backend | Frontend |
 |---|---|---|
 | Stage 0 (fresh DB, twice) | 281/281 | – |
-| Stage 1 done incl. review fixes (twice) | 535/535 | frontend clean-up: 2/2 (typecheck, lint, build clean) |
+| Stage 1 done incl. review fixes (twice) | 535/535 |
+| Stage 2 done incl. review fixes (twice) | 596/596 | frontend clean-up: 2/2 (typecheck, lint, build clean) |
 
 ## Rulings (cumulative)
 
@@ -53,6 +54,31 @@ After a context reset, trust this file, the plan ledgers (`.superpowers/sdd/<pla
 - Final: kept SERIALIZABLE (spec §11) with 8 attempts + exponential backoff + 503 busy, rather than switching to READ COMMITTED — spec names serializable; row locks + retries keep invariants — heavy bursts may still see occasional retryable 503s.
 - Final: a webhook arriving within 2 s of another provider check for the same payment is stored as ignored/throttled; the poll (3 s) and sweeper still confirm the payment — protects the merchant API key from pushback floods — confirmation can lag a few seconds in that window.
 
+### Stage 2 (phase 6)
+
+- Task 2: tracking also masks the contact block (first name + initial, phone ***678, no email) and drops the order note, beyond the planned address masking — anyone with number+phone can call it — none.
+- Task 2: per-route limiters come from ctx.routeLimit(bucket, max); AppDeps.rateLimit.routes (default = enabled) lets tests switch them on separately — needed to pin the 429 — none.
+- Task 3: staff status changes into `cancelled` via POST …/status are routed to the same cancelOrder as POST …/cancel — one cancel path, so stock/points/promo are always handled — none.
+- Task 3: collect-cash accepts any unpaid pickup order in awaiting_pickup_payment or ready_for_pickup (not only cash_on_pickup ones) and records the method as cash_on_pickup — a KHQR shopper may pay cash at the counter instead — none.
+- Task 3: customer status_changed emails for printing, ready_for_pickup, out_for_delivery, delivered, completed, cancelled (not for confirmed, which payment_received covers) — none.
+- Task 3: cancel of a paid order reverses exactly the points the order earned (ledger order_paid delta), never below zero balance — none.
+- Task 4: the return-decision email goes to the member's account email, falling back to the order contact email — returns are member-only — none.
+- Task 4: store credit approvals also take back the points for the credited amount (like refunds), and record "Store credit to issue" on the order timeline; no wallet exists (spec non-goal) — the customer got value back — staff must issue credit by hand.
+- Task 4: an approved refund also enqueues the urgent ops needs_refund message — staff refund in the PayWay portal — none.
+- Task 4: added problem reason `not_in_order` (an orderItemId from another order) to the plan's list — needed for a complete 400 — none.
+- Task 4: returned units go back at the deciding staff member's branch, else the body's branchId, else the item's first shipping branch — matches where the parcel physically arrives — staff can't pick another store when tied to one.
+- Task 5: loyalty_ledger gains actor_user_id (migration 0007) for admin adjustments, instead of writing the actor into the note — spec §14 "every admin write records actor_user_id" — none.
+- Task 5: GET /me/insights is kept (it powers the account page's purchase breakdown); colours/labels for charts stay in the frontend — owner's old UI already had it — none.
+- Task 5: the loyalty response also includes pointsPerUsd so the UI can explain earning without hard-coding 10 — none.
+- Task 6: public Q&A returns at most the 50 newest published questions per product; questions about archived/draft products answer 404 — enough for a product page — older answers aren't shown.
+- Task 7: logs and the test-message route are admin-only; the overview is staff+admin, branch-scoped for tied staff (questions and outbox counts are shop-wide) — logs hold payment data; staff need the daily picture — none.
+- Task 7: the test email goes to the signed-in admin's own email — no recipient in the request means it can't be used to spam others — admins without an email can only test Telegram.
+- Task 8: system-health PDF dropped server-side (no jspdf on the API); the frontend dashboard already renders the PDF from /metrics — keeps a heavy client library off the server — none.
+- Task 8: the CSV exports the last 20 checks (legacy: 5) and the HTML /view page is not ported (the admin UI replaces it) — none.
+- Final: RMA stock lock order fixed (one sorted lockStock up front in createRma/decideRma) without a RED test — the deadlock needs a precise interleaving that can't be reproduced reliably; existing returns tests stay green — a residual ordering bug would surface as a retryable 500 for staff.
+- Final: a pushback inside the 2 s check window now waits once and retries; if still busy it is stored as failed (reprocessed on redelivery) — dropping it lost late payments — a flood holds each request ≤ 2 s.
+- Final: the sweeper re-checks expired/cancelled attempts of orders expired in the last 24 h every 10 minutes — safety net when no webhook arrives — up to 144 provider checks per expired order per day.
+
 ## Frontend clean-up (done early, in parallel with Stage 1)
 
 Commits `2c6a01a..4eb3e7a` in `sport-heaven`: the build/typecheck/lint/test now pass; backend-only code and deps removed (`server.ts`, `src/db`, `commerce.test.ts`, `@google/genai`, express, pg, drizzle, firebase-admin…); AI Studio leftovers removed (package name, `.gmp_cache`, `metadata.json`, the Maps quota banner, `DISABLE_HMR`); Firebase web config moved to `VITE_FIREBASE_*`; `/v1` dev proxy to the API; ESLint 9 + Vitest; `scripts/optimize-images.mjs` wrote WebP/AVIF/JPEG variants to `public/assets/catalog` (7.5 MB) and `public/assets/site` (1.2 MB). Open items for Stage 6: original images (≈56 MB) still in the repo and copied into `dist` by a Vite plugin; the system-health dashboard still points at old `/api/system-health*` URLs; 27 lint warnings in legacy screens; `npm audit` reports 4 high advisories; TypeScript pinned to 6.0 (typescript-eslint doesn't support 7 yet).
@@ -73,3 +99,14 @@ The phase 1–4 minors are listed in the work order §2; Stage 3 closes or rules
 - pricedCheckout runs Promise.all on a transaction client (pg deprecation; pg@9 will reject)
 - needs_refund alert headline shows the order total, not the amount actually paid
 - reReserve increments used_count past max_uses (arguably correct: customer paid)
+
+### Stage 2 (phase 6) — for Stage 3 (phase 7 Task 12)
+
+- sweeper logs raw err (use safeError)
+- cancel/RMA can re-flag needs_refund on an order already marked refunded
+- marking refunded after a partial RMA refund marks the whole order refunded
+- collect-cash sends two emails and doesn't close open KHQR attempts
+- overview revenue and insights count cancelled-but-paid orders
+- question status-only changes record no actor
+- RMA restock fallback branch is the literal 'sonthormuk'
+- exchange holds never expire

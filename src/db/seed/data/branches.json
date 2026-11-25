@@ -1,0 +1,38 @@
+[
+  {
+    "id": "sonthormuk",
+    "name": "Sonthormuk Flagship",
+    "shortName": "Sonthormuk",
+    "address": "No. 42, Street 261, Sangkat Teuk Laak 1",
+    "district": "Khan Toul Kork, Phnom Penh",
+    "phoneE164": "+85512889261",
+    "telegram": "@SportCastleSonthormuk",
+    "hours": "8:30 AM – 8:30 PM Daily",
+    "landmarks": "200m south of Sonthormuk High School junction",
+    "sort": 1
+  },
+  {
+    "id": "sensok",
+    "name": "Sen Sok Pitch Hub",
+    "shortName": "Sen Sok",
+    "address": "No. 118, Street 1986, Sangkat Phnom Penh Thmey",
+    "district": "Khan Sen Sok, Phnom Penh",
+    "phoneE164": "+85517889986",
+    "telegram": "@SportCastleSenSok",
+    "hours": "8:30 AM – 8:30 PM Daily",
+    "landmarks": "Minutes from Sen Sok 7v7 pitches & AEON Mall 2 corridor",
+    "sort": 2
+  },
+  {
+    "id": "chomkadong",
+    "name": "Chomkadong South",
+    "shortName": "Chomkadong",
+    "address": "Street 217, Sangkat Prey Sa",
+    "district": "Khan Dangkao, Phnom Penh",
+    "phoneE164": "+85596889217",
+    "telegram": "@SportCastleChomkadong",
+    "hours": "8:30 AM – 8:30 PM Daily",
+    "landmarks": "Opposite Prey Sa Sports Complex entrance",
+    "sort": 3
+  }
+]

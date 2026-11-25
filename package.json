@@ -16,7 +16,8 @@
     "test:unit": "vitest run test/unit",
     "test:int": "vitest run test/integration",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node dist/db/migrate.js"
+    "db:migrate": "node dist/db/migrate.js",
+    "db:seed": "node dist/db/seed/run.js"
   },
   "dependencies": {
     "cors": "^2.8.6",
@@ -25,6 +26,7 @@
     "express": "^5.3.0",
     "firebase-admin": "^14.5.1",
     "helmet": "^8.3.0",
+    "libphonenumber-js": "^1.13.17",
     "pg": "^8.23.1",
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",

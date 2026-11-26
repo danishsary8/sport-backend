@@ -68,6 +68,24 @@ describe('GET /v1/orders/:number/payment-status', () => {
 });
 
 describe('POST /v1/orders/:number/payments', () => {
+  it('keeps the newest attempt payable when two retries race', async () => {
+    const { body } = await placeGuestOrder(ctx.app, address, { variantId: jerseyM, qty: 1 });
+    const create = ctx.payments.createTransaction.bind(ctx.payments);
+    ctx.payments.createTransaction = async (input) => {
+      await new Promise((r) => setTimeout(r, 150));
+      return create(input);
+    };
+    const retry = () =>
+      request(ctx.app)
+        .post(`/v1/orders/${body.order.number}/payments`)
+        .send({ method: 'aba_khqr', contactPhone: '+855 12 345 678', orderAccessToken: body.orderAccessToken });
+    const [a, b] = await Promise.all([retry(), retry()]);
+    expect([a.status, b.status]).toEqual([201, 201]);
+    const rows = (await q('select attempt, status from payments order by attempt')).rows;
+    expect(rows.at(-1)).toEqual({ attempt: 3, status: 'pending' });
+    expect(rows.filter((r) => r.status === 'pending')).toHaveLength(1);
+  });
+
   it('switches to card and cancels the old QR', async () => {
     const { body } = await placeGuestOrder(ctx.app, address, { variantId: jerseyM, qty: 1 });
     const res = await request(ctx.app)

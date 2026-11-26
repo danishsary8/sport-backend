@@ -1,4 +1,4 @@
-import { and, desc, eq, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, lt, sql } from 'drizzle-orm';
 import { orderItems, orders, payments, type PaymentMethod, type ProductSnapshot } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
 import { tranIdFor } from '../orders/number.js';
@@ -54,11 +54,14 @@ export async function startPaymentAttempt(deps: Pick<CheckoutDeps, 'db' | 'payme
     .returning();
 
   // Older QR codes / checkout pages should stop working; if one is paid anyway, confirmation flags a refund.
+  // Only OLDER attempts: when two retries race, the newest one must stay payable.
   const older = await db
     .update(payments)
     .set({ status: 'cancelled', updatedAt: sql`now()` })
-    .where(and(eq(payments.orderId, orderId), eq(payments.status, 'pending'), ne(payments.id, payment.id)))
+    .where(and(eq(payments.orderId, orderId), eq(payments.status, 'pending'), lt(payments.attempt, payment.attempt)))
     .returning({ tranId: payments.providerTranId });
   for (const o of older) await provider.cancelTransaction(o.tranId).catch(() => {});
+  // A newer attempt overtook this one while the provider answered: close this one at the provider too.
+  if (saved!.status === 'cancelled') await provider.cancelTransaction(saved!.providerTranId).catch(() => {});
   return paymentView(saved!);
 }

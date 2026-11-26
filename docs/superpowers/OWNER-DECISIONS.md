@@ -54,3 +54,12 @@ Format: **decision** — why — what changes if you disagree.
 - [Stage 4] **Product pages show a size guide** (boots, shirts, balls) from a setting you can edit. The charts are standard ones; check them (OWNER-TODO). — Fewer wrong-size returns. — Edit the `size_guides` setting.
 - [Stage 4] **Prices can be exported to a spreadsheet and imported back.** The import only changes the price, the "was" price and on/off for existing sizes, always shows a preview first, and changes nothing if any row is wrong. — Safe bulk price changes for sales. — New products are still created in the admin.
 - [Stage 4] **When a counter sale is refused because an online order holds the last unit, staff see that order's number.** — Spec §14. — none.
+
+## Stage 5 — Shop design (full write-up: `sport-heaven/docs/superpowers/specs/2026-11-26-frontend-production-design.md`)
+
+- [Stage 5] **The shop app is rebuilt on a clean structure** (keeping React, Vite and Tailwind) instead of patching the demo pages. — The demo kept products, bag, orders and accounts in the browser; untangling that page by page would cost more than rebuilding against the real API. — The good-looking pieces (product cards, jersey preview, header, footer, policy text) are carried over.
+- [Stage 5] **Your colours and fonts stay**; red (vermilion) is used only for buying, and the Cambodian-flag blue (cobalt) for store, pickup and payment information. Brass is only for loyalty. — Keeps your brand, and gives the two flag colours a clear job. — Swap the tokens in one file.
+- [Stage 5] **Removed from the old site:** fake "price drop" and "back in stock" pop-ups, invented reviews and "loved by 20K+", the cookie banner (nothing is tracked), gift cards (not offered), the lookbook/journal (invented stories with AI pictures) and the boot-finder quiz (replaced by the surface filter and size guide). — Everything shown must be true. — Real stories can be added later as pages.
+- [Stage 5] **Khmer and English** with a switch in the header; Khmer uses Noto Sans Khmer. Product names and descriptions are only in English until you add Khmer (OWNER-TODO). — Spec. — none.
+- [Stage 5] **No analytics or advertising pixels** until you choose one. — Faster pages; no consent banner needed. — Add later.
+- [Stage 5] **The Google Map appears only if you add a Maps key**; otherwise the stores page lists the three branches with "Open in Google Maps" links. — No error banners for customers. — Add `VITE_GOOGLE_MAPS_API_KEY`.

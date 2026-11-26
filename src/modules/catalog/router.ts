@@ -1,7 +1,8 @@
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import type { AppContext } from '../../context.js';
 import { validate } from '../../middleware/validate.js';
 import { z } from 'zod';
+import { AppError } from '../../lib/errors.js';
 import { collectionInfo, home, menu, suggest } from './browse.js';
 import { productDetail } from './detail.js';
 import { buildFacets } from './facets.js';
@@ -15,7 +16,7 @@ export function catalogRouter(ctx: AppContext): Router {
   const router = Router();
   const { db } = ctx.database;
 
-  router.get('/catalog/products', validate({ query: catalogQuerySchema }), async (req, res) => {
+  async function listing(req: Request, res: Response): Promise<void> {
     const query = req.query as unknown as CatalogQuery;
     const [filters, buffer] = await Promise.all([resolveFilters(db, query), safetyBuffer(db)]);
     const { rows, total } = await listProducts(db, filters, { ...query, buffer });
@@ -26,7 +27,21 @@ export function catalogRouter(ctx: AppContext): Router {
       page: query.page,
       pageSize: query.pageSize,
     });
-  });
+  }
+
+  router.get('/catalog/products', validate({ query: catalogQuerySchema }), listing);
+
+  // The search results page: the listing for a query (relevance first), with the same filters.
+  router.get(
+    '/search',
+    validate({ query: catalogQuerySchema }),
+    (req, _res, next) => {
+      const q = (req.query as unknown as CatalogQuery).q;
+      if (!q || q.length < 2) throw new AppError('validation_failed', 400, 'Validation failed', [{ path: 'q', message: 'Type at least 2 characters' }]);
+      next();
+    },
+    listing,
+  );
 
   router.get('/catalog/filters', validate({ query: catalogQuerySchema }), async (req, res) => {
     const query = req.query as unknown as CatalogQuery;

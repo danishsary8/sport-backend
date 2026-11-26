@@ -189,6 +189,13 @@ describe('delivery', () => {
     expect(price({ lines: [line('balls', 5000)], promo: CASTLE10, delivery: PP }).shippingCents).toBe(250);
   });
 
+  it('does not use up PPFREE when delivery is already free', () => {
+    expect(price({ lines: [line('balls', 5000)], promo: PPFREE, delivery: PP })).toMatchObject({
+      shippingCents: 0,
+      promo: { applied: false, message: "Delivery is already free, so PPFREE isn't needed" },
+    });
+  });
+
   it('applies PPFREE only to Phnom Penh delivery', () => {
     expect(price({ lines: [jersey()], promo: PPFREE, delivery: PP })).toMatchObject({ shippingCents: 0, promo: { applied: true } });
     expect(price({ lines: [jersey()], promo: PPFREE, delivery: COURIER })).toMatchObject({

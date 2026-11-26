@@ -149,6 +149,7 @@ export function priceCart(input: PricingInput): Breakdown {
     let shipping: number | null;
     let freeRemaining: number | null = null;
     let goldFree = false;
+    let freeAnyway = false;
     if (delivery.fulfillment === 'pickup') {
       shipping = delivery.rate ? 0 : null;
     } else if (!delivery.rate) {
@@ -157,14 +158,15 @@ export function priceCart(input: PricingInput): Breakdown {
       goldFree =
         has(rules.loyalty.freeDelivery.fromTier) && delivery.methodId !== null && rules.loyalty.freeDelivery.methods.includes(delivery.methodId);
       const thresholdMet = delivery.rate.freeOverCents !== null && afterDiscounts >= delivery.rate.freeOverCents;
-      if (goldFree || freeShippingPromo || thresholdMet || afterDiscounts === 0) {
+      freeAnyway = goldFree || thresholdMet || afterDiscounts === 0;
+      if (freeAnyway || freeShippingPromo) {
         shipping = 0;
       } else {
         shipping = delivery.rate.feeCents;
         if (delivery.rate.freeOverCents !== null) freeRemaining = delivery.rate.freeOverCents - afterDiscounts;
       }
     }
-    return { priced, teamTotal, memberTotal, promoTotal, afterDiscounts, shipping, freeRemaining, goldFree, total: afterDiscounts + (shipping ?? 0) };
+    return { priced, teamTotal, memberTotal, promoTotal, afterDiscounts, shipping, freeRemaining, goldFree, freeAnyway, total: afterDiscounts + (shipping ?? 0) };
   };
 
   const noShares = live.map(() => 0);
@@ -181,6 +183,12 @@ export function priceCart(input: PricingInput): Breakdown {
     } else {
       promoMessage = `${code} doesn't lower the price of the items in your bag`;
     }
+  }
+
+  // A free-delivery code that saves nothing is not "used" (a one-per-customer code stays available).
+  if (freeShippingPromo && chosen.freeAnyway) {
+    promoApplied = false;
+    promoMessage = `Delivery is already free, so ${code} isn't needed`;
   }
 
   const discounts: Breakdown['discounts'] = [];

@@ -28,10 +28,10 @@ Every variable is validated at start-up. The server refuses to start, and lists 
 | `BOOTSTRAP_ADMIN_PHONES` / `BOOTSTRAP_ADMIN_EMAILS` | recommended | People who become admin when they sign in (your own number). |
 | `ASSET_BASE_URL` | recommended | Where product photos live, e.g. `https://cdn.sportcastle.com.kh/` (default `/assets/`, served by the shop). |
 | `PAYWAY_MERCHANT_ID`, `PAYWAY_API_KEY` | **required** (unless cash only) | From ABA. |
-| `PAYWAY_BASE_URL` | **set it** | `https://checkout.payway.com.kh` in production; the sandbox URL is the default. |
+| `PAYWAY_BASE_URL` | **required** (with PayWay keys) | `https://checkout.payway.com.kh` in production, or the sandbox URL on a test server. Production refuses to start without it, so it can never silently use the sandbox. |
 | `PAYWAY_RETURN_URL` | **required** | This API's webhook: `https://api.<domain>/v1/webhooks/payway`. Register the same URL with ABA. |
 | `PAYWAY_CONTINUE_URL` | **required** | The shop page card payers return to, e.g. `https://<domain>/checkout/return`. |
-| `PAYMENT_METHODS_CASH_ONLY` | optional | `true` lets production start without PayWay (only cash on pickup is offered). |
+| `PAYMENT_METHODS_CASH_ONLY` | optional | `true` lets production start without PayWay. Only cash on pickup is offered, so delivery orders are switched off until PayWay is set up. |
 | `PUBLIC_API_URL` | optional | This API's own URL (used only by development payment pages). |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | recommended | Staff alerts: new orders, payments, refunds owed, returns and questions. |
 | `RESEND_API_KEY`, `NOTIFICATION_FROM_EMAIL` | optional | Customer emails (payment received, status changes, returns). The domain must be verified in Resend. |

@@ -48,6 +48,7 @@ describe('loadConfig', () => {
       PAYWAY_API_KEY: 'k',
       PAYWAY_RETURN_URL: 'https://api.shop.example/v1/webhooks/payway',
       PAYWAY_CONTINUE_URL: 'https://shop.example/checkout/return',
+      PAYWAY_BASE_URL: 'https://checkout.payway.com.kh',
     });
     expect(cfg.databaseSsl).toBe(true);
   });
@@ -65,6 +66,12 @@ describe('loadConfig', () => {
       const issues = issuesFor(prod).join('\n');
       expect(issues).toContain('PAYWAY_MERCHANT_ID');
       expect(issues).toContain('PAYWAY_API_KEY');
+    });
+
+    it('makes production name the PayWay URL instead of defaulting to the sandbox', () => {
+      const keys = { ...prod, PAYWAY_MERCHANT_ID: 'm', PAYWAY_API_KEY: 'k', PAYWAY_RETURN_URL: 'https://api.example/v1/webhooks/payway', PAYWAY_CONTINUE_URL: 'https://shop.example/checkout/return' };
+      expect(issuesFor(keys).join('\n')).toContain('PAYWAY_BASE_URL');
+      expect(loadConfig({ ...keys, PAYWAY_BASE_URL: 'https://checkout.payway.com.kh' }).paywayBaseUrl).toBe('https://checkout.payway.com.kh');
     });
 
     it('allows a cash-only shop to run without PayWay', () => {

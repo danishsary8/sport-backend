@@ -120,7 +120,7 @@ const envSchema = z
     ASSET_BASE_URL: z.string().trim().max(300).default('/assets/'),
     PAYWAY_MERCHANT_ID: optionalText,
     PAYWAY_API_KEY: optionalText,
-    PAYWAY_BASE_URL: z.string().trim().url().default('https://checkout-sandbox.payway.com.kh'),
+    PAYWAY_BASE_URL: optionalText.pipe(z.string().url().optional()),
     PAYWAY_RETURN_URL: optionalText.pipe(z.string().url().optional()),
     PAYWAY_CONTINUE_URL: optionalText.pipe(z.string().url().optional()),
     PAYMENT_METHODS_CASH_ONLY: booleanText,
@@ -161,6 +161,9 @@ const envSchema = z
           ctx.addIssue({ code: 'custom', path: [key], message: 'is required in production (or set PAYMENT_METHODS_CASH_ONLY=true)' });
         }
       }
+    }
+    if (env.NODE_ENV === 'production' && env.PAYWAY_MERCHANT_ID && env.PAYWAY_BASE_URL === undefined) {
+      ctx.addIssue({ code: 'custom', path: ['PAYWAY_BASE_URL'], message: 'must be set in production (https://checkout.payway.com.kh, or the sandbox URL on a test server)' });
     }
     if (env.NODE_ENV === 'production' && /change-me/i.test(env.COOKIE_SECRET)) {
       ctx.addIssue({
@@ -205,7 +208,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     assetBaseUrl: e.ASSET_BASE_URL,
     paywayMerchantId: e.PAYWAY_MERCHANT_ID,
     paywayApiKey: e.PAYWAY_API_KEY,
-    paywayBaseUrl: e.PAYWAY_BASE_URL.replace(/\/+$/, ''),
+    paywayBaseUrl: (e.PAYWAY_BASE_URL ?? 'https://checkout-sandbox.payway.com.kh').replace(/\/+$/, ''),
     paywayReturnUrl: e.PAYWAY_RETURN_URL,
     paywayContinueUrl: e.PAYWAY_CONTINUE_URL,
     paymentsCashOnly: e.PAYMENT_METHODS_CASH_ONLY ?? false,

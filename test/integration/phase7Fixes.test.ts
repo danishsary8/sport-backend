@@ -44,6 +44,8 @@ describe('staff cancel racing a new order with the same promo', () => {
   it('never deadlocks', async () => {
     const admin = await staffToken(ctx.app, database, ctx.fake, 'p7-admin', 'admin');
     for (let round = 0; round < 6; round++) {
+      // Keep this shopper under the open-unpaid-order cap: earlier rounds' orders count as abandoned.
+      await q("update orders set status = 'expired' where status = 'pending_payment'");
       const first = request.agent(ctx.app);
       await first.post('/v1/cart/items').send({ variantId: jerseyM, qty: 1 }).expect(200);
       await first.put('/v1/cart/promo').send({ code: 'CASTLE10' }).expect(200);

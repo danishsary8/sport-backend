@@ -124,6 +124,25 @@ async function insertOrderWithFreshNumber(tx: Tx, values: Omit<typeof orders.$in
   throw new Error('Could not allocate a unique order number');
 }
 
+/** At most this many unpaid orders holding stock per phone (or member): stops one person "selling out" the shop. */
+export const MAX_OPEN_UNPAID_ORDERS = 3;
+
+async function assertOpenOrderSlot(tx: Tx, phone: string, userId: string | null, now: Date): Promise<void> {
+  const r = await tx.execute<{ n: number }>(sql`
+    select count(*)::int as n from orders
+    where payment_status = 'unpaid'
+      and status in ('pending_payment', 'awaiting_pickup_payment')
+      and (reserved_until is null or reserved_until > ${now})
+      and (contact_phone_e164 = ${phone} ${userId ? sql`or user_id = ${userId}` : sql``})`);
+  if ((r.rows[0]?.n ?? 0) >= MAX_OPEN_UNPAID_ORDERS) {
+    throw new AppError(
+      'too_many_open_orders',
+      429,
+      `You already have ${MAX_OPEN_UNPAID_ORDERS} orders waiting for payment. Pay for or cancel one of them first.`,
+    );
+  }
+}
+
 /** Bag → order, in one serializable transaction: price, claim promo, reserve stock, snapshot, clear bag. */
 export async function placeOrder(deps: CheckoutDeps, owner: CartOwner, user: UserRow | undefined, input: PlaceOrderInput): Promise<PlacedOrder> {
   const { db, config } = deps;
@@ -167,6 +186,7 @@ export async function placeOrder(deps: CheckoutDeps, owner: CartOwner, user: Use
         ...(pricing.shippingCents === null ? { shipping: 'unavailable' } : {}),
       });
     }
+    await assertOpenOrderSlot(tx, input.contact.phone, user?.id ?? null, now);
     if (priced.promotionId) await claimPromotion(tx, priced.promotionId, user?.id ?? null, input.contact.phone);
 
     const variantIds = [...new Set(priced.items.map((i) => i.variantId))];

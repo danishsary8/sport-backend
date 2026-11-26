@@ -54,7 +54,12 @@ describe('busy checkouts', () => {
         return agent;
       }),
     );
-    const results = await Promise.all(agents.map((a) => a.post('/v1/orders').set(idem()).send(guestOrder(address))));
+    // Eight different shoppers (each phone may hold at most 3 unpaid orders).
+    const results = await Promise.all(
+      agents.map((a, i) =>
+        a.post('/v1/orders').set(idem()).send(guestOrder(address, { contact: { name: 'Shopper', phone: `012 30000${i}`, email: null, channel: 'phone' } })),
+      ),
+    );
     expect(results.map((r) => r.status).filter((s) => s !== 201 && s !== 503)).toEqual([]);
     expect(results.filter((r) => r.status === 201).length).toBeGreaterThanOrEqual(7);
   });

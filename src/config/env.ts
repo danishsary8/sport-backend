@@ -34,6 +34,8 @@ export interface Config {
   telegramChatId: string | undefined;
   resendApiKey: string | undefined;
   notificationFromEmail: string | undefined;
+  /** How many reverse proxies sit in front of the API (load balancer = 1; CDN + load balancer = 2). */
+  trustProxyHops: number;
   /** Runs the per-minute sweeper (payments, expiry, notifications). */
   jobsEnabled: boolean;
   /** Test sign-in tokens instead of Firebase (end-to-end tests). Refused in production. */
@@ -128,6 +130,7 @@ const envSchema = z
     RESEND_API_KEY: optionalText,
     NOTIFICATION_FROM_EMAIL: optionalText,
     JOBS_ENABLED: booleanText,
+    TRUST_PROXY_HOPS: z.string().optional().transform((v) => (v ? Number(v) : 1)).pipe(z.number().int().min(0).max(5)),
     AUTH_TEST_MODE: booleanText,
   })
   .superRefine((env, ctx) => {
@@ -212,6 +215,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     resendApiKey: e.RESEND_API_KEY,
     notificationFromEmail: e.NOTIFICATION_FROM_EMAIL,
     jobsEnabled: e.JOBS_ENABLED ?? true,
+    trustProxyHops: e.TRUST_PROXY_HOPS,
     authTestMode: e.AUTH_TEST_MODE ?? false,
   };
 }

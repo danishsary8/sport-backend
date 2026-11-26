@@ -31,6 +31,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     notificationFromEmail: undefined,
     jobsEnabled: false,
     authTestMode: false,
+    trustProxyHops: 1,
     ...overrides,
   };
 }

@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ZodType } from 'zod';
-import { account, catalog, commerce } from '../../src/contracts/index.js';
+import { account, catalog, commerce, common } from '../../src/contracts/index.js';
 import type { Database } from '../../src/db/client.js';
 import { seed } from '../../src/db/seed/index.js';
 import { bearer, memberApp } from '../helpers/app.js';
@@ -30,11 +30,17 @@ beforeAll(async () => {
   ctx = memberApp(database);
   token = ctx.fake.token({ uid: 'contract-member', phone: '+85512009400', email: 'c@example.com', emailVerified: true, name: 'Contract' });
   const address = await phnomPenhAddress(database);
-  await request(ctx.app).post('/v1/me/addresses').set(bearer(token)).send({ label: 'Home', ...address }).expect(201);
+  conforms(account.addressResponse, (await request(ctx.app).post('/v1/me/addresses').set(bearer(token)).send({ label: 'Home', ...address }).expect(201)).body);
   const v = await variantId(database, JERSEY, 'M');
+  const vl = await variantId(database, JERSEY, 'L');
+  conforms(commerce.cartResponse, (await request(ctx.app).post('/v1/cart/items').set(bearer(token)).send({ variantId: vl, qty: 2 }).expect(200)).body);
+  const lineId = (await request(ctx.app).get('/v1/cart').set(bearer(token))).body.cart.lines[0].id;
+  conforms(commerce.cartResponse, (await request(ctx.app).patch(`/v1/cart/items/${lineId}`).set(bearer(token)).send({ qty: 1 }).expect(200)).body);
+  conforms(commerce.cartResponse, (await request(ctx.app).delete(`/v1/cart/items/${lineId}`).set(bearer(token)).expect(200)).body);
   await request(ctx.app).post('/v1/cart/items').set(bearer(token)).send({ variantId: v, qty: 1, customPrint: { name: 'DARA', number: 10, patch: 'none' } }).expect(200);
-  await request(ctx.app).put('/v1/cart/promo').set(bearer(token)).send({ code: 'CASTLE10' }).expect(200);
+  conforms(commerce.cartResponse, (await request(ctx.app).put('/v1/cart/promo').set(bearer(token)).send({ code: 'CASTLE10' }).expect(200)).body);
   const placed = await request(ctx.app).post('/v1/orders').set(bearer(token)).set(idem()).send(guestOrder(address)).expect(201);
+  conforms(commerce.placedOrder, placed.body);
   number = placed.body.order.number;
   await payOrder(ctx.app, placed.body.payment.tranId);
   await request(ctx.app).put(`/v1/me/wishlist/${JERSEY}`).set(bearer(token)).expect(204);
@@ -98,6 +104,13 @@ describe('member responses match the contract', () => {
   }
   it('session', async () => conforms(account.session, (await request(ctx.app).post('/v1/auth/session').set(bearer(token)).expect(200)).body));
   it('my order', async () => conforms(commerce.orderResponse, (await request(ctx.app).get(`/v1/me/orders/${number}`).set(bearer(token)).expect(200)).body));
+  it('a return request', async () => {
+    await database.pool.query("update orders set status = 'delivered', delivered_at = now() where number = $1", [number]);
+    const items = (await request(ctx.app).get(`/v1/me/orders/${number}`).set(bearer(token))).body.order.items;
+    // The printed line can't be returned: the 400 answer is the contract's error body.
+    const refused = await request(ctx.app).post('/v1/me/returns').set(bearer(token)).send({ orderNumber: number, resolution: 'refund', items: [{ orderItemId: items[0].id, qty: 1, reason: 'x' }] }).expect(400);
+    conforms(common.errorBody, refused.body);
+  });
   it('quote', async () => {
     const v = await variantId(database, JERSEY, 'L');
     await request(ctx.app).post('/v1/cart/items').set(bearer(token)).send({ variantId: v, qty: 1 }).expect(200);

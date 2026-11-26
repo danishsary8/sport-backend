@@ -173,7 +173,7 @@ Guests prove access to their order with the `orderAccessToken` (24 h) in an `X-O
 - API routes live under `/v1`. Probes: `GET /health` (liveness) and `GET /ready` (database reachable → 200, otherwise 503).
 - Errors always look like `{"error":{"code":"…","message":"…","details":…}}`. A 500 also carries `requestId`, which matches the `X-Request-Id` response header and the logs.
 - Request bodies are limited to 1 MB; unknown JSON fields are stripped by validation.
-- Rate limits per minute: all of `/v1` 120 per IP; placing orders 10 per IP and 5 per signed-in member; sign-in 20 per IP; tracking 10 per IP; questions 5 per IP. A 429 carries `Retry-After`. Counters are in memory per server. With more than one server, plug a Redis-backed `RateLimitStore` into `createApp` (see `docs/DEPLOYMENT.md`).
+- Rate limits per minute: all of `/v1` 300 per IP (generous because mobile carriers put many shoppers behind one address); placing orders 10 per IP and 5 per signed-in member; sign-in 20 per IP; tracking 10 per IP; questions 5 per IP. A 429 carries `Retry-After`. Counters are in memory per server. With more than one server, plug a Redis-backed `RateLimitStore` into `createApp` (see `docs/DEPLOYMENT.md`).
 - Guest bag cookie: serve the API on the shop's registrable domain, and don't let third parties host pages on subdomains of it (a sibling subdomain could plant a bag cookie). The worst case is showing someone a different guest bag, never an order or account.
 
 ## Layout

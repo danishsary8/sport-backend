@@ -94,7 +94,8 @@ export function webhookRouter(ctx: AppContext): Router {
   const now = () => new Date();
 
   // VERIFY AGAINST PAYWAY SANDBOX: pushbacks are JSON; form-encoded bodies are accepted too, just in case.
-  router.post('/webhooks/payway', express.urlencoded({ extended: false, limit: WEBHOOK_BODY_LIMIT }), async (req, res) => {
+  // Not behind the general limiter, but one address can't flood it either.
+  router.post('/webhooks/payway', ctx.routeLimit('webhook', 60), express.urlencoded({ extended: false, limit: WEBHOOK_BODY_LIMIT }), async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     const raw = req.rawBody ?? Buffer.from(JSON.stringify(req.body ?? {}));
     const headers = Object.fromEntries(Object.entries(req.headers).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));

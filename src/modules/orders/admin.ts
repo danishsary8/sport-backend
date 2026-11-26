@@ -182,10 +182,11 @@ export async function cancelOrder(tx: Tx, order: OrderRow, actor: string, reason
   const allocs = await allocationsOf(tx, order.id);
   let toClose: string[] = [];
   if (order.paymentStatus === 'unpaid') {
-    await releaseAllocations(tx, allocs, order.number);
+    // Promotion before stock: the lock order every checkout path uses.
     if (order.promotionId) {
       await tx.update(promotions).set({ usedCount: sql`greatest(0, ${promotions.usedCount} - 1)` }).where(eq(promotions.id, order.promotionId));
     }
+    await releaseAllocations(tx, allocs, order.number);
     toClose = (
       await tx
         .update(payments)
@@ -195,6 +196,13 @@ export async function cancelOrder(tx: Tx, order: OrderRow, actor: string, reason
     ).map((p) => p.tranId);
   } else {
     const alreadyRefunded = order.paymentStatus === 'refunded';
+    if (order.promotionId) {
+      // The code wasn't really used: give the use back so a one-per-customer code works again.
+      const removed = await tx.delete(promotionRedemptions).where(eq(promotionRedemptions.orderId, order.id)).returning({ id: promotionRedemptions.id });
+      if (removed.length > 0) {
+        await tx.update(promotions).set({ usedCount: sql`greatest(0, ${promotions.usedCount} - 1)` }).where(eq(promotions.id, order.promotionId));
+      }
+    }
     await restockAllocations(tx, allocs, order.number, 'order_cancel', /^[0-9a-f-]{36}$/.test(actor) ? actor : null);
     if (order.userId) {
       const [earned] = await tx
@@ -204,13 +212,6 @@ export async function cancelOrder(tx: Tx, order: OrderRow, actor: string, reason
       if (earned) {
         const rules = (await loadRules(tx)).loyalty;
         await reverseLoyalty(tx, order.userId, earned.delta, Math.max(0, order.totalCents - order.shippingCents), 'order_cancelled', order.id, rules, `Order ${order.number} cancelled`);
-      }
-    }
-    if (order.promotionId) {
-      // The code wasn't really used: give the use back so a one-per-customer code works again.
-      const removed = await tx.delete(promotionRedemptions).where(eq(promotionRedemptions.orderId, order.id)).returning({ id: promotionRedemptions.id });
-      if (removed.length > 0) {
-        await tx.update(promotions).set({ usedCount: sql`greatest(0, ${promotions.usedCount} - 1)` }).where(eq(promotions.id, order.promotionId));
       }
     }
     if (!alreadyRefunded) {

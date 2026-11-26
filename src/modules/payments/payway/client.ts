@@ -148,7 +148,7 @@ export class PayWayProvider implements PaymentProvider {
     const status = body.status === undefined || body.status === null ? '' : String(body.status);
     const apv = body.apv === undefined || body.apv === null ? '' : String(body.apv);
     const eventId = `${tranId ?? 'invalid'}:${status}:${apv}`;
-    if (!tranId) return { valid: false, tranId: null, eventId, reason: 'malformed', claimedStatus: null, payload };
+    if (!tranId || status.length > 20 || apv.length > 40) return { valid: false, tranId: null, eventId: eventId.slice(0, 80), reason: 'malformed', claimedStatus: null, payload };
     if (typeof body.hash === 'string') {
       const values: Record<string, string> = { tran_id: tranId, apv, status };
       const expected = paywayHash(PUSHBACK_HASH_FIELDS.map((f) => values[f] ?? ''), this.cfg.apiKey);

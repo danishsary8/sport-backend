@@ -5,6 +5,7 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { z, type ZodType } from 'zod';
+import { profilePatchSchema } from '../src/modules/account/service.js';
 import { account, catalog, commerce, common, addressCreateSchema, addressPatchSchema, catalogQuerySchema, placeOrderSchema, quoteSchema, rmaCreateSchema, customPrintSchema } from '../src/contracts/index.js';
 
 type Auth = 'public' | 'member' | 'guest-or-member' | 'order-owner';
@@ -30,6 +31,7 @@ const ROUTES: Route[] = [
   { method: 'get', path: '/v1/catalog/menu', summary: 'Categories, brands and collections', auth: 'public', response: catalog.menu },
   { method: 'get', path: '/v1/catalog/home', summary: 'Home page sections', auth: 'public', response: catalog.home },
   { method: 'get', path: '/v1/catalog/collections/{slug}', summary: 'Collection title and description', auth: 'public', response: catalog.collection },
+  { method: 'get', path: '/v1/search', summary: 'Search results (listing shape; q min 2 characters)', auth: 'public', query: catalogQuerySchema, response: catalog.productList },
   { method: 'get', path: '/v1/search/suggest', summary: 'Type-ahead (min 2 characters)', auth: 'public', query: z.object({ q: z.string().min(2) }), response: catalog.suggest },
   { method: 'get', path: '/v1/catalog/products/{slug}/questions', summary: 'Published product questions', auth: 'public', response: catalog.questions },
   { method: 'post', path: '/v1/catalog/products/{slug}/questions', summary: 'Ask a question (published after staff answer)', auth: 'guest-or-member', body: z.object({ authorName: z.string().min(1).max(60), question: z.string().min(5).max(500) }), status: 201 },
@@ -43,11 +45,19 @@ const ROUTES: Route[] = [
   { method: 'get', path: '/v1/me/addresses', summary: 'Saved addresses', auth: 'member', response: account.addresses },
   { method: 'post', path: '/v1/me/addresses', summary: 'Add an address', auth: 'member', body: addressCreateSchema, response: account.addressResponse, status: 201 },
   { method: 'patch', path: '/v1/me/addresses/{id}', summary: 'Edit an address', auth: 'member', body: addressPatchSchema, response: account.addressResponse },
+  { method: 'patch', path: '/v1/me', summary: 'Edit profile (name, preferred sizes, home branch)', auth: 'member', body: profilePatchSchema, response: account.me },
+  { method: 'delete', path: '/v1/me', summary: 'Delete my account (refused while an order is in progress)', auth: 'member', status: 204 },
+  { method: 'delete', path: '/v1/me/addresses/{id}', summary: 'Delete an address', auth: 'member', status: 204 },
+  { method: 'post', path: '/v1/me/addresses/{id}/default', summary: 'Make an address the default', auth: 'member', response: account.addressResponse },
   { method: 'get', path: '/v1/me/wishlist', summary: 'Wishlist', auth: 'member', response: account.wishlist },
+  { method: 'put', path: '/v1/me/wishlist/{product}', summary: 'Save a product (id or slug)', auth: 'member', status: 204 },
+  { method: 'delete', path: '/v1/me/wishlist/{product}', summary: 'Remove a saved product', auth: 'member', status: 204 },
 
   { method: 'get', path: '/v1/cart', summary: 'The bag, priced by the server', auth: 'guest-or-member', response: commerce.cartResponse },
   { method: 'post', path: '/v1/cart/items', summary: 'Add to bag', auth: 'guest-or-member', body: z.object({ variantId: z.string().uuid(), qty: z.number().int().min(1).max(20), customPrint: customPrintSchema.optional() }), response: commerce.cartResponse },
   { method: 'patch', path: '/v1/cart/items/{id}', summary: 'Change size or quantity', auth: 'guest-or-member', body: z.object({ qty: z.number().int().min(1).max(20).optional(), variantId: z.string().uuid().optional() }), response: commerce.cartResponse },
+  { method: 'delete', path: '/v1/cart/items/{id}', summary: 'Remove a bag line', auth: 'guest-or-member', response: commerce.cartResponse },
+  { method: 'delete', path: '/v1/cart/promo', summary: 'Remove the promo code', auth: 'guest-or-member', response: commerce.cartResponse },
   { method: 'put', path: '/v1/cart/promo', summary: 'Enter a promo code', auth: 'guest-or-member', body: z.object({ code: z.string().min(1).max(40) }), response: commerce.cartResponse },
   { method: 'post', path: '/v1/checkout/quote', summary: 'Totals, delivery options, pickup stores and payment methods', auth: 'guest-or-member', body: quoteSchema, response: commerce.quote },
   { method: 'post', path: '/v1/orders', summary: 'Place the order and start payment', auth: 'guest-or-member', body: placeOrderSchema, response: commerce.placedOrder, status: 201, headers: [idemHeader] },

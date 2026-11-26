@@ -70,7 +70,7 @@ export function createApp(deps: AppDeps): express.Express {
 
   app.disable('x-powered-by');
   // One reverse proxy hop (load balancer) so req.ip is the real client address.
-  app.set('trust proxy', 1);
+  app.set('trust proxy', config.trustProxyHops);
 
   app.use(requestId);
   app.use(httpLogger(logger));

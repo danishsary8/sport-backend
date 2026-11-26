@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { AppError } from '../../lib/errors.js';
-import { pickFields, type CreateTransactionInput, type PaymentInstructions, type PaymentProvider, type ProviderStatus, type TransactionCheck, type WebhookVerification } from './provider.js';
+import { pickFields, TRAN_ID_PATTERN, type CreateTransactionInput, type PaymentInstructions, type PaymentProvider, type ProviderStatus, type TransactionCheck, type WebhookVerification } from './provider.js';
 
 const FAKE_SECRET = 'fake-payment-provider-dev-secret';
 
@@ -81,10 +81,11 @@ export class FakePaymentProvider implements PaymentProvider {
     } catch {
       // invalid below
     }
-    const tranId = typeof body.tran_id === 'string' ? body.tran_id : null;
+    const tranId = typeof body.tran_id === 'string' && TRAN_ID_PATTERN.test(body.tran_id) ? body.tran_id : null;
     const claimed = typeof body.status === 'string' ? (body.status as ProviderStatus) : null;
-    const eventId = `${tranId ?? 'unknown'}:${claimed ?? ''}${typeof body.apv === 'string' ? `:${body.apv}` : ''}`;
-    const valid = tranId !== null && expected.length === given.length && timingSafeEqual(expected, given);
+    const eventId = `${tranId ?? 'invalid'}:${claimed ?? ''}${typeof body.apv === 'string' ? `:${body.apv}` : ''}`.slice(0, 80);
+    const short = (v: unknown, n: number) => v === undefined || (typeof v === 'string' && v.length <= n);
+    const valid = tranId !== null && short(body.status, 20) && short(body.apv, 40) && expected.length === given.length && timingSafeEqual(expected, given);
     return { valid, tranId, eventId, claimedStatus: claimed, reason: valid ? undefined : 'signature_mismatch', payload: pickFields(body, ['tran_id', 'status', 'apv']) };
   }
 }

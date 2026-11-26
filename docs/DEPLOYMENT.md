@@ -35,8 +35,9 @@ Every variable is validated at start-up. The server refuses to start, and lists 
 | `PUBLIC_API_URL` | optional | This API's own URL (used only by development payment pages). |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | recommended | Staff alerts: new orders, payments, refunds owed, returns and questions. |
 | `RESEND_API_KEY`, `NOTIFICATION_FROM_EMAIL` | optional | Customer emails (payment received, status changes, returns). The domain must be verified in Resend. |
+| `TRUST_PROXY_HOPS` | optional (1) | How many proxies sit in front of the API. One load balancer (Cloud Run, Fly, Render, nginx) = 1; a CDN such as Cloudflare **plus** a load balancer = 2. If this is wrong, every shopper looks like the same IP and rate limits block them together. |
 | `JOBS_ENABLED` | optional (`true`) | The per-minute background job. Leave it on; with several servers only one runs it at a time. |
-| `AUTH_TEST_MODE` | **never** | End-to-end tests only; production refuses to start with it. |
+| `AUTH_TEST_MODE` | **never** | End-to-end tests only; production refuses to start with it. **Never set it on any server reachable from the internet** (staging included): test tokens can claim any phone, including an admin's. |
 
 ## 3. Build and first start
 
@@ -58,10 +59,10 @@ docker run -d --env-file prod.env -p 3000:3000 sport-backend
 **Cloud Run example:**
 ```bash
 gcloud run deploy sport-api --image=REGION-docker.pkg.dev/PROJECT/repo/sport-backend \
-  --region=asia-southeast1 --port=3000 --min-instances=1 --max-instances=3 \
+  --region=asia-southeast1 --port=3000 --min-instances=1 --max-instances=3 --no-cpu-throttling \
   --set-env-vars=NODE_ENV=production,... --set-secrets=COOKIE_SECRET=cookie-secret:latest,...
 ```
-`--min-instances=1` keeps the background job running and avoids cold starts at checkout. Run migrations as a Cloud Run job, or with the `docker run` command above, before shifting traffic.
+`--min-instances=1` together with `--no-cpu-throttling` (CPU always allocated) keeps the per-minute background job running between requests. Without it Cloud Run pauses the CPU when no request is in flight, and unpaid orders, late payments and notifications are not processed. It also avoids cold starts at checkout. Run migrations as a Cloud Run job, or with the `docker run` command above, before shifting traffic.
 
 ## 4. Health checks
 
@@ -98,7 +99,7 @@ gcloud run deploy sport-api --image=REGION-docker.pkg.dev/PROJECT/repo/sport-bac
 
 ## 8. Rolling back
 
-- Migrations only add things, so the previous image keeps working with the newer schema. To roll back, redeploy the previous image tag.
+- Migrations are written so the previous image keeps working with the newer schema (they add tables, columns and indexes, and occasionally clean data, e.g. 0008 makes colour names unique per product). To roll back, redeploy the previous image tag.
 - Never delete migration files. A schema mistake is fixed with a new migration.
 
 ## 9. Security notes
@@ -108,4 +109,5 @@ gcloud run deploy sport-api --image=REGION-docker.pkg.dev/PROJECT/repo/sport-bac
   - Any site under your registrable domain can set cookies for it, so do not let third parties host pages on subdomains of your shop domain (a sibling subdomain could plant a bag cookie: "cookie fixation"). The worst it can do is show someone a different guest bag; it can't reach orders or accounts.
 - **Sign-in tokens:** Firebase ID tokens are cached for up to 5 minutes after verification. Disabling a user in Firebase therefore takes up to 5 minutes to lock them out of the API.
 - **Logs:** phones are masked (`***678`), and order tokens, cookies and authorization headers are redacted.
-- **Webhooks:** the PayWay webhook is never trusted on its own. Every payment is confirmed with PayWay's signed check API.
+- **Webhooks:** the PayWay webhook is never trusted on its own. Every payment is confirmed with PayWay's signed check API. It is limited to 60 calls a minute per address, and its records are kept for 90 days.
+- **Development payment pages:** when PayWay keys are missing and `NODE_ENV` isn't `production`, `/v1/dev/payments/*` lets anyone approve a test payment. A public staging server must run with `NODE_ENV=production` and sandbox PayWay keys, never with the fake provider.

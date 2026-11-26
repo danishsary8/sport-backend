@@ -42,7 +42,8 @@ export interface RateLimitConfig {
 }
 
 export const DEFAULT_RATE_LIMIT_WINDOW_MS = 60_000;
-export const DEFAULT_GENERAL_MAX_REQUESTS = 120;
+/** Per IP. Cambodian mobile carriers put many subscribers behind one address (CGNAT), so this is generous. */
+export const DEFAULT_GENERAL_MAX_REQUESTS = 300;
 export const DEFAULT_SENSITIVE_MAX_REQUESTS = 20;
 export const DEFAULT_WEBHOOK_MAX_REQUESTS = 60;
 export const DEFAULT_ADMIN_MAX_REQUESTS = 60;

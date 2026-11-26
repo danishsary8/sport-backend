@@ -1,6 +1,6 @@
 import { and, asc, eq, gt, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
-import { carts, idempotencyKeys, orderItemAllocations, orderItems, orders, payments, promotions, type OrderStatus } from '../db/schema/index.js';
+import { carts, idempotencyKeys, paymentWebhookEvents, orderItemAllocations, orderItems, orders, payments, promotions, type OrderStatus } from '../db/schema/index.js';
 import { AppError, safeError } from '../lib/errors.js';
 import type { Logger } from '../lib/logger.js';
 import type { Notifier } from '../modules/notifications/notifier.js';
@@ -126,6 +126,7 @@ export async function sweepOnce(input: SweepDeps & { shouldStop?: () => boolean 
   const result: SweepResult = { locked: false, checked: 0, expired: 0, notifications: { sent: 0, failed: 0, skipped: 0 }, guestCartsDeleted: 0 };
   const { db } = deps.database;
   const client = await deps.database.pool.connect();
+  let released = false;
   try {
     const lock = await client.query<{ ok: boolean }>('select pg_try_advisory_lock($1) as ok', [JOBS_LOCK_KEY]);
     if (!lock.rows[0]?.ok) return result;
@@ -197,15 +198,24 @@ export async function sweepOnce(input: SweepDeps & { shouldStop?: () => boolean 
         result.guestCartsDeleted = deleted.length;
         // Idempotency keys only need to outlive a client's retries (spec: 24 hours).
         await db.delete(idempotencyKeys).where(lt(idempotencyKeys.createdAt, new Date(now.getTime() - 86_400_000)));
+        // Webhook records are an audit trail for disputes; 90 days is plenty.
+        await db.delete(paymentWebhookEvents).where(lt(paymentWebhookEvents.receivedAt, new Date(now.getTime() - 90 * 86_400_000)));
       } catch (error) {
         deps.logger.error({ err: safeError(error) }, 'Sweeper: guest cart cleanup failed');
       }
     } finally {
-      await client.query('select pg_advisory_unlock($1)', [JOBS_LOCK_KEY]);
+      try {
+        await client.query('select pg_advisory_unlock($1)', [JOBS_LOCK_KEY]);
+      } catch (error) {
+        // A session lock survives on a pooled connection: destroy the connection so the lock goes with it.
+        deps.logger.error({ err: safeError(error) }, 'Sweeper: could not release the job lock; dropping the connection');
+        released = true;
+        client.release(true);
+      }
     }
     return result;
   } finally {
-    client.release();
+    if (!released) client.release();
   }
 }
 

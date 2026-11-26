@@ -67,6 +67,15 @@ export const productDetail = productCard.extend({
 });
 export const productDetailResponse = z.strictObject({ product: productDetail });
 
+export const printOptions = z.strictObject({
+  baseCents: z.number().int(),
+  patches: z.array(z.strictObject({ id: z.enum(['none', 'ucl', 'cpl', 'aff', 'champions', 'f1-paddock']), label: z.string(), feeCents: z.number().int() })),
+  fonts: z.array(z.strictObject({ id: z.enum(['pro-condensed', 'classic-block', 'motorsport-aero']), label: z.string() })),
+  nameMaxLength: z.number().int(),
+  numberMin: z.number().int(),
+  numberMax: z.number().int(),
+});
+
 export const menu = z.strictObject({
   categories: z.array(z.strictObject({ slug: z.string(), name: z.string(), productCount: z.number().int() })),
   brands: z.array(z.strictObject({ slug: z.string(), name: z.string(), productCount: z.number().int() })),

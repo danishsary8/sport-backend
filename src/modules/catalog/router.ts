@@ -9,6 +9,18 @@ import { buildFacets } from './facets.js';
 import { langSchema, type Lang } from './i18n.js';
 import { catalogQuerySchema, listProducts, resolveFilters, safetyBuffer, type CatalogQuery } from './listing.js';
 import { toCard } from './view.js';
+import { loadRules } from '../pricing/context.js';
+import { FONT_IDS, PATCH_IDS, type FontId, type PatchId } from '../pricing/print.js';
+
+const PATCH_LABELS: Record<PatchId, string> = {
+  none: 'No patch',
+  ucl: 'Champions League',
+  cpl: 'Cambodian Premier League',
+  aff: 'AFF Championship',
+  champions: 'Champions badge',
+  'f1-paddock': 'F1 paddock',
+};
+const FONT_LABELS: Record<FontId, string> = { 'pro-condensed': 'Pro condensed', 'classic-block': 'Classic block', 'motorsport-aero': 'Motorsport aero' };
 
 export const PUBLIC_CACHE = 'public, max-age=60, stale-while-revalidate=300';
 
@@ -70,6 +82,19 @@ export function catalogRouter(ctx: AppContext): Router {
       res.json(result);
     },
   );
+
+  router.get('/catalog/print-options', async (_req, res) => {
+    const fees = (await loadRules(db)).printFees;
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.json({
+      baseCents: fees.baseCents,
+      patches: PATCH_IDS.map((id) => ({ id, label: PATCH_LABELS[id], feeCents: fees.patches[id] ?? 0 })),
+      fonts: FONT_IDS.map((id) => ({ id, label: FONT_LABELS[id] })),
+      nameMaxLength: 14,
+      numberMin: 1,
+      numberMax: 99,
+    });
+  });
 
   router.get('/catalog/menu', validate({ query: langQuery }), async (req, res) => {
     const result = await menu(db, lang(req.query), await safetyBuffer(db));

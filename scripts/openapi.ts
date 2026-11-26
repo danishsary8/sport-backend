@@ -28,6 +28,7 @@ const ROUTES: Route[] = [
   { method: 'get', path: '/v1/catalog/products', summary: 'Product listing (repeat a param for OR)', auth: 'public', query: catalogQuerySchema, response: catalog.productList },
   { method: 'get', path: '/v1/catalog/filters', summary: 'Facets with counts for the current filters', auth: 'public', query: catalogQuerySchema, response: catalog.filters },
   { method: 'get', path: '/v1/catalog/products/{slug}', summary: 'Product detail with sizes, availability per branch and related products', auth: 'public', response: catalog.productDetailResponse },
+  { method: 'get', path: '/v1/catalog/print-options', summary: 'Shirt printing fees, patches and fonts', auth: 'public', response: catalog.printOptions },
   { method: 'get', path: '/v1/catalog/menu', summary: 'Categories, brands and collections', auth: 'public', response: catalog.menu },
   { method: 'get', path: '/v1/catalog/home', summary: 'Home page sections', auth: 'public', response: catalog.home },
   { method: 'get', path: '/v1/catalog/collections/{slug}', summary: 'Collection title and description', auth: 'public', response: catalog.collection },

@@ -33,6 +33,8 @@ Nothing here blocks the build: the software runs on test stand-ins until you sup
 
 ## Content
 
+- Store opening hours, the "pickup available" switch per store, the home-page sections and per-item online stock buffers have no admin screen yet; tell a developer when they change (one SQL line each).
+
 16. Real product photos (today's are AI-generated).
 17. Khmer translations of product names and descriptions.
 

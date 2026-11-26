@@ -15,7 +15,7 @@ Test files are under `test/unit/` and `test/integration/`.
 | Member perks Silver 10% / Gold free PP delivery / Pro free printing; better-of code vs member | ✅ | `pricing.test.ts`, `cart.test.ts` |
 | Staff stock screen + safety buffer (1 per size per branch) | ✅ | `admin/stockRouter.ts`, `stock.test.ts`, `availability.test.ts` |
 | Returns: exchange 30 days, refund 14 days, no printed items | ✅ | `rma/rules.ts`, `returns.test.ts`, `rmaRules.test.ts` |
-| PayWay KHQR + card; methods switchable in settings | ✅ 📝 | `payments/payway/*`, `settings/payments.ts`, `checkoutQuote.test.ts`; field mapping verified against PayWay docs from memory → `PAYWAY-SANDBOX-CHECKLIST.md` (owner to-do) |
+| PayWay KHQR + card; methods switchable in settings | ✅ 📝 | `payments/payway/*`, `settings/payments.ts`, `checkoutQuote.test.ts`, `adminSettings.test.ts` (PUT /v1/admin/settings/payment_methods_enabled), `cashOnlyMode.test.ts`; field mapping verified against PayWay docs from memory → `PAYWAY-SANDBOX-CHECKLIST.md` (owner to-do) |
 | USD with KHR at a configured rate; E.164 phones | ✅ | `pricing.test.ts` (KHR), `lib/phone.ts`, `phone.test.ts` |
 | Anti-goals: no client totals, no overselling, no double charge/fulfil, no paid without verified check, no PII leaks, none of Zando's "Avoid" bugs | ✅ | `placeOrderConcurrency.test.ts`, `paymentConfirm.test.ts` (3× webhook, forged), `orderTracking.test.ts`, `SECURITY-PASS.md`; Avoid list below |
 
@@ -35,7 +35,7 @@ Test files are under `test/unit/` and `test/integration/`.
 | Token cache ≤ 5 min | ✅ | `lib/identity.ts`, `identity.test.ts`; documented in README / DEPLOYMENT |
 | Identity key firebase_uid; phone unique; phone released from stale rows | ✅ | `users/repo.ts`, `auth.test.ts`, `accountsHardening.test.ts` |
 | Google-only users buy but don't earn points until a phone is verified | ✅ | `paymentConfirm.test.ts` "gives no points…", `loyalty.test.ts` `phoneVerified` |
-| Roles customer/staff/admin; bootstrap admins via env; no hard-coded email | ✅ | `adminUsers.test.ts`, `accountsHardening.test.ts` "refuses to demote a bootstrap admin" |
+| Roles customer/staff/admin; bootstrap admins via env; no hard-coded email | ✅ | `adminUsers.test.ts`, `accountsHardening.test.ts` "refuses to demote an admin who is in BOOTSTRAP_ADMIN_PHONES" |
 | optionalAuth: invalid token on public route | 📝 | An invalid/expired token sent to a public route answers 401 (so the client refreshes it) instead of silently treating a member as a guest with an empty bag; a request **without** a token is a guest. Phase 2 ruling. |
 | `DELETE /v1/me` anonymises; orders kept with name/phone redacted; Firebase user deleted | ✅ 📝 | `account/service.ts`, `accountDeletion.test.ts`; refused while an order is in progress (`open_orders`) so staff can still reach the customer |
 | Guest cookie `sc_cart` 128-bit, httpOnly, Secure, SameSite=Lax, 60 days, HMAC-signed | ✅ | `cart/owner.ts`, `signedCookie.test.ts`, `cart.test.ts` |
@@ -77,7 +77,7 @@ Test files are under `test/unit/` and `test/integration/`.
 | 409 insufficient_stock with available | ✅ | `cart.test.ts` |
 | Merge on login: summed, capped, guest cart deleted | ✅ | `cartMerge.test.ts` |
 | Carts don't reserve; honest notice | ✅ | `CartView.notices`, `cart.test.ts` |
-| Public availability ok / low (1–3 with count) / out only | ✅ | `availability.test.ts`, `contracts.test.ts` (`lowStockCount` ≤ 3) |
+| Public availability ok / low (1–3 with count) / out only | ✅ | `availability.test.ts`, `contracts.test.ts` (`lowStockCount` ≤ 3), `stockPrivacy.test.ts` (bag `maxQty` and stock errors never show counts above 3) |
 | Abandoned guest carts cleaned | ✅ | `sweeper.test.ts` "deletes guest bags untouched for 60 days" |
 
 ## §11 Checkout, orders & payment
@@ -88,7 +88,7 @@ Test files are under `test/unit/` and `test/integration/`.
 | `POST /v1/orders` + Idempotency-Key (24 h) | ✅ | `placeOrder.test.ts`, `placeOrderConcurrency.test.ts`, `checkoutLeftovers.test.ts` (24 h cleanup) |
 | One serializable transaction: load cart, re-price, allocate (pickup branch / most-stock with split, Sonthormuk on ties), lock rows, reserve, insert, clear cart; shortfall → 409 stock_changed | ✅ | `checkout/placeOrder.ts`, `allocation.test.ts`, `placeOrderConcurrency.test.ts`, `checkoutLeftovers.test.ts`; retries + 503 `busy` `serializable.test.ts` |
 | PayWay transaction outside the transaction; instructions qr / redirect | ✅ | `checkout/paymentAttempt.ts`, `payway.test.ts` |
-| Retry / switch method (owner check) | ✅ 📝 | `paymentRoutes.test.ts`; guests prove access with the order token **and** phone (instead of the bag cookie, which is cleared at checkout) |
+| Retry / switch method (owner check) | ✅ 📝 | `paymentRoutes.test.ts` (incl. two racing retries keep the newest attempt payable), `guestResume.test.ts` (lost link → token from tracking; customer cancel of unpaid orders); guests prove access with the order token **and** phone (instead of the bag cookie, which is cleared at checkout) |
 | `cash_on_pickup` → `awaiting_pickup_payment`, 48 h hold | ✅ | `placeOrder.test.ts`, `sweeper.test.ts`, `adminOrders.test.ts` collect-cash |
 | Webhook verified, recorded idempotently, always re-checked | ✅ | `paymentConfirm.test.ts`, `phase5Fixes.test.ts`, `phase7Fixes.test.ts` |
 | Client poll throttled to 5 s per order | ✅ | `paymentRoutes.test.ts` |
@@ -123,14 +123,14 @@ Test files are under `test/unit/` and `test/integration/`.
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| Products/colours/variants/images CRUD | ✅ | `adminCatalog.test.ts`, `catalogHardening.test.ts` |
+| Products/colours/variants/images CRUD; brands/categories create | ✅ | `adminCatalog.test.ts`, `catalogHardening.test.ts`, `adminCatalogEdit.test.ts` (colours add/rename/delete, photo list replace, brands/categories). Branch hours, home sections and per-row online buffer have no admin endpoints (seeded; OWNER-TODO) |
 | CSV import/export | ✅ 📝 | `adminProductsCsv.test.ts`; import updates prices/status of existing SKUs only (dry run first) |
 | Stock: per variant/branch; adjust; lookup; counter sale (refused when held, naming the order); transfer; branch-scoped staff | ✅ | `stock.test.ts`, `adminCatalog.test.ts`, `counterSaleHolds.test.ts`, `catalogHardening.test.ts` (scoped reads) |
 | Orders: list/filter/search, detail with events, transitions, cancel, mark refunded | ✅ | `adminOrders.test.ts`, `phase6Minors.test.ts` |
 | Promotions, shipping rates, settings, roles | ✅ | `adminPricing.test.ts`, `checkoutLeftovers.test.ts` (promotion rules), `adminUsers.test.ts` |
 | Q&A moderation; RMA approval (restock, loyalty reversal, refund flag) | ✅ | `questions.test.ts`, `returns.test.ts` |
 | Monitoring under `/v1/admin/system-health/*`; public `/health`, `/ready` only | ✅ | `systemHealth.test.ts`, `app.test.ts` |
-| Every admin write records the actor | ✅ | order events actor, `stock_movements.actor_user_id`, `loyalty_ledger.actor_user_id`, `product_questions.answered_by/moderated_by`, `rma_requests.decided_by`, admin change logs |
+| Every admin write records the actor | ✅ | order events actor, `stock_movements.actor_user_id`, `loyalty_ledger.actor_user_id`, `product_questions.answered_by/moderated_by`, `rma_requests.decided_by`, admin change logs (product edits, sizes, colours, photos, settings); the CSV price import logs a count only (deferred minor) |
 
 ## §15 Notifications
 
@@ -148,7 +148,7 @@ Test files are under `test/unit/` and `test/integration/`.
 | Rate limits (general, orders IP+user, track, questions, sign-in, webhook) with pluggable store | ✅ 📝 | `rateLimits.test.ts`, `orderTracking.test.ts`, `questions.test.ts`, `phase7Fixes.test.ts`; general limit 300/min/IP instead of 120 (carrier NAT) |
 | Errors `{error:{code,message,details?}}`, request id | ✅ | `errors.test.ts`, `app.test.ts` |
 | pino JSON with PII redaction | ✅ | `logger.test.ts`, `logRedaction.test.ts` |
-| Config validated at boot | ✅ | `config.test.ts` |
+| Config validated at boot | ✅ | `config.test.ts` (incl. production must name `PAYWAY_BASE_URL`), `paymentProviderChoice.test.ts` (production never uses the fake provider) |
 | DB SSL in production, committed migrations, pool of 10 | ✅ | `db/client.ts`, `httpEdges.test.ts` (CA), `drizzle/` |
 | Background jobs under an advisory lock | ✅ | `sweeper.test.ts`, `phase7Fixes.test.ts` |
 | Graceful shutdown | ✅ | `server.test.ts` |
@@ -166,7 +166,7 @@ Test files are under `test/unit/` and `test/integration/`.
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| Unit + integration against real Postgres; concurrency, expiry, idempotency, paid-after-expiry, auth, RMA amounts, tracking privacy | ✅ | 79 test files, ~690 tests; `npm test` |
+| Unit + integration against real Postgres; concurrency, expiry, idempotency, paid-after-expiry, auth, RMA amounts, tracking privacy | ✅ | 91 test files, 721 tests; `npm test` |
 | CI: typecheck, lint, unit, integration, docker build, contract check | ✅ | `.github/workflows/ci.yml` |
 | PayWay sandbox manual checklist | ✅ | `docs/PAYWAY-SANDBOX-CHECKLIST.md` |
 | Load test of the order path | ✅ | `scripts/loadtest.ts`, STATUS.md numbers |
@@ -204,3 +204,24 @@ All seven phases are delivered (`STATUS.md`). The index set includes `variants(p
 ## Legacy code
 
 Every legacy file is ported or dropped with a reason: `docs/superpowers/LEGACY-PORT.md` (verified by the phase 6 reviewer).
+
+## Whole-backend review (Stage 4, task 6)
+
+A fresh reviewer read the whole backend at 6484192. Fixed with a failing test first:
+
+| Finding | Fix | Test |
+|---|---|---|
+| C-1 cash-only mode showed a fake KHQR | cash-only offers cash on pickup alone; production never uses the fake provider | `cashOnlyMode.test.ts`, `paymentProviderChoice.test.ts` |
+| I-1 typecheck red | fixed the test typing | `npm run typecheck` |
+| I-2 racing payment retries cancelled each other | only older attempts are cancelled | `paymentRoutes.test.ts` |
+| I-3 unpaid orders could hold all stock | at most 3 unpaid orders per phone/member | `openOrderCap.test.ts` |
+| I-4 no colour/photo editing after creation | colour CRUD, photo list, brands, categories | `adminCatalogEdit.test.ts` |
+| I-5 operational settings not editable | `GET/PUT /v1/admin/settings/:key` | `adminSettings.test.ts` |
+| I-6 lost order link = stuck unpaid order | tracking returns a token while unpaid; `POST /v1/orders/:n/cancel` | `guestResume.test.ts` |
+| I-7 PayWay errors read as "pending" | non-success codes are provider errors; approval without amount is flagged | `payway.test.ts`, `paymentConfirm.test.ts` |
+| M-2 counts up to 20 exposed | counts above 3 never shown | `stockPrivacy.test.ts` |
+| M-5 free-delivery code used for nothing | not applied when delivery is already free | `pricing.test.ts` |
+| M-6 no return deadlines on orders | `deliveredAt`, `returnWindow`, `returnableQty` | `orderReturnInfo.test.ts` |
+| M-8 production could use the sandbox URL | production must set `PAYWAY_BASE_URL` | `config.test.ts` |
+
+Deferred minors: M-1 (branch staff and split orders), M-3 (adjustment below reserved doesn't name the order), M-4 rest (CSV import audit detail), M-7 (expiry emails to unverified guest addresses).

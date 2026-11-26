@@ -10,7 +10,7 @@ After a context reset, trust this file, the plan ledgers (`.superpowers/sdd/<pla
 | 1 | Backend phase 5: checkout, orders, payments | `plans/2026-11-25-phase-5-checkout-payments.md` | 10c4ecd | done (review: 5 Important fixed) |
 | 2 | Backend phase 6: post-purchase | `plans/2026-11-25-phase-6-post-purchase.md` | bfea8ba | done (review: 2 Critical + 5 Important fixed) |
 | 3 | Backend phase 7: hardening + deferred minors | `plans/2026-11-25-phase-7-hardening.md` | b06e98c | done (review: 5 Important fixed; every phase 1–6 minor fixed or ruled) |
-| 4 | Backend completeness audit | `plans/2026-11-26-stage-4-backend-audit.md` → `BACKEND-AUDIT.md` | 6484192 | gaps closed (tasks 1–5); whole-backend review running |
+| 4 | Backend completeness audit | `plans/2026-11-26-stage-4-backend-audit.md` → `BACKEND-AUDIT.md` | 6484192 → HEAD | **done** — gaps closed, whole-backend review fixed (C-1, I-1…I-7, M-2, M-5, M-6, M-8); 721 tests |
 | 5 | Frontend design | `sport-heaven/docs/superpowers/specs/…` | – | not started |
 | 6 | Frontend build | `sport-heaven/docs/superpowers/plans/…` | – | not started |
 | 7 | Frontend audit | `sport-heaven/docs/superpowers/FRONTEND-AUDIT.md` | – | not started |
@@ -24,6 +24,7 @@ After a context reset, trust this file, the plan ledgers (`.superpowers/sdd/<pla
 | Stage 1 done incl. review fixes (twice) | 535/535 |
 | Stage 2 done incl. review fixes (twice) | 596/596 |
 | Stage 3 done incl. review fixes (twice) | 680/680 | frontend clean-up: 2/2 (typecheck, lint, build clean) |
+| Stage 4 done incl. whole-backend review fixes (twice: lint, typecheck, test, build) | 721/721 | FE1 in progress |
 
 ## Load test (phase 7, `npm run loadtest`)
 
@@ -164,3 +165,12 @@ All phase 1–6 minors above were closed in Stage 3 (fixed, or ruled in the Stag
 - loadtest resets whatever TEST_DATABASE_URL names (no name guard)
 - wishlist re-add of an item whose sizes are all inactive returns 404 instead of 204
 - contract duplicates the order/payment status enums instead of importing them
+
+**Stage 4 ruling on the Stage 3 minors:** all stay deferred. Each is theoretical with admin-validated data, affects only operators (not shoppers' money or stock), or is a developer tool (loadtest). None changes what a shopper pays or receives.
+
+### Stage 4 (whole-backend review) — deferred
+
+- M-1 branch staff can cancel/refund a split multi-branch order (scope = any allocation at their branch)
+- M-3 a stock adjustment below the reserved count doesn't name the holding order
+- M-4 (rest) the CSV price import logs a count, not each change; no persisted admin audit table
+- M-7 expiry emails go to unverified guest addresses; ops Telegram gets one message per unpaid order

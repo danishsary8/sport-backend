@@ -69,3 +69,7 @@ Format: **decision** — why — what changes if you disagree.
 - [Stage 4] **A guest who closes the page while paying can get back to the order** by tracking it with the order number and phone, and can pay or cancel it while it's still unpaid. — Otherwise their items stay held and they can't pay. — Tracking stays limited to 10 tries a minute.
 - [Stage 4] **If PayWay ever confirms a payment without saying the amount, the order is flagged for you to check** in the PayWay portal instead of being confirmed automatically. — Never trust a payment we can't verify. — A manual check if it happens.
 - [Stage 4] **The refund window can't be longer than the exchange window** (today 14 and 30 days). — Keeps the returns rules simple to explain. — Ask a developer to lift the check.
+
+## Stage 6 — Frontend build (recovery)
+
+- [Stage 6] **The shop pages after the foundation (browse, bag and checkout, account, admin) were rebuilt from the design** because the earlier work on them never reached GitHub; only the foundation did. — Nothing that isn't on GitHub can be trusted to exist. — The rebuild follows the same design and the same decisions already recorded for those stages.

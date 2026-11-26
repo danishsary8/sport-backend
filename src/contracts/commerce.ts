@@ -101,6 +101,7 @@ const orderItem = z.strictObject({
   discountCents: cents,
   lineTotalCents: cents,
   customPrint: customPrint.nullable(),
+  returnableQty: z.number().int().min(0),
 });
 const shipAddress = z.strictObject({
   recipientName: z.string(),
@@ -139,6 +140,8 @@ const orderBase = {
   note: z.string().nullable(),
   reservedUntil: z.string().nullable(),
   paidAt: z.string().nullable(),
+  deliveredAt: z.string().nullable(),
+  returnWindow: z.strictObject({ exchangeUntil: isoDate, refundUntil: isoDate }).nullable(),
   createdAt: isoDate,
   timeline: timeline.optional(),
 };

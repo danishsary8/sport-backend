@@ -20,6 +20,8 @@ export interface OrderItemView {
   discountCents: number;
   lineTotalCents: number;
   customPrint: CustomPrint | null;
+  /** Units the customer may still ask to return or exchange (0 before delivery, after the window, or for printed / hygiene items). */
+  returnableQty: number;
 }
 
 export interface PaymentView {
@@ -47,8 +49,16 @@ export interface OrderView {
   note: string | null;
   reservedUntil: string | null;
   paidAt: string | null;
+  deliveredAt: string | null;
+  /** Last moments to ask for a size exchange / a refund; null until the order is delivered or collected. */
+  returnWindow: { exchangeUntil: string; refundUntil: string } | null;
   createdAt: string;
   timeline?: { at: string; from: string | null; to: string | null; kind: string; note: string | null }[];
+}
+
+export interface ReturnInfo {
+  window: { exchangeUntil: string; refundUntil: string } | null;
+  returnable: Map<string, number>;
 }
 
 export function paymentView(p: PaymentRow): PaymentView {
@@ -68,7 +78,7 @@ export function paymentView(p: PaymentRow): PaymentView {
 export function orderView(
   order: OrderRow,
   items: OrderItemRow[],
-  opts: { lang?: Lang; assetBase: string; pickupBranchName?: string | null; events?: OrderEventRow[] },
+  opts: { lang?: Lang; assetBase: string; pickupBranchName?: string | null; events?: OrderEventRow[]; returns?: ReturnInfo },
 ): OrderView {
   const lang = opts.lang ?? 'en';
   const pricing = order.pricing as unknown as Breakdown;
@@ -99,6 +109,7 @@ export function orderView(
         discountCents: i.discountCents,
         lineTotalCents: i.lineTotalCents,
         customPrint: (i.customPrint as CustomPrint | null) ?? null,
+        returnableQty: opts.returns?.returnable.get(i.id) ?? 0,
       };
     }),
     pricing: {
@@ -113,6 +124,8 @@ export function orderView(
     note: order.note,
     reservedUntil: order.reservedUntil?.toISOString() ?? null,
     paidAt: order.paidAt?.toISOString() ?? null,
+    deliveredAt: order.deliveredAt?.toISOString() ?? null,
+    returnWindow: opts.returns?.window ?? null,
     createdAt: order.createdAt.toISOString(),
     ...(opts.events
       ? {

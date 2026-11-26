@@ -73,3 +73,4 @@ Format: **decision** — why — what changes if you disagree.
 ## Stage 6 — Frontend build (recovery)
 
 - [Stage 6] **The shop pages after the foundation (browse, bag and checkout, account, admin) were rebuilt from the design** because the earlier work on them never reached GitHub; only the foundation did. — Nothing that isn't on GitHub can be trusted to exist. — The rebuild follows the same design and the same decisions already recorded for those stages.
+- [Stage 6] **The staff and admin screens are in English only for now**; every customer page is in English and Khmer. — Staff screens change often and are used by a few trained people; translating them doubles the work on every change. — Ask for a Khmer admin later; the shop's translation setup supports it.

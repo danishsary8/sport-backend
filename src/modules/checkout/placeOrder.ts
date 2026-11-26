@@ -1,3 +1,4 @@
+import { publicCount } from '../catalog/availability.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Config } from '../../config/env.js';
 import type { Db } from '../../db/client.js';
@@ -177,7 +178,7 @@ export async function placeOrder(deps: CheckoutDeps, owner: CartOwner, user: Use
     const unavailable = view.lines.some((l) => l.problem === 'unavailable') || pricing.shippingCents === null;
     if (!unavailable && view.lines.some((l) => l.problem === 'exceeds_stock')) {
       throw new AppError('stock_changed', 409, 'Some items sold out while you were checking out', {
-        lines: view.lines.filter((l) => l.problem === 'exceeds_stock').map((l) => ({ lineId: l.id, variantId: variantOf.get(l.id)!, available: l.maxQty })),
+        lines: view.lines.filter((l) => l.problem === 'exceeds_stock').map((l) => ({ lineId: l.id, variantId: variantOf.get(l.id)!, available: l.lowStockCount ?? (l.availability === 'out' ? 0 : null) })),
       });
     }
     if (!view.checkoutReady) {
@@ -195,7 +196,7 @@ export async function placeOrder(deps: CheckoutDeps, owner: CartOwner, user: Use
     const plan = planAllocations(lines, input.fulfillment === 'pickup' ? { fulfillment: 'pickup', branchId: input.pickupBranchId! } : { fulfillment: 'delivery' });
     if (!plan.ok) {
       throw new AppError('stock_changed', 409, 'Some items sold out while you were checking out', {
-        lines: plan.shortfalls.map((s) => ({ lineId: s.lineId, variantId: s.variantId, available: s.available })),
+        lines: plan.shortfalls.map((s) => ({ lineId: s.lineId, variantId: s.variantId, available: publicCount(s.available) })),
       });
     }
 

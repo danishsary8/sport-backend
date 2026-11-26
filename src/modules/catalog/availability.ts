@@ -13,3 +13,17 @@ export function availabilityOf(units: number): { availability: Availability; low
   if (units <= LOW_STOCK_MAX) return { availability: 'low', lowStockCount: units };
   return { availability: 'ok', lowStockCount: null };
 }
+
+/**
+ * The most a shopper may learn about a count: exact when 0–3 are left (what "Only 2 left" already shows),
+ * otherwise nothing (null). Spec: customers only ever see ok, low (1–3) or out.
+ */
+export function publicCount(units: number): number | null {
+  if (units <= 0) return 0;
+  return units <= LOW_STOCK_MAX ? units : null;
+}
+
+/** Quantity cap for steppers: the real count when low, otherwise the generic line limit. */
+export function publicMaxQty(units: number, lineLimit: number): number {
+  return publicCount(units) ?? lineLimit;
+}

@@ -3,7 +3,7 @@ import type { Exec } from '../../db/exec.js';
 import { cartItems, type CartItemRow, type CartRow, type UserRow } from '../../db/schema/index.js';
 import { CART_LIMITS, type CartLineView, type CartView } from '../cart/types.js';
 import { sellable, variantInfo, type VariantInfo } from '../cart/variants.js';
-import { availabilityOf } from '../catalog/availability.js';
+import { availabilityOf, publicMaxQty } from '../catalog/availability.js';
 import { pick, type Lang } from '../catalog/i18n.js';
 import { safetyBuffer } from '../catalog/listing.js';
 import { assetUrl } from '../catalog/view.js';
@@ -79,7 +79,8 @@ export async function pricedCheckout(db: Exec, cart: CartRow | undefined, opts: 
     const info = infos.get(item.variantId);
     const priced = pricing.lines[i]!;
     const purchasable = sellable(info);
-    const maxQty = Math.min(CART_LIMITS.maxQty, info?.units ?? 0);
+    const units = info?.units ?? 0;
+    const maxQty = publicMaxQty(units, CART_LIMITS.maxQty);
     return {
       id: item.id,
       productSlug: info?.product_slug ?? '',
@@ -99,7 +100,7 @@ export async function pricedCheckout(db: Exec, cart: CartRow | undefined, opts: 
       discountCents: priced.discountCents,
       lineTotalCents: priced.totalCents,
       purchasable,
-      problem: !purchasable ? 'unavailable' : item.qty > maxQty ? 'exceeds_stock' : null,
+      problem: !purchasable ? 'unavailable' : item.qty > Math.min(units, CART_LIMITS.maxQty) ? 'exceeds_stock' : null,
     };
   });
 

@@ -1,3 +1,4 @@
+import { publicCount } from '../catalog/availability.js';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import { cartItems, carts, type CartRow } from '../../db/schema/index.js';
@@ -54,10 +55,9 @@ async function assertLimits(tx: Tx, cartId: string, changes: { replacing: string
 
 function assertAvailable(info: VariantInfo, qty: number): void {
   if (qty > info.units) {
-    throw new AppError('insufficient_stock', 409, info.units > 0 ? `Only ${info.units} available` : 'This size is sold out', {
-      variantId: info.variant_id,
-      available: info.units,
-    });
+    const shown = publicCount(info.units);
+    const message = info.units <= 0 ? 'This size is sold out' : shown !== null ? `Only ${shown} available` : 'Not enough in stock for that quantity';
+    throw new AppError('insufficient_stock', 409, message, { variantId: info.variant_id, available: shown });
   }
 }
 

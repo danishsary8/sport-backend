@@ -10,7 +10,7 @@ After a context reset, trust this file, the plan ledgers (`.superpowers/sdd/<pla
 | 1 | Backend phase 5: checkout, orders, payments | `plans/2026-11-25-phase-5-checkout-payments.md` | 10c4ecd | done (review: 5 Important fixed) |
 | 2 | Backend phase 6: post-purchase | `plans/2026-11-25-phase-6-post-purchase.md` | bfea8ba | done (review: 2 Critical + 5 Important fixed) |
 | 3 | Backend phase 7: hardening + deferred minors | `plans/2026-11-25-phase-7-hardening.md` | b06e98c | done (review: 5 Important fixed; every phase 1–6 minor fixed or ruled) |
-| 4 | Backend completeness audit | `plans/2026-11-26-stage-4-backend-audit.md` → `BACKEND-AUDIT.md` | – | in progress (tasks 1–2 done) |
+| 4 | Backend completeness audit | `plans/2026-11-26-stage-4-backend-audit.md` → `BACKEND-AUDIT.md` | 6484192 | gaps closed (tasks 1–5); whole-backend review running |
 | 5 | Frontend design | `sport-heaven/docs/superpowers/specs/…` | – | not started |
 | 6 | Frontend build | `sport-heaven/docs/superpowers/plans/…` | – | not started |
 | 7 | Frontend audit | `sport-heaven/docs/superpowers/FRONTEND-AUDIT.md` | – | not started |

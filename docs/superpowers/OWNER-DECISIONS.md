@@ -25,3 +25,32 @@ Format: **decision** — why — what changes if you disagree.
 - [Stage 1] **TypeScript in the shop app is pinned to 6.0.** — The linter (typescript-eslint) doesn't support 7 yet. — Upgrade when it does.
 - [Stage 1] **The Google Map only appears when a Maps key is set**; otherwise branches show as a plain list and the "quota exceeded" banner is gone. — Customers should never see a developer warning. — Add `VITE_GOOGLE_MAPS_API_KEY` to get the map.
 - [Stage 1] **Product photos are converted to WebP/AVIF in up to three widths**, without upscaling (most originals are only about 1,000 px wide). — Faster pages on phones. — Supply larger real photos and re-run `npm run images`.
+
+## Stage 2 — After the order (tracking, staff order desk, returns, loyalty, questions)
+
+- [Stage 2] **Order tracking shows only a masked name ("Sok D."), the last 3 phone digits and the commune/district/province**, never the street or full phone. — Anyone with the number + phone can look; less is safer. — Members see everything in their account.
+- [Stage 2] **Staff tied to a store only see orders that ship from, or are picked up at, their store.** Admins and staff without a store see all. — Spec's branch-scoped staff. — Change a staff member's store in admin → users.
+- [Stage 2] **Staff can't confirm or print an unpaid order, and can't expire or revive orders by hand**; expiry is automatic, and a late payment revives an order with its stock. — Prevents stock mistakes at the counter. — none.
+- [Stage 2] **Cancelling a paid order puts the items back on the shelf, takes back its points, frees the promo code and sends you an urgent "refund needed" Telegram.** You refund in the PayWay portal, then press "Mark refunded". — Spec: refunds are manual in phase 1. — none.
+- [Stage 2] **Cash at the counter works for any unpaid pickup order** (also a KHQR order whose customer decides to pay cash). It completes the order and closes the QR. — Real shop behaviour. — none.
+- [Stage 2] **Returns:** size exchanges up to 30 days and refunds/store credit up to 14 days after delivery or pickup. Printed shirts and socks/underwear (matched by category, garment type or a word like "socks" in the product's web address) can't be returned. The refund is exactly what was paid for those items; several partial refunds never add up to more than the line cost. — Spec. — Change the windows/list in the `return_rules` setting.
+- [Stage 2] **Store credit is recorded as "store credit to issue" on the order** (no wallet yet; spec non-goal), and the points earned on that amount are taken back, as for refunds. — Customer already got the value. — When a wallet is built, this becomes automatic.
+- [Stage 2] **The new size for an exchange is held as soon as the customer asks**, and stays held until staff decide (no automatic timeout). — The customer was promised that size. — Open returns show on the admin overview so they don't get forgotten.
+- [Stage 2] **Points: an admin can add or remove points with a note** (never below zero), and every change is recorded with who did it. — Spec. — none.
+- [Stage 2] **Product questions appear only after staff answer and publish them.** — Avoids spam on product pages. — none.
+- [Stage 2] **The system health PDF is made in the browser (admin dashboard), not on the server.** — Keeps a heavy library off the API. — none.
+
+## Stage 3 — Hardening
+
+- [Stage 3] **Rate limits (per minute): 300 requests per address overall, 10 orders per address and 5 per member, 20 sign-ins, 10 tracking lookups, 5 questions, 60 PayWay callbacks.** The overall limit is above the spec's 120 because Cambodian mobile networks put many customers behind one address. — Real shoppers shouldn't be blocked. — Lower it in `src/middleware/rateLimit.ts` if you see abuse.
+- [Stage 3] **Search ignores accents** ("Mbappe" finds "Mbappé"). — Customers type without accents. — none.
+- [Stage 3] **The filters (brand, size, colour, …) are computed in one go in memory**: identical results, no database overload. — Fine up to several thousand products. — Revisit if the catalogue grows past that.
+- [Stage 3] **A test sign-in exists for automated tests only; the server refuses to start in production with it switched on.** — End-to-end tests need it. — Never turn on `AUTH_TEST_MODE` on a public server.
+- [Stage 3] **Proof under load:** 50 people buying the last 10 units at the same moment produce exactly 10 orders and 40 "sold out" answers, with no errors. — Spec. — none.
+
+## Stage 4 — Completeness audit
+
+- [Stage 4] **Deleting an account waits until the person's orders are finished**, then removes their name, phone, email and street from those orders (amounts and items stay for your accounts). — Staff must still be able to reach a customer whose parcel is on the way. — none.
+- [Stage 4] **Product pages show a size guide** (boots, shirts, balls) from a setting you can edit. The charts are standard ones; check them (OWNER-TODO). — Fewer wrong-size returns. — Edit the `size_guides` setting.
+- [Stage 4] **Prices can be exported to a spreadsheet and imported back.** The import only changes the price, the "was" price and on/off for existing sizes, always shows a preview first, and changes nothing if any row is wrong. — Safe bulk price changes for sales. — New products are still created in the admin.
+- [Stage 4] **When a counter sale is refused because an online order holds the last unit, staff see that order's number.** — Spec §14. — none.

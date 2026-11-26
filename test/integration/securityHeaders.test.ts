@@ -26,6 +26,13 @@ describe('API security headers', () => {
     expect(res.headers['content-security-policy']).toContain("form-action 'self'");
   });
 
+  it('lets browsers revalidate catalog reads with ETags', async () => {
+    const { app } = memberApp(database);
+    const first = await request(app).get('/v1/branches').expect(200);
+    expect(first.headers.etag).toBeTruthy();
+    await request(app).get('/v1/branches').set('If-None-Match', first.headers.etag).expect(304);
+  });
+
   it('sends credentials headers only to allowed origins', async () => {
     const { app } = memberApp(database);
     const allowed = await request(app).get('/v1/branches').set('Origin', 'https://shop.example');

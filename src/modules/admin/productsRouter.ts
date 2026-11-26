@@ -1,5 +1,5 @@
 import { and, count, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../../context.js';
 import type { Db } from '../../db/client.js';
@@ -15,6 +15,7 @@ import {
   variants,
 } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
+import { exportProductsCsv, importProductsCsv } from './productsCsv.js';
 import { requireRole } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { escapeLike } from '../catalog/listing.js';
@@ -194,6 +195,25 @@ export function adminProductsRouter(ctx: AppContext): Router {
     ]);
     res.json({ products: rows, total: total?.n ?? 0, page, pageSize });
   });
+
+  router.get('/admin/products/export.csv', ...admin, async (_req, res) => {
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="sport-castle-products-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(await exportProductsCsv(db));
+  });
+
+  router.post(
+    '/admin/products/import',
+    ...admin,
+    express.text({ type: ['text/csv', 'text/plain'], limit: '2mb' }),
+    validate({ query: z.object({ apply: z.enum(['true', 'false']).optional() }), body: z.string().min(1, 'Send the CSV file as the request body') }),
+    async (req, res) => {
+      const apply = (req.query as { apply?: string }).apply === 'true';
+      const result = await importProductsCsv(db, req.body as string, apply);
+      if (result.applied) ctx.logger.info({ actorId: req.user!.id, changes: result.changes.length }, 'Product prices imported');
+      res.json(result);
+    },
+  );
 
   router.get('/admin/products/:id', ...admin, async (req, res) => {
     const id = String(req.params.id);

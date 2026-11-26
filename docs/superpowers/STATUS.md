@@ -9,8 +9,8 @@ After a context reset, trust this file, the plan ledgers (`.superpowers/sdd/<pla
 | 0 | Bootstrap | (work order) | see git log | done |
 | 1 | Backend phase 5: checkout, orders, payments | `plans/2026-11-25-phase-5-checkout-payments.md` | 10c4ecd | done (review: 5 Important fixed) |
 | 2 | Backend phase 6: post-purchase | `plans/2026-11-25-phase-6-post-purchase.md` | bfea8ba | done (review: 2 Critical + 5 Important fixed) |
-| 3 | Backend phase 7: hardening + deferred minors | `plans/2026-11-25-phase-7-hardening.md` | – | in progress (tasks 1–2 done) |
-| 4 | Backend completeness audit | `BACKEND-AUDIT.md` | – | not started |
+| 3 | Backend phase 7: hardening + deferred minors | `plans/2026-11-25-phase-7-hardening.md` | b06e98c | done (review: 5 Important fixed; every phase 1–6 minor fixed or ruled) |
+| 4 | Backend completeness audit | `plans/2026-11-26-stage-4-backend-audit.md` → `BACKEND-AUDIT.md` | – | in progress (tasks 1–2 done) |
 | 5 | Frontend design | `sport-heaven/docs/superpowers/specs/…` | – | not started |
 | 6 | Frontend build | `sport-heaven/docs/superpowers/plans/…` | – | not started |
 | 7 | Frontend audit | `sport-heaven/docs/superpowers/FRONTEND-AUDIT.md` | – | not started |
@@ -22,7 +22,8 @@ After a context reset, trust this file, the plan ledgers (`.superpowers/sdd/<pla
 |---|---|---|
 | Stage 0 (fresh DB, twice) | 281/281 | – |
 | Stage 1 done incl. review fixes (twice) | 535/535 |
-| Stage 2 done incl. review fixes (twice) | 596/596 | frontend clean-up: 2/2 (typecheck, lint, build clean) |
+| Stage 2 done incl. review fixes (twice) | 596/596 |
+| Stage 3 done incl. review fixes (twice) | 680/680 | frontend clean-up: 2/2 (typecheck, lint, build clean) |
 
 ## Load test (phase 7, `npm run loadtest`)
 
@@ -91,6 +92,33 @@ The latency is mostly queueing behind the 10-connection pool, since all 50 reque
 - Final: a pushback inside the 2 s check window now waits once and retries; if still busy it is stored as failed (reprocessed on redelivery) — dropping it lost late payments — a flood holds each request ≤ 2 s.
 - Final: the sweeper re-checks expired/cancelled attempts of orders expired in the last 24 h every 10 minutes — safety net when no webhook arrives — up to 144 provider checks per expired order per day.
 
+### Stage 3 (phase 7)
+
+- Task 1: the raw-body copy fix (buf instead of Buffer.from(buf)) has no observable behaviour to test; the webhook tests cover raw-body use — none.
+- Task 2: the phone-release UPDATE is kept unconditional — it matches (and writes) no rows unless another account holds the number, so it never writes needlessly; a pre-check SELECT would add a round trip — none.
+- Task 2: the 5-minute token-cache revocation note goes into the README in Task 11 (docs task) — one docs pass — none.
+- Task 3: facets now load the active catalogue in one query and count in memory (≤2 queries), pinned to fixtures recorded from the old SQL (test/fixtures/facets.json) — the pool-exhaustion fix the minor asked for — memory grows with catalogue size (fine to several thousand products).
+- Task 3: accents are folded in JS (foldAccents) for search_text and the needle, plus unaccent() in the admin refresh and a backfill migration; no immutable unaccent index wrapper needed — keeps the trigram index plain — none.
+- Task 3: migration 0008 is hand-written (colour lower(name) unique index + dedupe + search_text backfill) and the index is not mirrored in the Drizzle schema — drizzle-kit can't express expression indexes cleanly; future generates won't touch it — a schema reader won't see the index in TS.
+- Task 3: README color/facet docs are written in Task 11's docs pass — one docs pass — none.
+- Task 4: concurrent first adds from a guest with no cookie yet can't be linked (no shared token exists); the orphan cart is removed by the 60-day guest cart cleanup (phase 5 sweeper) — no correctness impact — an extra empty-ish cart row for up to 60 days.
+- Task 4: reReserve may push used_count past max_uses — the customer has already paid; refusing would only add a refund — a code can be "used" once more than its cap in that rare case.
+- Task 4: the cookie-fixation note goes into the README in Task 11 — one docs pass — none.
+- Task 5: scheduler.stop() waits at most 1.5 s for a running sweep (then lets shutdown continue); a provider call stuck past that is bounded by the client's own 15 s timeout — shutdown must fit the platform's grace period — the pool close may wait for that call to return.
+- Task 6: the Redis store is documented (README/DEPLOYMENT) but not shipped — one instance needs none and no Redis host exists yet; the RateLimitStore interface is the seam — running 2+ instances without it multiplies the limits by the instance count.
+- Task 7: test tokens take an optional 5th part (URL-encoded display name) beyond the planned format — lets e2e create named accounts — none.
+- Task 8: ESLint uses typescript-eslint `recommended` plus the type-aware promise rules (no-floating-promises, no-misused-promises, await-thenable) rather than the whole recommendedTypeChecked set — the promise rules are the safety value; the full set mostly flags `any` from DB rows — some stylistic type-aware checks are off.
+- Task 8: the write-endpoint audit is a static source scan (router.<verb>('path' … validate({ body: …})) with an explicit allowlist — Express 5 router internals aren't a stable API to walk — a route registered outside src/modules wouldn't be scanned.
+- Task 8: the 4 moderate npm audit advisories (esbuild via drizzle-kit, dev only) are left; `npm audit fix --force` would downgrade drizzle-kit — no production exposure — none.
+- Task 9: the load test uses 50 concurrent fetch calls against a real listening server instead of autocannon — the property under test is concurrency correctness + percentiles, and it needs per-shopper cookies and idempotency keys that autocannon makes awkward; no new dependency — none.
+- Task 10: request schemas stay next to their routers and are re-exported from src/contracts (one source of truth) instead of being moved — avoids churn across every router — none.
+- Task 10: response schemas are strict (unknown keys fail) except CMS home-section payloads and product specs/attributes, which are open records — free-form by design — the frontend gets loose types there.
+- Task 10: OpenAPI covers the 35 public/member operations the storefront uses; staff/admin endpoints are documented in the README — the admin UI uses hand-written types — admin types can drift without a contract test.
+- Task 12: exchange holds don't expire automatically — a size promised to a waiting customer shouldn't vanish; open returns are on the admin overview — a forgotten return keeps one unit off sale until staff decide.
+- Task 12: "mark refunded" sets payment_status refunded only for cancelled/expired orders; for delivered orders (a returned item) it just clears the flag and notes it — partial refunds must not mark the whole order refunded — none.
+- Task 12: collect-cash also accepts unpaid KHQR pickup orders still pending payment (the shopper pays cash at the counter instead), passing through confirmed/ready silently with one "completed" email and closing open QR attempts — none.
+- Final: general per-IP limit raised 120 → 300/min (spec says 120) — Cambodian carriers share IPs (CGNAT), so 120 would block real shoppers browsing together — a single abusive IP gets 2.5× more requests before 429.
+
 ## Frontend clean-up (done early, in parallel with Stage 1)
 
 Commits `2c6a01a..4eb3e7a` in `sport-heaven`: the build/typecheck/lint/test now pass; backend-only code and deps removed (`server.ts`, `src/db`, `commerce.test.ts`, `@google/genai`, express, pg, drizzle, firebase-admin…); AI Studio leftovers removed (package name, `.gmp_cache`, `metadata.json`, the Maps quota banner, `DISABLE_HMR`); Firebase web config moved to `VITE_FIREBASE_*`; `/v1` dev proxy to the API; ESLint 9 + Vitest; `scripts/optimize-images.mjs` wrote WebP/AVIF/JPEG variants to `public/assets/catalog` (7.5 MB) and `public/assets/site` (1.2 MB). Open items for Stage 6: original images (≈56 MB) still in the repo and copied into `dist` by a Vite plugin; the system-health dashboard still points at old `/api/system-health*` URLs; 27 lint warnings in legacy screens; `npm audit` reports 4 high advisories; TypeScript pinned to 6.0 (typescript-eslint doesn't support 7 yet).
@@ -122,3 +150,17 @@ The phase 1–4 minors are listed in the work order §2; Stage 3 closes or rules
 - question status-only changes record no actor
 - RMA restock fallback branch is the literal 'sonthormuk'
 - exchange holds never expire
+
+All phase 1–6 minors above were closed in Stage 3 (fixed, or ruled in the Stage 3 rulings).
+
+### Stage 3 (phase 7) — for Stage 4
+
+- IPv6 limits keyed on the full address (not /64)
+- circuit breaker also trips on cancelTransaction failures
+- a payment skipped by the breaker isn't rechecked until its interval passes (≤10 min for late payments)
+- matches() vs SQL edge cases for non-string attributes / numeric flags (theoretical with admin-validated data)
+- markRefunded clears all refund flags at once; no separate partial-refund marker
+- migration 0008 rename suffix may show in colour names; index absent from Drizzle snapshot
+- loadtest resets whatever TEST_DATABASE_URL names (no name guard)
+- wishlist re-add of an item whose sizes are all inactive returns 404 instead of 204
+- contract duplicates the order/payment status enums instead of importing them

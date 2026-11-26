@@ -17,6 +17,8 @@ const BODYLESS = new Set([
   "post '/webhooks/payway'",
   // Validated in the handler with the schema of the setting being changed.
   "put '/admin/settings/pricing/:key'",
+  "put '/admin/settings/:key'",
+  "delete '/admin/products/:id/colors/:colorId'",
 ]);
 
 function files(dir: string): string[] {

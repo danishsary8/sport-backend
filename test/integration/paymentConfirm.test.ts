@@ -107,6 +107,13 @@ describe('payment approved', () => {
     expect((await q("select count(*)::int as n from order_events where kind = 'status' and to_status = 'confirmed'")).rows[0].n).toBe(1);
   });
 
+  it('flags an approval without a reported amount for review instead of trusting it', async () => {
+    const { body } = await placeGuestOrder(ctx.app, address, { variantId: jerseyM, qty: 1 });
+    const result = await applyProviderResult(deps(), body.payment!.tranId, { status: 'approved', amountCents: null, raw: null }, 'sweeper');
+    expect(result).toBe('needs_refund');
+    expect(await orderRow(body.order.number)).toMatchObject({ needs_refund: true });
+  });
+
   it('commits once when the poll and the webhook race', async () => {
     const { body } = await placeGuestOrder(ctx.app, address, { variantId: jerseyM, qty: 1 });
     ctx.payments.approve(body.payment!.tranId);

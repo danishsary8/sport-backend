@@ -46,6 +46,8 @@ PayWay's developer documentation could not be reached while this integration was
 | KHQR answer has `status.code === "0"`, `qrString`, `abapay_deeplink` | The shop renders a scannable QR (scan it with the ABA app) and the deeplink opens the app on a phone | `createTransaction` |
 | Check transaction answers `data.payment_status` ∈ `APPROVED, PENDING, DECLINED, REFUNDED, CANCELLED` (plus `PRE_AUTH`) and `data.total_amount` in dollars | Poll a pending, a paid and a cancelled transaction | `STATUS_MAP` |
 | **An unknown transaction** (a card checkout the shopper never opened) answers without `payment_status`, and is treated as **pending** so the order expires normally | Create a card attempt, don't open it, call check | `checkTransaction` |
+| check-transaction answers `status.code` `0`/`00` on success and `4` for an unknown transaction; **any other code** is treated as a payment-service error (the order gets the 2-hour grace period and staff get a "payment unverified" alert) | Call check with a wrong hash and with an unknown `tran_id`; note the codes | `CHECK_SUCCESS_CODES`, `CHECK_NOT_FOUND_CODES` in `mapping.ts` |
+| An `APPROVED` answer must include `data.total_amount`; without it the order is flagged "refund owed / check" instead of confirmed | Approve a sandbox payment and look at the check answer | `checkTransaction`, `confirm.ts` |
 | Close transaction stops an old QR from being paid | Switch method, then try to pay the first QR | `cancelTransaction` |
 
 ## 4. Pushback (webhook)

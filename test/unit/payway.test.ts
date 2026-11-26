@@ -83,6 +83,13 @@ describe('PayWayProvider', () => {
     expect(await new PayWayProvider(cfg, fetchImpl).checkTransaction('SC26117Q4K9-1')).toMatchObject({ status: 'pending', amountCents: null });
   });
 
+  it('turns any other PayWay error code (wrong hash, rate limit) into payment_provider_error, not pending', async () => {
+    for (const status of [{ code: '1', message: 'Wrong hash' }, { code: '11', message: 'Too many requests' }, {}]) {
+      const { fetchImpl } = recorder({ status, data: {} });
+      await expect(new PayWayProvider(cfg, fetchImpl).checkTransaction('x')).rejects.toMatchObject({ code: 'payment_provider_error' });
+    }
+  });
+
   it('treats an unknown status string as pending', async () => {
     const { fetchImpl } = recorder({ status: { code: '00' }, data: { payment_status: 'SOMETHING_NEW' } });
     expect((await new PayWayProvider(cfg, fetchImpl).checkTransaction('x')).status).toBe('pending');

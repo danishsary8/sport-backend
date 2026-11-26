@@ -146,7 +146,10 @@ export async function applyProviderResult(deps: { db: Db; now: () => Date }, tra
       .where(eq(payments.id, payment.id));
     await recordEvent(tx, { orderId: order.id, kind: 'payment', actor: 'system', note: `Payment ${payment.providerTranId} approved (${source})` });
 
-    if (check.amountCents !== null && check.amountCents !== payment.amountCents) {
+    if (check.amountCents === null) {
+      return flagRefund(tx, order, 'approved, but the payment service did not report the amount: check it in the PayWay portal', false);
+    }
+    if (check.amountCents !== payment.amountCents) {
       return flagRefund(tx, order, `paid ${(check.amountCents / 100).toFixed(2)} but the order total is ${(payment.amountCents / 100).toFixed(2)}`, false, check.amountCents);
     }
     if (order.paymentStatus === 'paid') return flagRefund(tx, order, `paid twice (attempt ${payment.attempt})`, false);

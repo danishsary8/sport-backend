@@ -1,7 +1,7 @@
 import { AppError } from '../../../lib/errors.js';
 import { pickFields, TRAN_ID_PATTERN, type CreateTransactionInput, type PaymentInstructions, type PaymentProvider, type TransactionCheck, type WebhookVerification } from '../provider.js';
 import { paywayHash, safeEqualB64 } from './hash.js';
-import { CHECK_FIELDS, PAYWAY_PATHS, PUSHBACK_FIELDS, PURCHASE_FIELDS, PUSHBACK_HASH_FIELDS, PUSHBACK_SUCCESS, QR_FIELDS, QR_IMAGE_TEMPLATE, STATUS_MAP } from './mapping.js';
+import { CHECK_FIELDS, CHECK_NOT_FOUND_CODES, CHECK_SUCCESS_CODES, PAYWAY_PATHS, PUSHBACK_FIELDS, PURCHASE_FIELDS, PUSHBACK_HASH_FIELDS, PUSHBACK_SUCCESS, QR_FIELDS, QR_IMAGE_TEMPLATE, STATUS_MAP } from './mapping.js';
 
 export interface PayWayConfig {
   merchantId: string;
@@ -122,6 +122,11 @@ export class PayWayProvider implements PaymentProvider {
   async checkTransaction(tranId: string): Promise<TransactionCheck> {
     const body = sign(CHECK_FIELDS, { req_time: reqTime(this.now()), merchant_id: this.cfg.merchantId, tran_id: tranId }, this.cfg.apiKey);
     const res = await this.post(PAYWAY_PATHS.check, body);
+    const code = String((res.status as { code?: unknown } | undefined)?.code ?? '');
+    if (CHECK_NOT_FOUND_CODES.includes(code)) return { status: 'pending', amountCents: null, raw: res };
+    // Anything but success (wrong hash, rate limit, changed API) is a provider error, so the grace period and the
+    // "payment unverified" alert apply instead of the order quietly expiring as unpaid.
+    if (!CHECK_SUCCESS_CODES.includes(code)) throw providerError();
     const data = (res.data ?? {}) as { payment_status?: unknown; total_amount?: unknown };
     const remote = String(data.payment_status ?? '').toUpperCase();
     // An unknown transaction (e.g. a card checkout the shopper never opened) or a status this code doesn't

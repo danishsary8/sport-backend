@@ -65,6 +65,11 @@ export const PURCHASE_FIELDS = [
 export const CHECK_FIELDS = ['req_time', 'merchant_id', 'tran_id'] as const;
 
 /** PayWay payment_status → our provider status. */
+/** check-transaction `status.code` values. VERIFY AGAINST PAYWAY SANDBOX. */
+export const CHECK_SUCCESS_CODES: readonly string[] = ['0', '00'];
+/** "Transaction not found" (e.g. a card checkout never opened): not paid, the order may expire normally. */
+export const CHECK_NOT_FOUND_CODES: readonly string[] = ['4'];
+
 export const STATUS_MAP: Record<string, 'pending' | 'approved' | 'declined' | 'refunded' | 'cancelled'> = {
   APPROVED: 'approved',
   PRE_AUTH: 'pending',

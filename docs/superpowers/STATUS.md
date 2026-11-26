@@ -283,3 +283,26 @@ Deferred minors:
 - counter screen: a staff account without a store uses the first store; a sale draft survives switching store (admin); history sheet has no error state
 - admin product photos use `/assets/<path>` (not the CDN base) for previews
 - the legacy health dashboard keeps Title Case labels and some monospace styling
+
+## FE6 end-to-end tests, CI, hosting, performance, accessibility (done, review fixed)
+
+Rulings:
+- T1: Ruling: first-load JS budget 150 kB gzipped, not 120 (react-dom, react-router, query and react alone are ~115 kB) — Lighthouse is the real gate
+- T1: Ruling: eslint ignores `.claude/` (agent worktrees, not project code) — none
+- T2: Ruling: e2e backend runs on port 3100 with its own `sport_e2e` database, reset by the Playwright web-server command; the dev server on 3000 is untouched — none
+- T2: Ruling: the e2e tests read the payment id from the e2e database, as PayWay's callback would know it — none
+- T3: Ruling: e2e helpers navigate in-app after sign-in (the test sign-in lives in memory; a reload ends it) — none
+- T5: Ruling: sitemap and robots default to sportcastle.com.kh; the owner sets SITE_URL — wrong domain until confirmed (OWNER-TODO)
+- T6: Ruling: CI checks out the backend with BACKEND_REPO_TOKEN (falls back to the workflow token), on the same branch name when it exists, otherwise main — e2e fails at checkout until the owner adds the secret for a private backend (OWNER-TODO)
+- T7: Ruling: `main` has a full-viewport minimum height, so the footer never sits in the first screen while a page loads (home CLS 0.24 to 0) — on short pages (404) the footer is just below the fold
+- T7: Ruling: no hero preload (the hero image comes from the API and home already passes) — none
+- T8: Ruling: the language buttons are named by their visible label (EN, ខ្មែរ), WCAG 2.5.3 — none
+
+Results: Lighthouse mobile (preview build, simulated throttling) home 89/100/100, listing 90/100/100, product 90/100/100 (performance/accessibility/best practices), CLS 0 on all three. axe (WCAG 2 A and AA) finds no serious or critical problems on home, listing, product, bag, checkout, sign-in, account and admin overview. Frontend: 159 unit tests, 6 e2e tests.
+
+FE6 review (fresh reviewer): 1 Important (CI e2e failed for any frontend branch without a same-named backend branch), fixed. Minors fixed: the sitemap no longer lists /track (robots disallows it); the one-year immutable cache now covers only hashed build files, and the catalog and site photos get one day.
+
+Deferred minors:
+- canonical and og:image URLs use the serving host, not a configured site URL (matters only if the shop answers on several hosts)
+- admin order and user searches are kept out of the URL for privacy, so they reset when staff press Back from a result
+- the bundle check finds the test sign-in by its token prefix `test:phone-`; renaming the prefix needs the check updated

@@ -103,6 +103,39 @@ export async function recordSale(
 ): Promise<{ saleId: string; lines: { variantId: string; onHand: number }[] }> {
   const saleId = `SALE-${randomUUID().slice(0, 8).toUpperCase()}`;
   const lines = input.lines;
+  try {
+    return await saleTransaction(db, input, lines, saleId);
+  } catch (error) {
+    if (error instanceof AppError && error.code === 'held_for_online_order') {
+      const d = error.details as { variantId: string; branchId: string; reserved: number };
+      const orders = await holders(db, d.variantId, d.branchId);
+      throw new AppError(error.code, error.status, `${error.message}${orders.length ? `: ${orders.join(', ')}` : ''}`, { ...d, orders });
+    }
+    throw error;
+  }
+}
+
+/** Unpaid online orders (and size-exchange returns) holding units of a variant at a branch, newest first. */
+async function holders(db: Db, variantId: string, branchId: string): Promise<string[]> {
+  const r = await db.execute<{ ref: string }>(sql`
+    (select o.number as ref, o.created_at as at from orders o
+      join order_items i on i.order_id = o.id
+      join order_item_allocations a on a.order_item_id = i.id
+      where i.variant_id = ${variantId} and a.branch_id = ${branchId} and o.payment_status = 'unpaid'
+        and o.status in ('pending_payment', 'awaiting_pickup_payment', 'ready_for_pickup'))
+    union all
+    (select r.number as ref, r.created_at as at from rma_requests r join rma_items ri on ri.rma_id = r.id
+      where ri.exchange_variant_id = ${variantId} and ri.exchange_branch_id = ${branchId} and r.status = 'requested')
+    order by at desc limit 5`);
+  return [...new Set(r.rows.map((x) => x.ref))];
+}
+
+async function saleTransaction(
+  db: Db,
+  input: { branchId: string; note?: string; actorUserId?: string | null },
+  lines: { variantId: string; qty: number }[],
+  saleId: string,
+): Promise<{ saleId: string; lines: { variantId: string; onHand: number }[] }> {
   return db.transaction(async (tx) => {
     // Lock every row first, in the shared (variant, branch) order, so sales and orders can't deadlock.
     for (const line of lines) await assertVariantExists(tx, line.variantId);

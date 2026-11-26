@@ -1,5 +1,5 @@
-import { and, count, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
-import express, { Router } from 'express';
+import { and, asc, count, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
+import express, { Router, type Request } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../../context.js';
 import type { Db } from '../../db/client.js';
@@ -148,6 +148,11 @@ async function addVariant(
 }
 
 /** Translates unique-constraint failures into clear 409s. */
+function isUniqueViolation(error: unknown): boolean {
+  const e = error as { code?: string; cause?: { code?: string } };
+  return (e.code ?? e.cause?.code) === '23505';
+}
+
 function mapUnique(error: unknown): never {
   const e = error as { code?: string; constraint?: string; cause?: { code?: string; constraint?: string } };
   const pg = e.code ? e : e.cause;
@@ -287,6 +292,7 @@ export function adminProductsRouter(ctx: AppContext): Router {
         await refreshSearchText(tx, id);
       })
       .catch(mapUnique);
+    ctx.logger.info({ productId: id, actorId: req.user!.id, change: patch }, 'Product updated');
     res.json({ product: await adminView(db, id) });
   });
 
@@ -304,6 +310,7 @@ export function adminProductsRouter(ctx: AppContext): Router {
         await refreshSearchText(tx, id);
       })
       .catch(mapUnique);
+    ctx.logger.info({ productId: id, actorId: req.user!.id, variant: req.body }, 'Variant added');
     res.status(201).json({ product: await adminView(db, id) });
   });
 
@@ -323,6 +330,145 @@ export function adminProductsRouter(ctx: AppContext): Router {
     });
     ctx.logger.info({ productId: id, variantId, actorId: req.user!.id, change: req.body }, 'Variant updated');
     res.json({ product: await adminView(db, id) });
+  });
+
+  // ---- Colours and photos after creation -------------------------------------------------------------
+  const colorInput = z.object({ name: z.string().trim().min(1).max(80), swatchHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional() });
+  const productIdOf = (req: Request): string => {
+    const id = String(req.params.id);
+    if (!UUID.test(id)) throw new AppError('not_found', 404, 'Product not found');
+    return id;
+  };
+  const lockProduct = async (tx: Tx, id: string) => {
+    const [p] = await tx.select({ id: products.id }).from(products).where(eq(products.id, id)).for('update');
+    if (!p) throw new AppError('not_found', 404, 'Product not found');
+  };
+  const colourTaken = async (tx: Tx, productId: string, name: string, exceptId?: string) => {
+    const rows = await tx.select({ id: productColors.id, name: productColors.name }).from(productColors).where(eq(productColors.productId, productId));
+    if (rows.some((c) => c.id !== exceptId && c.name.toLowerCase() === name.toLowerCase())) {
+      throw new AppError('color_exists', 409, `This product already has the colour "${name}"`);
+    }
+  };
+
+  router.post('/admin/products/:id/colors', ...admin, validate({ body: colorInput }), async (req, res) => {
+    const id = productIdOf(req);
+    const input = req.body as z.infer<typeof colorInput>;
+    await db.transaction(async (tx) => {
+      await lockProduct(tx, id);
+      await colourTaken(tx, id, input.name);
+      const [{ n } = { n: 0 }] = await tx.select({ n: count() }).from(productColors).where(eq(productColors.productId, id));
+      await tx.insert(productColors).values({ productId: id, name: input.name, swatchHex: input.swatchHex ?? null, sort: n });
+      await tx.update(products).set({ updatedAt: sql`now()` }).where(eq(products.id, id));
+      await refreshSearchText(tx, id);
+    });
+    ctx.logger.info({ productId: id, actorId: req.user!.id, color: input.name }, 'Colour added');
+    res.status(201).json({ product: await adminView(db, id) });
+  });
+
+  router.patch(
+    '/admin/products/:id/colors/:colorId',
+    ...admin,
+    validate({ body: colorInput.extend({ sort: z.number().int().min(0).max(100) }).partial().refine((v) => Object.keys(v).length > 0, { message: 'Nothing to update' }) }),
+    async (req, res) => {
+      const id = productIdOf(req);
+      const colorId = String(req.params.colorId);
+      if (!UUID.test(colorId)) throw new AppError('not_found', 404, 'Colour not found');
+      const input = req.body as { name?: string; swatchHex?: string | null; sort?: number };
+      await db.transaction(async (tx) => {
+        await lockProduct(tx, id);
+        if (input.name) await colourTaken(tx, id, input.name, colorId);
+        const updated = await tx
+          .update(productColors)
+          .set(input)
+          .where(and(eq(productColors.id, colorId), eq(productColors.productId, id)))
+          .returning({ id: productColors.id });
+        if (updated.length === 0) throw new AppError('not_found', 404, 'Colour not found');
+        await tx.update(products).set({ updatedAt: sql`now()` }).where(eq(products.id, id));
+        await refreshSearchText(tx, id);
+      });
+      ctx.logger.info({ productId: id, colorId, actorId: req.user!.id, change: input }, 'Colour updated');
+      res.json({ product: await adminView(db, id) });
+    },
+  );
+
+  router.delete('/admin/products/:id/colors/:colorId', ...admin, async (req, res) => {
+    const id = productIdOf(req);
+    const colorId = String(req.params.colorId);
+    if (!UUID.test(colorId)) throw new AppError('not_found', 404, 'Colour not found');
+    await db.transaction(async (tx) => {
+      await lockProduct(tx, id);
+      const [used] = await tx.select({ n: count() }).from(variants).where(eq(variants.colorId, colorId));
+      if ((used?.n ?? 0) > 0) throw new AppError('color_in_use', 409, 'Sizes still use this colour. Switch them off instead of deleting the colour.');
+      const removed = await tx.delete(productColors).where(and(eq(productColors.id, colorId), eq(productColors.productId, id))).returning({ id: productColors.id });
+      if (removed.length === 0) throw new AppError('not_found', 404, 'Colour not found');
+      await tx.update(products).set({ updatedAt: sql`now()` }).where(eq(products.id, id));
+      await refreshSearchText(tx, id);
+    });
+    ctx.logger.info({ productId: id, colorId, actorId: req.user!.id }, 'Colour deleted');
+    res.json({ product: await adminView(db, id) });
+  });
+
+  const imagesInput = z.object({
+    images: z.array(z.object({ path: imagePath, color: z.string().trim().max(80).optional(), alt: z.string().max(200).optional() })).max(30),
+  });
+  router.put('/admin/products/:id/images', ...admin, validate({ body: imagesInput }), async (req, res) => {
+    const id = productIdOf(req);
+    const { images } = req.body as z.infer<typeof imagesInput>;
+    await db.transaction(async (tx) => {
+      await lockProduct(tx, id);
+      const colorRows = await tx.select().from(productColors).where(eq(productColors.productId, id));
+      const colorIds = new Map(colorRows.map((c) => [c.name.toLowerCase(), c.id]));
+      for (const img of images) {
+        if (img.color && !colorIds.has(img.color.toLowerCase())) throw invalid('images', `Unknown colour "${img.color}"`);
+      }
+      await tx.delete(productImages).where(eq(productImages.productId, id));
+      for (const [sort, img] of images.entries()) {
+        await tx.insert(productImages).values({ productId: id, path: img.path, alt: img.alt ?? null, sort, colorId: img.color ? colorIds.get(img.color.toLowerCase())! : null });
+      }
+      await tx.update(products).set({ updatedAt: sql`now()` }).where(eq(products.id, id));
+    });
+    ctx.logger.info({ productId: id, actorId: req.user!.id, images: images.length }, 'Product photos replaced');
+    res.json({ product: await adminView(db, id) });
+  });
+
+  // ---- Brands and categories ------------------------------------------------------------------------------
+  router.get('/admin/brands', ...admin, async (_req, res) => {
+    res.json({ brands: await db.select().from(brands).orderBy(asc(brands.sort), asc(brands.name)) });
+  });
+
+  const brandInput = z.object({ slug, name: z.string().trim().min(1).max(80), logoPath: imagePath.nullable().optional() });
+  router.post('/admin/brands', ...admin, validate({ body: brandInput }), async (req, res) => {
+    const input = req.body as z.infer<typeof brandInput>;
+    const [brand] = await db
+      .insert(brands)
+      .values({ slug: input.slug, name: input.name, logoPath: input.logoPath ?? null })
+      .returning()
+      .catch((e: unknown) => {
+        if (isUniqueViolation(e)) throw new AppError('slug_taken', 409, 'That brand already exists');
+        throw e;
+      });
+    ctx.logger.info({ actorId: req.user!.id, brand: input.slug }, 'Brand created');
+    res.status(201).json({ brand });
+  });
+
+  router.get('/admin/categories', ...admin, async (_req, res) => {
+    res.json({ categories: await db.select().from(categories).orderBy(asc(categories.sort), asc(categories.slug)) });
+  });
+
+  const categoryInput = z.object({ slug, name: i18n, parentSlug: slug.nullable().optional() });
+  router.post('/admin/categories', ...admin, validate({ body: categoryInput }), async (req, res) => {
+    const input = req.body as z.infer<typeof categoryInput>;
+    const parentId = input.parentSlug ? await idOf(db, categories, input.parentSlug, 'parentSlug') : null;
+    const [category] = await db
+      .insert(categories)
+      .values({ slug: input.slug, nameI18n: input.name, parentId })
+      .returning()
+      .catch((e: unknown) => {
+        if (isUniqueViolation(e)) throw new AppError('slug_taken', 409, 'That category already exists');
+        throw e;
+      });
+    ctx.logger.info({ actorId: req.user!.id, category: input.slug }, 'Category created');
+    res.status(201).json({ category });
   });
 
   return router;

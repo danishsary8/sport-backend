@@ -46,6 +46,24 @@ export async function deleteAccount(db: Db, identity: IdentityProvider, logger: 
   await db.transaction(async (tx) => {
     // Same lock as address writes, so an address saved concurrently can't outlive the deletion.
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`addresses:${user.id}`}))`);
+    // Orders in progress still need a way to reach the customer.
+    const open = await tx.execute<{ n: number }>(sql`
+      select count(*)::int as n from orders where user_id = ${user.id} and status not in ('completed', 'cancelled', 'expired', 'delivered')`);
+    if ((open.rows[0]?.n ?? 0) > 0) {
+      throw new AppError('open_orders', 409, 'You have orders in progress; you can delete your account once they are finished');
+    }
+    // Finished orders stay for the accounts, without who placed them or where they went.
+    await tx.execute(sql`
+      update orders set
+        contact_name = 'Deleted customer', contact_phone_e164 = '+85500000000', contact_email = null, note = null,
+        ship_address = case when ship_address is null then null else jsonb_build_object(
+          'recipientName', 'Deleted customer',
+          'provinceCode', ship_address->'provinceCode', 'provinceName', ship_address->'provinceName',
+          'districtCode', ship_address->'districtCode', 'districtName', ship_address->'districtName',
+          'communeCode', ship_address->'communeCode', 'communeName', ship_address->'communeName') end,
+        updated_at = now()
+      where user_id = ${user.id}`);
+    await tx.execute(sql`update rma_requests set note = null where user_id = ${user.id}`);
     await tx.delete(addresses).where(eq(addresses.userId, user.id));
     await tx
       .update(users)

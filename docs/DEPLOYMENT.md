@@ -30,7 +30,7 @@ Every variable is validated at start-up. The server refuses to start, and lists 
 | `PAYWAY_MERCHANT_ID`, `PAYWAY_API_KEY` | **required** (unless cash only) | From ABA. |
 | `PAYWAY_BASE_URL` | **required** (with PayWay keys) | `https://checkout.payway.com.kh` in production, or the sandbox URL on a test server. Production refuses to start without it, so it can never silently use the sandbox. |
 | `PAYWAY_RETURN_URL` | **required** | This API's webhook: `https://api.<domain>/v1/webhooks/payway`. Register the same URL with ABA. |
-| `PAYWAY_CONTINUE_URL` | **required** | The shop page card payers return to, e.g. `https://<domain>/checkout/return`. |
+| `PAYWAY_CONTINUE_URL` | **required** | The shop page card payers return to: `https://<domain>/checkout/return` (the shop sends them on to their order). |
 | `PAYMENT_METHODS_CASH_ONLY` | optional | `true` lets production start without PayWay. Only cash on pickup is offered, so delivery orders are switched off until PayWay is set up. |
 | `PUBLIC_API_URL` | optional | This API's own URL (used only by development payment pages). |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | recommended | Staff alerts: new orders, payments, refunds owed, returns and questions. |

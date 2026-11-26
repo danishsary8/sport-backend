@@ -306,3 +306,16 @@ Deferred minors:
 - canonical and og:image URLs use the serving host, not a configured site URL (matters only if the shop answers on several hosts)
 - admin order and user searches are kept out of the URL for privacy, so they reset when staff press Back from a result
 - the bundle check finds the test sign-in by its token prefix `test:phone-`; renaming the prefix needs the check updated
+
+## Stage 7 frontend audit and Stage 8 report (done)
+
+Audit: `sport-heaven/docs/superpowers/FRONTEND-AUDIT.md` maps each spec section to its evidence. Gaps found and fixed test-first:
+- `/p/:slug#print` didn't scroll to the print studio, and `/custom` cards didn't link to it
+- card payers returning from PayWay (`PAYWAY_CONTINUE_URL`, `/checkout/return`) landed on the 404 page; the pay page now remembers the order for the tab and the return page sends the shopper to it
+- `sport-heaven/GO_LIVE_NOTES.md` described the old demo; replaced with links to the real setup documents
+
+Rulings:
+- Stage 7: Ruling: listings keep the "Load more" button without endless scrolling (OWNER-DECISIONS) — none
+- Stage 7: Ruling: there is no link to the admin from the shop; staff open `/admin` directly (documented in OWNER-TODO and the report) — staff need the address
+
+Final counts: backend 724 tests, frontend 162 unit tests, 6 e2e tests. Report: `OVERNIGHT-REPORT.md`.

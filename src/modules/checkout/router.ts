@@ -76,7 +76,7 @@ export function checkoutRouter(ctx: AppContext): Router {
       cart: priced.view,
       shippingOptions,
       pickupBranches,
-      paymentMethods: availablePaymentMethods(await paymentMethodsEnabled(db), input.fulfillment),
+      paymentMethods: availablePaymentMethods(await paymentMethodsEnabled(db, ctx.config.paymentsCashOnly), input.fulfillment),
     });
   });
 

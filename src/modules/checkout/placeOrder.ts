@@ -127,7 +127,7 @@ async function insertOrderWithFreshNumber(tx: Tx, values: Omit<typeof orders.$in
 /** Bag → order, in one serializable transaction: price, claim promo, reserve stock, snapshot, clear bag. */
 export async function placeOrder(deps: CheckoutDeps, owner: CartOwner, user: UserRow | undefined, input: PlaceOrderInput): Promise<PlacedOrder> {
   const { db, config } = deps;
-  const enabled = await paymentMethodsEnabled(db);
+  const enabled = await paymentMethodsEnabled(db, config.paymentsCashOnly);
   if (!availablePaymentMethods(enabled, input.fulfillment).includes(input.paymentMethod)) {
     throw new AppError('payment_method_unavailable', 400, 'That payment method is not available for this order');
   }

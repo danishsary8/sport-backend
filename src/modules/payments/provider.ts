@@ -1,3 +1,4 @@
+import { AppError } from '../../lib/errors.js';
 import type { Config } from '../../config/env.js';
 import type { PaymentMethod } from '../../db/schema/index.js';
 import { FakePaymentProvider } from './fake.js';
@@ -72,7 +73,27 @@ export function createPaymentProvider(config: Config, fetchImpl: typeof fetch = 
       fetchImpl,
     );
   }
+  // Production never fakes payments: without PayWay keys (cash-only mode) every online payment is refused.
+  if (config.nodeEnv === 'production') return new DisabledPaymentProvider();
   return new FakePaymentProvider({ publicApiUrl: config.publicApiUrl });
+}
+
+/** Stands in for PayWay when the shop runs cash-only: refuses every online payment. */
+export class DisabledPaymentProvider implements PaymentProvider {
+  readonly name = 'payway' as const;
+  private refuse(): never {
+    throw new AppError('payments_unavailable', 503, 'Online payment is not available right now. Choose cash on pickup.');
+  }
+  async createTransaction(): Promise<never> {
+    this.refuse();
+  }
+  async checkTransaction(): Promise<never> {
+    this.refuse();
+  }
+  async cancelTransaction(): Promise<void> {}
+  verifyWebhook(): WebhookVerification {
+    return { valid: false, tranId: null, eventId: 'disabled', reason: 'online payments are disabled', claimedStatus: null, payload: {} };
+  }
 }
 
 export const TRAN_ID_PATTERN = /^[A-Za-z0-9-]{1,20}$/;

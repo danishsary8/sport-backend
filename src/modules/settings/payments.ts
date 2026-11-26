@@ -6,8 +6,12 @@ export type PaymentMethodsEnabled = Record<PaymentMethod, boolean>;
 
 const DEFAULTS: PaymentMethodsEnabled = { aba_khqr: true, card: true, acleda: false, wing: false, cash_on_pickup: false };
 
-/** Which payment methods the shop has switched on (setting `payment_methods_enabled`). */
-export async function paymentMethodsEnabled(db: Exec): Promise<PaymentMethodsEnabled> {
+/**
+ * Which payment methods the shop has switched on (setting `payment_methods_enabled`).
+ * In cash-only mode (PAYMENT_METHODS_CASH_ONLY, no PayWay account) only cash on pickup is ever on.
+ */
+export async function paymentMethodsEnabled(db: Exec, cashOnly = false): Promise<PaymentMethodsEnabled> {
+  if (cashOnly) return Object.fromEntries(PAYMENT_METHODS.map((m) => [m, m === 'cash_on_pickup'])) as PaymentMethodsEnabled;
   const r = await db.execute<{ value: Partial<PaymentMethodsEnabled> | null }>(sql`select value from settings where key = 'payment_methods_enabled'`);
   const stored = r.rows[0]?.value ?? {};
   return Object.fromEntries(PAYMENT_METHODS.map((m) => [m, typeof stored[m] === 'boolean' ? stored[m] : DEFAULTS[m]])) as PaymentMethodsEnabled;

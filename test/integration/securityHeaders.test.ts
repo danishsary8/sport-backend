@@ -30,7 +30,7 @@ describe('API security headers', () => {
     const { app } = memberApp(database);
     const first = await request(app).get('/v1/branches').expect(200);
     expect(first.headers.etag).toBeTruthy();
-    await request(app).get('/v1/branches').set('If-None-Match', first.headers.etag).expect(304);
+    await request(app).get('/v1/branches').set('If-None-Match', String(first.headers.etag)).expect(304);
   });
 
   it('sends credentials headers only to allowed origins', async () => {

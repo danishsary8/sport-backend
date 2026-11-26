@@ -71,7 +71,7 @@ export function orderPaymentsRouter(ctx: AppContext): Router {
         phone: body.contactPhone ? normalizePhone(body.contactPhone) : null,
         requirePhone: true,
       });
-      if (!availablePaymentMethods(await paymentMethodsEnabled(db), order.fulfillment).includes(body.method)) {
+      if (!availablePaymentMethods(await paymentMethodsEnabled(db, ctx.config.paymentsCashOnly), order.fulfillment).includes(body.method)) {
         throw new AppError('payment_method_unavailable', 400, 'That payment method is not available for this order');
       }
       const payment = await startPaymentAttempt({ db, payments: ctx.payments, now }, order.id, body.method);

@@ -27,6 +27,7 @@ After a context reset, trust this file, the plan ledgers (`.superpowers/sdd/<pla
 | Stage 4 done incl. whole-backend review fixes (twice: lint, typecheck, test, build) | 721/721 | – |
 | FE1 foundation done incl. review fixes (twice) | 722/722 | 53/53 (typecheck, lint, build, bundle check) |
 | FE2 browse done incl. review fixes (twice) | 724/724 | 100/100 (typecheck, lint, build, bundle check) |
+| FE3 checkout done incl. review fixes (twice) | 724/724 | 136/136 |
 
 ## Load test (phase 7, `npm run loadtest`)
 
@@ -223,3 +224,19 @@ Rulings:
 - Final: Ruling: a deep link with page=N>2 opens with the first 48 products and Load more, not N pages — avoids several requests — the shopper scrolls a little further after Back from deep pages
 
 Deferred minors: none (all review minors fixed).
+
+## FE3 bag, checkout, payment, orders (done, review fixed)
+
+Rulings:
+- Task 2: Ruling: the bag shows the total without delivery ("Calculated at checkout") and the KHR line only once delivery is known; the delivery estimate uses the quote — the cart's default PP delivery would otherwise look like a promise — none
+- Task 2: Ruling: the header bag icon opens the drawer (modified clicks still open /bag) — none
+- Task 3: Ruling: the form is checked in the browser first with friendly messages (name, Cambodian phone, address, store, payment, terms); the server's field errors are mapped onto the same fields — server stays the authority — none
+- Task 3: Ruling: the Idempotency-Key is kept after an offline/5xx failure (the order may have been received) and replaced after any other answer; a second tap while sending is ignored — none
+- Task 3: Ruling: an empty recipient phone means "same as my phone" — none
+- Task 4: Ruling: the guest's contact phone is kept with the order token in sessionStorage (this tab) because the API asks for it again to switch payment or cancel; if missing, the page asks once — none
+- Task 4: Ruling: the QR is drawn in the browser as SVG from PayWay's string (no image request); the card page opens only when the shopper presses Continue (no automatic redirect) — none
+- Task 5: Ruling: renderRoutes takes the app's staleTime when a test needs real caching behaviour — none
+
+Deferred minors:
+- focus does not move to the first invalid field on submit (the summary alert is announced)
+- member order page on hard reload before Firebase restores the user may show "Find this order" (needs real Firebase to verify; FE6 manual check)

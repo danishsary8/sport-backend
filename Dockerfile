@@ -17,7 +17,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
 COPY drizzle ./drizzle
+COPY docker-start.sh ./docker-start.sh
 USER node
 EXPOSE 3000
-# Apply migrations first with: docker run ... node dist/db/migrate.js
-CMD ["node", "dist/server.js"]
+# Applies migrations and seeds (safe to repeat), then starts the API.
+CMD ["sh", "docker-start.sh"]

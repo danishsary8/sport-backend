@@ -9,7 +9,6 @@ services:
     # A paid instance stays awake, so the per-minute job (expiring unpaid orders) keeps running.
     plan: starter
     healthCheckPath: /ready
-    dockerCommand: sh -c "node dist/db/migrate.js && node dist/db/seed/run.js && node dist/db/seed/importCatalog.js && node dist/server.js"
     envVars:
       - key: NODE_ENV
         value: production

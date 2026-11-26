@@ -11,8 +11,8 @@ After a context reset, trust this file, the plan ledgers (`.superpowers/sdd/<pla
 | 2 | Backend phase 6: post-purchase | `plans/2026-11-25-phase-6-post-purchase.md` | bfea8ba | done (review: 2 Critical + 5 Important fixed) |
 | 3 | Backend phase 7: hardening + deferred minors | `plans/2026-11-25-phase-7-hardening.md` | b06e98c | done (review: 5 Important fixed; every phase 1–6 minor fixed or ruled) |
 | 4 | Backend completeness audit | `plans/2026-11-26-stage-4-backend-audit.md` → `BACKEND-AUDIT.md` | 6484192 → HEAD | **done** — gaps closed, whole-backend review fixed (C-1, I-1…I-7, M-2, M-5, M-6, M-8); 721 tests |
-| 5 | Frontend design | `sport-heaven/docs/superpowers/specs/…` | – | not started |
-| 6 | Frontend build | `sport-heaven/docs/superpowers/plans/…` | – | not started |
+| 5 | Frontend design | `sport-heaven/docs/superpowers/specs/2026-11-26-frontend-production-design.md` | 3d8edd8 | done |
+| 6 | Frontend build | `sport-heaven/docs/superpowers/plans/2026-11-26-fe2-5-rebuild.md`, `…/2026-11-26-fe6-e2e-ci-quality.md` | 284c374 | FE1–FE5 done (FE2–FE5 rebuilt, review fixed); FE6 in progress |
 | 7 | Frontend audit | `sport-heaven/docs/superpowers/FRONTEND-AUDIT.md` | – | not started |
 | 8 | Final report | `OVERNIGHT-REPORT.md` | – | not started |
 
@@ -29,6 +29,7 @@ After a context reset, trust this file, the plan ledgers (`.superpowers/sdd/<pla
 | FE2 browse done incl. review fixes (twice) | 724/724 | 100/100 (typecheck, lint, build, bundle check) |
 | FE3 checkout done incl. review fixes (twice) | 724/724 | 136/136 |
 | FE4 account done incl. review fixes (twice) | 724/724 | 160/160 |
+| FE2–FE5 rebuilt + FE5 review fixes (twice; typecheck, lint, build + bundle check) | 724 (unchanged) | 154/154 |
 
 ## Load test (phase 7, `npm run loadtest`)
 
@@ -254,3 +255,31 @@ Rulings:
 
 Deferred minors:
 - return reasons are stored in the shopper's language (Khmer reasons reach staff in Khmer)
+
+## FE2–FE5 rebuild (done, review fixed)
+
+The FE2–FE5 commits recorded above never reached GitHub; only FE1 did. FE2–FE5 were rebuilt from the spec in one plan (`sport-heaven/docs/superpowers/plans/2026-11-26-fe2-5-rebuild.md`), keeping the rulings above as decisions. The FE1 deferred minor "focus does not move to the first invalid field" and the FE4 minor "return reasons stored in the shopper's language" are now fixed (reasons are sent in English).
+
+Rulings (rebuild):
+- B1: Ruling: per-feature dictionaries (`features/*/i18n.ts`, Khmer typed as `Record<keyof en>`) merged into the global dictionary — keeps parity enforced by the compiler — none
+- B2: Ruling: home page is eager (LCP); every other page is lazy — none
+- B5: Ruling: print studio copy says only what the API guarantees (fee, "final price shows in your bag"); invented promises (print turnaround, exchange of printed shirts) removed — none
+- B6: Ruling: help copy written from seeded settings (rider $2.50, free over $50, province $3.00 placeholder, 30/14-day returns, 30-minute hold); terms and privacy are drafts; about, size guide, terms and privacy are English-only in Khmer — owner edits help text if settings change (OWNER-TODO)
+- C3: Ruling: pay page offers ABA KHQR and card only for switching (no endpoint lists enabled methods after the bag is gone); the server refuses a disabled one with its message — none
+- C3: Ruling: order page refetches after payment (stale "waiting for payment" bug found in a real run, fixed test-first) — none
+- D3: Ruling: account guard sends a member who signs out (or deletes the account) home, not to sign-in — none
+- E1: Ruling: staff/admin screens English-only (OWNER-DECISIONS) — translation later
+- E2: Ruling: status buttons mirror the backend state machine; the server still checks each change — a machine change needs the frontend list updated
+- E3: Ruling: counter screen rows are stacked lists (tables were unusable at 390 px) — none
+- E7: Ruling: the old health dashboard is kept (charts, PDF) but now calls the signed-in API; dead /api links and "Cloud SQL" wording removed; its Title Case labels are left — cosmetic
+- FE6 T1: Ruling: first-load JS budget 150 kB gzipped (framework floor ~115 kB) — Lighthouse is the real gate
+
+FE5 review (fresh reviewer): 0 Critical, 7 Important, 10 Minor. All 7 Important fixed test-first; Minor 8 (customer search terms in admin URLs) promoted to Important and fixed; Minors 9–14, 16 and parts of 17 fixed.
+
+Deferred minors:
+- profile: a saved boot/jersey size can't be cleared (the API accepts no null)
+- returns approve/reject have no confirmation step
+- Sheet: Tab trap only wraps at the ends; nested sheets close together on Escape; background not inert
+- counter screen: a staff account without a store uses the first store; a sale draft survives switching store (admin); history sheet has no error state
+- admin product photos use `/assets/<path>` (not the CDN base) for previews
+- the legacy health dashboard keeps Title Case labels and some monospace styling

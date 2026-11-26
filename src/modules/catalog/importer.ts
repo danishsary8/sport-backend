@@ -155,7 +155,8 @@ export async function importCatalog(
           .returning({ id: productColors.id });
       }
 
-      const imagePath = `catalog/${path.basename(p.image)}`;
+      // The storefront's image pipeline publishes every photo as catalog/<name>.jpg (plus AVIF/WebP sizes).
+      const imagePath = `catalog/${path.basename(p.image).replace(/\.(png|jpe?g)$/i, '')}.jpg`;
       const [image] = await tx
         .select({ id: productImages.id })
         .from(productImages)

@@ -25,6 +25,11 @@ describe('importCatalog', () => {
     expect((await one('select count(*)::int as n from variants')).n).toBe(totalSizes);
   });
 
+  it('points every image at the optimised JPG the storefront publishes', async () => {
+    const r = await q("select count(*)::int as n from product_images where path !~ '^catalog/[a-z0-9_-]+\\.jpg$'");
+    expect(r.rows[0].n).toBe(0);
+  });
+
   it('maps a jersey completely', async () => {
     const p = await one(
       `select p.*, b.name as brand, c.slug as category from products p

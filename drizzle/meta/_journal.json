@@ -71,6 +71,13 @@
       "when": 1795651182038,
       "tag": "0009_question_moderation",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795670000000,
+      "tag": "0010_catalog_image_jpg",
+      "breakpoints": true
     }
   ]
 }

@@ -18,6 +18,7 @@ import { requestId } from './middleware/requestId.js';
 import { httpLogger } from './middleware/httpLog.js';
 import { accountRouter } from './modules/account/router.js';
 import { adminPricingRouter } from './modules/admin/pricingRouter.js';
+import { adminSettingsRouter } from './modules/admin/settingsRouter.js';
 import { adminProductsRouter } from './modules/admin/productsRouter.js';
 import { adminStockRouter } from './modules/admin/stockRouter.js';
 import { adminUsersRouter } from './modules/admin/usersRouter.js';
@@ -151,6 +152,7 @@ export function createApp(deps: AppDeps): express.Express {
   v1.use(adminStockRouter(ctx));
   v1.use(adminProductsRouter(ctx));
   v1.use(adminPricingRouter(ctx));
+  v1.use(adminSettingsRouter(ctx));
   v1.use(adminOrdersRouter(ctx));
   v1.use(rmaRouter(ctx));
   v1.use(loyaltyRouter(ctx));

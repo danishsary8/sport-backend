@@ -28,6 +28,7 @@ After a context reset, trust this file, the plan ledgers (`.superpowers/sdd/<pla
 | FE1 foundation done incl. review fixes (twice) | 722/722 | 53/53 (typecheck, lint, build, bundle check) |
 | FE2 browse done incl. review fixes (twice) | 724/724 | 100/100 (typecheck, lint, build, bundle check) |
 | FE3 checkout done incl. review fixes (twice) | 724/724 | 136/136 |
+| FE4 account done incl. review fixes (twice) | 724/724 | 160/160 |
 
 ## Load test (phase 7, `npm run loadtest`)
 
@@ -240,3 +241,16 @@ Rulings:
 Deferred minors:
 - focus does not move to the first invalid field on submit (the summary alert is announced)
 - member order page on hard reload before Firebase restores the user may show "Find this order" (needs real Firebase to verify; FE6 manual check)
+
+## FE4 sign-in and account (done, review fixed)
+
+Rulings:
+- Task 1: Ruling: in test builds (VITE_AUTH_TEST_MODE) the phone sign-in works with code 123456 and a uid derived from the phone, so e2e and local development can sign in through the real page; the bundle check refuses it in production builds — none
+- Task 1: Ruling: the guest-bag merge message is a one-time toast shown by a MergeNotice inside the providers — none
+- Task 2: Ruling: account pages are registered eagerly under the store layout (small); sign out sits in the sidebar on desktop and at the end of the overview on phones — none
+- Task 3: Ruling: the address form is its own component (label + recipient + gazetteer) rather than sharing the checkout form state — none
+- Task 4: Ruling: the return reason is sent as the shopper's chosen words (the API stores free text up to 300 chars) — staff read it as written — none
+- Task 4: Ruling: new-return screenshots deferred to the e2e run in FE6 (needs a delivered member order; the e2e scenario 2 creates one) — layout reuses checked components
+
+Deferred minors:
+- return reasons are stored in the shopper's language (Khmer reasons reach staff in Khmer)

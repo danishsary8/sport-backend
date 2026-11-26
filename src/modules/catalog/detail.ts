@@ -29,6 +29,22 @@ export interface ProductDetail extends ProductCard {
   images: { url: string; alt: string | null; colorName: string | null }[];
   variants: VariantView[];
   related: ProductCard[];
+  /** The size chart for this product's category, or null. Content lives in the `size_guides` setting. */
+  sizeGuide: SizeGuideView | null;
+}
+
+export interface SizeGuideView {
+  title: string;
+  columns: string[];
+  rows: string[][];
+  note: string | null;
+}
+
+interface SizeGuideSetting {
+  title: { en: string; km?: string };
+  columns: string[];
+  rows: string[][];
+  note?: { en: string; km?: string } | null;
 }
 
 interface DetailRow extends ListedRow {
@@ -43,6 +59,13 @@ interface DetailRow extends ListedRow {
 }
 
 const perBranch = (units: number): Availability => availabilityOf(units).availability;
+
+async function sizeGuideFor(db: Db, category: string, lang: Lang): Promise<SizeGuideView | null> {
+  const r = await db.execute<{ guide: SizeGuideSetting | null }>(sql`select value->${category} as guide from settings where key = 'size_guides'`);
+  const g = r.rows[0]?.guide;
+  if (!g || !Array.isArray(g.columns) || !Array.isArray(g.rows)) return null;
+  return { title: pick(g.title, lang) ?? '', columns: g.columns.map(String), rows: g.rows.map((row) => row.map(String)), note: g.note ? pick(g.note, lang) : null };
+}
 
 export async function productDetail(db: Db, slug: string, lang: Lang, assetBase: string, buffer: number): Promise<ProductDetail> {
   const cte = aggregatesCte(buffer);
@@ -114,5 +137,6 @@ export async function productDetail(db: Db, slug: string, lang: Lang, assetBase:
     images: imageRows.rows.map((i) => ({ url: assetUrl(assetBase, i.path)!, alt: i.alt, colorName: i.color })),
     variants: [...variants.values()].map(({ total, ...v }) => ({ ...v, ...availabilityOf(total) })),
     related: related.rows.map((r) => toCard(r, lang, assetBase)),
+    sizeGuide: await sizeGuideFor(db, row.category_slug, lang),
   };
 }

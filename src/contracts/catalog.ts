@@ -63,6 +63,7 @@ export const productDetail = productCard.extend({
     }),
   ),
   related: z.array(productCard),
+  sizeGuide: z.strictObject({ title: z.string(), columns: z.array(z.string()), rows: z.array(z.array(z.string())), note: z.string().nullable() }).nullable(),
 });
 export const productDetailResponse = z.strictObject({ product: productDetail });
 

@@ -19,6 +19,8 @@ Nothing here blocks the build: the software runs on test stand-ins until you sup
 10. Online safety buffer: **1 unit per size per branch** is never sold online.
 11. Riel rate **4100** per dollar.
 
+13a. **Size charts** shown on product pages (boots EU/UK/US/cm, shirts S–XXL chest/length, balls 3/4/5) are standard industry charts. Check them against the brands you sell and correct them in the `size_guides` setting.
+
 ## Stock
 
 12. **Count the real stock.** Every imported stock number is an estimate (In Stock = 10, Limited = 2, Out = 0) and flagged "needs count". Staff must count and correct it on the stock screen before launch.

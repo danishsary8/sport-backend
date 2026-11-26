@@ -26,6 +26,7 @@ After a context reset, trust this file, the plan ledgers (`.superpowers/sdd/<pla
 | Stage 3 done incl. review fixes (twice) | 680/680 | frontend clean-up: 2/2 (typecheck, lint, build clean) |
 | Stage 4 done incl. whole-backend review fixes (twice: lint, typecheck, test, build) | 721/721 | – |
 | FE1 foundation done incl. review fixes (twice) | 722/722 | 53/53 (typecheck, lint, build, bundle check) |
+| FE2 browse done incl. review fixes (twice) | 724/724 | 100/100 (typecheck, lint, build, bundle check) |
 
 ## Load test (phase 7, `npm run loadtest`)
 
@@ -199,3 +200,26 @@ Deferred minors:
 - first guest cart fetch before Firebase restores the user (authStateReady)
 - mobile menu shows only "Shop all" when the menu API is down
 - SPA fallback config for the static host; SameSite=Lax needs same-site API (documented in backend DEPLOYMENT)
+
+## FE2 browse (done, review fixed)
+
+Rulings:
+- Task 2: Ruling: /custom has no listing filter in the API (no "customizable" tag); customizable products are exactly the jerseys and F1 categories, so /custom shows those two rails (Task 9) — none
+- Task 2: Ruling: search results use /v1/search (ranked) with the same filters; facets come from /v1/catalog/filters?q= — none
+- Task 2: Ruling: a deep link with page=N loads N pages in one request (pageSize 24·N, capped at 96) instead of N requests — fewer round trips on Back — beyond page 4 the first request is capped and later pages load on demand
+- Task 3: Ruling: product photos are cut-outs, shown object-contain with multiply blend on the stone stage — visual check in Task 4 screens — none
+- Task 3/4: Ruling: product photos are full-bleed studio shots, so cards use object-cover (plan said contain for cut-outs; Global Constraints line updated) — screens checked — none
+- Task 4: Ruling: swipe rails get contain:paint + scroll-padding on phones (Chromium counted their scroll content in the page width: 567 px at 390) — verified 390 px with no horizontal scroll en/km — none
+- Task 4: Ruling: hero falls back to the catalog's hero boot photo when the section has no image — none
+- Task 5: Ruling: filters apply as soon as they are ticked (also in the phone sheet); the sheet's button shows the live count and closes it — fewer taps, the grid behind updates — none
+- Task 6: Ruling: the header search button opens the overlay (a new Sheet side 'top'); /search stays the results page; the overlay mounts only while open so each opening starts empty — none
+- Task 7: Ruling: per-store availability is shown only after a size is chosen (the API gives it per variant) with a hint before — none
+- Task 7: Ruling: spec labels are humanised from the API's keys (English only until the owner adds translated specs) — Khmer pages show English spec names — listed in OWNER-TODO (Khmer product content)
+- Task 8: Ruling: the studio lives on the product page (#print) and uses the size chosen in the buy box; one printed shirt per add (quantity 1) since each print is personal — none
+- Task 9: Ruling: help copy is rewritten from the real rules (old pages were invented chat/marketing text); terms and privacy marked "Draft: waiting for the owner's review"; terms/privacy/size-guide/about are English-only in Khmer with a note — costs the owner a legal read and Khmer translations (OWNER-TODO)
+- Task 9: Ruling: the stores page uses "Open in Google Maps" links for every store; an embedded map is skipped (no Maps key, and the links work on every phone) — the owner can ask for the map once a key exists
+- Task 9: Ruling: the return windows on the help page (30/14 days) are written text matching the seeded settings; if the owner changes them in admin, the help text must be edited too — noted in OWNER-TODO
+- Task 9: Ruling: the Khmer .font-display spacing rule moved outside the CSS layers so it beats leading/tracking utilities (Khmer headings overlapped) — none
+- Final: Ruling: a deep link with page=N>2 opens with the first 48 products and Load more, not N pages — avoids several requests — the shopper scrolls a little further after Back from deep pages
+
+Deferred minors: none (all review minors fixed).

@@ -77,7 +77,8 @@ export function adminOrdersRouter(ctx: AppContext): Router {
   });
 
   router.post('/admin/orders/:number/collect-cash', ...staff, async (req, res) => {
-    await withStaffOrder(db, String(req.params.number), orderScope(req.user!), (tx, order) => collectCash(tx, order, req.user!.id));
+    const toClose = await withStaffOrder(db, String(req.params.number), orderScope(req.user!), (tx, order) => collectCash(tx, order, req.user!.id));
+    await closeProviderAttempts(ctx.payments, toClose);
     res.json(await detail(req));
   });
 

@@ -122,7 +122,7 @@ export function questionsRouter(ctx: AppContext): Router {
         .update(productQuestions)
         .set({
           ...(answer !== undefined ? { answer, answeredBy: req.user!.id, answeredAt: sql`now()` } : {}),
-          ...(status ? { status } : {}),
+          ...(status ? { status, moderatedBy: req.user!.id, moderatedAt: sql`now()` } : {}),
         })
         .where(eq(productQuestions.id, current.id))
         .returning();

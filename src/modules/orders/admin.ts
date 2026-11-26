@@ -194,6 +194,7 @@ export async function cancelOrder(tx: Tx, order: OrderRow, actor: string, reason
         .returning({ tranId: payments.providerTranId })
     ).map((p) => p.tranId);
   } else {
+    const alreadyRefunded = order.paymentStatus === 'refunded';
     await restockAllocations(tx, allocs, order.number, 'order_cancel', /^[0-9a-f-]{36}$/.test(actor) ? actor : null);
     if (order.userId) {
       const [earned] = await tx
@@ -212,17 +213,23 @@ export async function cancelOrder(tx: Tx, order: OrderRow, actor: string, reason
         await tx.update(promotions).set({ usedCount: sql`greatest(0, ${promotions.usedCount} - 1)` }).where(eq(promotions.id, order.promotionId));
       }
     }
-    await tx.update(orders).set({ needsRefund: true }).where(eq(orders.id, order.id));
-    await recordEvent(tx, { orderId: order.id, kind: 'flag', actor, note: 'Needs refund: paid order cancelled' });
-    await enqueueOrderNotifications(tx, 'needs_refund', order.id, { reason: `paid order cancelled: ${reason}` });
+    if (!alreadyRefunded) {
+      await tx.update(orders).set({ needsRefund: true }).where(eq(orders.id, order.id));
+      await recordEvent(tx, { orderId: order.id, kind: 'flag', actor, note: 'Needs refund: paid order cancelled' });
+      await enqueueOrderNotifications(tx, 'needs_refund', order.id, { reason: `paid order cancelled: ${reason}` });
+    }
   }
   await transitionOrder(tx, order, 'cancelled', actor, reason);
   return toClose;
 }
 
-/** A pickup order paid in cash at the counter: stock leaves the shelf, points awarded, order completed. */
-export async function collectCash(tx: Tx, order: OrderRow, actor: string): Promise<void> {
-  if (order.fulfillment !== 'pickup' || order.paymentStatus !== 'unpaid' || !['awaiting_pickup_payment', 'ready_for_pickup'].includes(order.status)) {
+/**
+ * A pickup order paid in cash at the counter (cash-on-pickup, or a KHQR order the shopper pays in cash
+ * instead): stock leaves the shelf, points are awarded, open QR codes are closed and the order is
+ * completed. The customer gets one "completed" message. Returns provider attempts to close.
+ */
+export async function collectCash(tx: Tx, order: OrderRow, actor: string): Promise<string[]> {
+  if (order.fulfillment !== 'pickup' || order.paymentStatus !== 'unpaid' || !['pending_payment', 'awaiting_pickup_payment', 'ready_for_pickup'].includes(order.status)) {
     throw new AppError('invalid_transition', 409, 'Only unpaid pickup orders can be paid in cash at the counter');
   }
   await commitAllocations(tx, await allocationsOf(tx, order.id), order.number);
@@ -238,15 +245,30 @@ export async function collectCash(tx: Tx, order: OrderRow, actor: string): Promi
       .onConflictDoNothing();
   }
   await awardLoyalty(tx, paid!, (await loadRules(tx)).loyalty);
+  const toClose = (
+    await tx
+      .update(payments)
+      .set({ status: 'cancelled', updatedAt: sql`now()` })
+      .where(and(eq(payments.orderId, order.id), eq(payments.status, 'pending')))
+      .returning({ tranId: payments.providerTranId })
+  ).map((p) => p.tranId);
   await recordEvent(tx, { orderId: order.id, kind: 'payment', actor, note: 'Paid in cash at the counter' });
   let current = paid!;
-  if (current.status === 'awaiting_pickup_payment') current = await transitionOrder(tx, current, 'ready_for_pickup', actor);
+  if (current.status === 'pending_payment') current = await transitionOrder(tx, current, 'confirmed', actor, undefined, { notify: false });
+  if (current.status !== 'ready_for_pickup') current = await transitionOrder(tx, current, 'ready_for_pickup', actor, undefined, { notify: false });
   await transitionOrder(tx, current, 'completed', actor);
+  return toClose;
 }
 
 export async function markRefunded(tx: Tx, order: OrderRow, actor: string, note?: string): Promise<void> {
   if (order.paymentStatus !== 'paid') throw new AppError('invalid_transition', 409, 'Only a paid order can be marked refunded');
-  await tx.update(orders).set({ paymentStatus: 'refunded', needsRefund: false, updatedAt: sql`now()` }).where(eq(orders.id, order.id));
+  // A cancelled or expired order was refunded in full; otherwise the refund was for returned items and
+  // the rest of the order stays paid.
+  const whole = order.status === 'cancelled' || order.status === 'expired';
+  await tx
+    .update(orders)
+    .set({ ...(whole ? { paymentStatus: 'refunded' as const } : {}), needsRefund: false, updatedAt: sql`now()` })
+    .where(eq(orders.id, order.id));
   await recordEvent(tx, { orderId: order.id, kind: 'payment', actor, note: note ? `Refunded: ${note}` : 'Refunded' });
 }
 

@@ -79,6 +79,9 @@ export const productQuestions = pgTable(
     answeredBy: uuid('answered_by').references(() => users.id, { onDelete: 'set null' }),
     answeredAt: timestamp('answered_at', { withTimezone: true }),
     status: text('status').$type<QuestionStatus>().notNull().default('pending'),
+    /** Who last changed the status (publish/hide), and when. */
+    moderatedBy: uuid('moderated_by').references(() => users.id, { onDelete: 'set null' }),
+    moderatedAt: timestamp('moderated_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [

@@ -238,6 +238,11 @@ export async function listMemberRmas(db: Db, userId: string, lang: Lang): Promis
   return rmaViews(db, rows, lang);
 }
 
+async function firstBranch(tx: Tx): Promise<string> {
+  const [b] = await tx.select({ id: branches.id }).from(branches).orderBy(asc(branches.sort)).limit(1);
+  return b!.id;
+}
+
 /** Staff tied to a branch handle returns of orders that touched their branch. */
 function rmaScope(branchId: string | null) {
   return branchId
@@ -309,7 +314,7 @@ export async function decideRma(
           .where(eq(orderItemAllocations.orderItemId, item.orderItemId))
           .orderBy(asc(orderItemAllocations.branchId))
           .limit(1);
-        restock.push({ variantId: oi!.variantId, branchId: chosen ?? sentFrom?.branchId ?? order.pickupBranchId ?? 'sonthormuk', qty: item.qty });
+        restock.push({ variantId: oi!.variantId, branchId: chosen ?? sentFrom?.branchId ?? order.pickupBranchId ?? (await firstBranch(tx)), qty: item.qty });
       }
       // One sorted lock over every row this decision touches (returned units and the exchange size).
       await lockStock(tx, [...restock, ...exchangeAllocs]);

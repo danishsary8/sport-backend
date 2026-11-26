@@ -32,7 +32,7 @@ export function assertStaffTransition(order: OrderRow, to: OrderStatus): void {
  * The one way staff change an order's status: guards, the timeline event (with the actor), the delivery
  * stamp that starts return windows, and the customer notification. The caller holds the order row lock.
  */
-export async function transitionOrder(tx: Tx, order: OrderRow, to: OrderStatus, actor: string, note?: string): Promise<OrderRow> {
+export async function transitionOrder(tx: Tx, order: OrderRow, to: OrderStatus, actor: string, note?: string, opts: { notify?: boolean } = {}): Promise<OrderRow> {
   assertStaffTransition(order, to);
   const stampDelivery = !order.deliveredAt && (to === 'delivered' || (to === 'completed' && order.fulfillment === 'pickup'));
   const [updated] = await tx
@@ -41,6 +41,6 @@ export async function transitionOrder(tx: Tx, order: OrderRow, to: OrderStatus, 
     .where(eq(orders.id, order.id))
     .returning();
   await recordEvent(tx, { orderId: order.id, from: order.status, to, kind: 'status', actor, note });
-  if (TELL_CUSTOMER.includes(to)) await enqueueOrderNotifications(tx, 'status_changed', order.id);
+  if (TELL_CUSTOMER.includes(to) && opts.notify !== false) await enqueueOrderNotifications(tx, 'status_changed', order.id);
   return updated!;
 }

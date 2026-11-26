@@ -64,6 +64,13 @@
       "when": 1795645942539,
       "tag": "0008_catalog_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795651182038,
+      "tag": "0009_question_moderation",
+      "breakpoints": true
     }
   ]
 }

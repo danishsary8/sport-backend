@@ -22,8 +22,8 @@ export function adminOverviewRouter(ctx: AppContext): Router {
     const r = await db.execute<Record<string, number>>(sql`
       select
         (select count(*) from orders o where (o.created_at at time zone 'Asia/Phnom_Penh')::date = ${today} ${orderScopeSql})::int as orders_today,
-        (select count(*) from orders o where o.payment_status = 'paid' and (o.paid_at at time zone 'Asia/Phnom_Penh')::date = ${today} ${orderScopeSql})::int as paid_today,
-        (select coalesce(sum(o.total_cents), 0) from orders o where o.payment_status = 'paid' and (o.paid_at at time zone 'Asia/Phnom_Penh')::date = ${today} ${orderScopeSql})::int as revenue_today,
+        (select count(*) from orders o where o.payment_status = 'paid' and o.status not in ('cancelled', 'expired') and (o.paid_at at time zone 'Asia/Phnom_Penh')::date = ${today} ${orderScopeSql})::int as paid_today,
+        (select coalesce(sum(o.total_cents), 0) from orders o where o.payment_status = 'paid' and o.status not in ('cancelled', 'expired') and (o.paid_at at time zone 'Asia/Phnom_Penh')::date = ${today} ${orderScopeSql})::int as revenue_today,
         (select count(*) from orders o where o.status = 'pending_payment' ${orderScopeSql})::int as pending_payments,
         (select count(*) from orders o where o.needs_refund ${orderScopeSql})::int as needs_refund,
         (select count(*) from orders o where o.status = 'confirmed' ${orderScopeSql})::int as confirmed,

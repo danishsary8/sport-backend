@@ -30,7 +30,7 @@ export async function memberInsights(db: Db, userId: string, lang: Lang): Promis
       i.product_snapshot->>'brand' as brand, i.qty, i.line_total_cents as spend, i.custom_print is not null as printed
     from order_items i join orders o on o.id = i.order_id
     left join categories c on c.slug = i.product_snapshot->>'categorySlug'
-    where o.user_id = ${userId} and o.payment_status = 'paid'`);
+    where o.user_id = ${userId} and o.payment_status = 'paid' and o.status not in ('cancelled', 'expired')`);
   const totalSpend = rows.rows.reduce((s, r) => s + r.spend, 0);
   const slices = (keyOf: (r: (typeof rows.rows)[number]) => string, labelOf: (r: (typeof rows.rows)[number]) => string): InsightSlice[] => {
     const map = new Map<string, { label: string; items: number; orders: Set<string>; spend: number }>();

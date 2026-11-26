@@ -1,0 +1,33 @@
+# Render blueprint (Dashboard > New > Blueprint > pick this repository).
+# The API runs from the Dockerfile in Singapore. On every start it applies migrations and the seeds
+# (both are safe to repeat: settings and products you edit in the admin are never overwritten).
+services:
+  - type: web
+    name: sport-castle-api
+    runtime: docker
+    region: singapore
+    # A paid instance stays awake, so the per-minute job (expiring unpaid orders) keeps running.
+    plan: starter
+    healthCheckPath: /ready
+    dockerCommand: sh -c "node dist/db/migrate.js && node dist/db/seed/run.js && node dist/db/seed/importCatalog.js && node dist/server.js"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: BOOTSTRAP_ADMIN_PHONES
+        sync: false
+      # Until ABA PayWay is set up: customers order online and pay at a store.
+      - key: PAYMENT_METHODS_CASH_ONLY
+        value: "true"
+      # Shoppers reach the API through the shop's host (Vercel), then Render's load balancer.
+      - key: TRUST_PROXY_HOPS
+        value: "2"

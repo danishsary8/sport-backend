@@ -2,12 +2,13 @@ import { and, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import express, { Router, type Request } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../../context.js';
-import { payments, paymentWebhookEvents, type OrderRow, type PaymentRow } from '../../db/schema/index.js';
+import { orders, payments, paymentWebhookEvents, type OrderRow, type PaymentRow } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
 import { normalizePhone } from '../../lib/phone.js';
 import { validate } from '../../middleware/validate.js';
 import { langSchema } from '../catalog/i18n.js';
 import { startPaymentAttempt } from '../checkout/paymentAttempt.js';
+import { cancelOrder, withStaffOrder } from '../orders/admin.js';
 import { findOrderForAccess } from '../orders/access.js';
 import { loadOrderView } from '../orders/load.js';
 import { paymentView } from '../orders/view.js';
@@ -76,6 +77,31 @@ export function orderPaymentsRouter(ctx: AppContext): Router {
       }
       const payment = await startPaymentAttempt({ db, payments: ctx.payments, now }, order.id, body.method);
       res.status(201).json({ payment });
+    },
+  );
+
+  // The owner may cancel an order that is not paid yet: the stock, the promo use and the QR are released at once.
+  router.post(
+    '/orders/:number/cancel',
+    noStore,
+    ...ctx.guestOrMember,
+    validate({ body: z.object({ contactPhone: z.string().trim().max(40).optional(), orderAccessToken: z.string().trim().max(200).optional() }) }),
+    async (req, res) => {
+      const body = req.body as { contactPhone?: string; orderAccessToken?: string };
+      const found = await access(req, {
+        token: body.orderAccessToken ?? req.get('x-order-token') ?? undefined,
+        phone: body.contactPhone ? normalizePhone(body.contactPhone) : null,
+        requirePhone: true,
+      });
+      const toClose = await withStaffOrder(db, found.number, { branchId: null }, async (tx, order) => {
+        if (order.paymentStatus !== 'unpaid' || !['pending_payment', 'awaiting_pickup_payment'].includes(order.status)) {
+          throw new AppError('order_not_cancellable', 409, 'This order can no longer be cancelled here. Contact the shop.');
+        }
+        return cancelOrder(tx, order, 'customer', 'Cancelled by the customer');
+      });
+      for (const tranId of toClose) await ctx.payments.cancelTransaction(tranId).catch(() => {});
+      const [fresh] = await db.select().from(orders).where(eq(orders.id, found.id));
+      res.json(await loadOrderView(db, fresh!, { lang: 'en', assetBase: ctx.config.assetBaseUrl }));
     },
   );
 

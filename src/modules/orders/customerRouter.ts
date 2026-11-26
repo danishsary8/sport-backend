@@ -27,7 +27,7 @@ export function customerOrdersRouter(ctx: AppContext): Router {
     validate({ body: z.object({ orderNumber: z.string().trim().max(40), phone: z.string().trim().max(40), lang: langSchema }) }),
     async (req, res) => {
       const body = req.body as { orderNumber: string; phone: string; lang: Lang };
-      res.json(await trackOrder(db, body.orderNumber, normalizePhone(body.phone), { lang: body.lang, assetBase }));
+      res.json(await trackOrder(db, body.orderNumber, normalizePhone(body.phone), { lang: body.lang, assetBase, tokenSecret: ctx.config.cookieSecret, now: new Date() }));
     },
   );
 

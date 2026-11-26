@@ -156,7 +156,7 @@ export const trackedOrder = z.strictObject({
 export const placedOrder = z.strictObject({ order, payment: payment.nullable(), paymentError: z.string().nullable(), orderAccessToken: z.string().nullable() });
 export const orderResponse = z.strictObject({ order, payment: payment.nullable() });
 export const paymentStatus = z.strictObject({ status: orderStatus, paymentStatus: z.enum(['unpaid', 'paid', 'refunded']), latestPayment: payment.nullable(), reservedUntil: z.string().nullable() });
-export const trackResponse = z.strictObject({ order: trackedOrder });
+export const trackResponse = z.strictObject({ order: trackedOrder, orderAccessToken: z.string().nullable() });
 export const newPayment = z.strictObject({ payment });
 export const myOrders = z.strictObject({
   orders: z.array(

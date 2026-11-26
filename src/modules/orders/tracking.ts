@@ -1,8 +1,9 @@
 import { and, count, desc, eq, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
-import { orders, type ShipAddressSnapshot } from '../../db/schema/index.js';
+import { orders, type OrderRow, type ShipAddressSnapshot } from '../../db/schema/index.js';
 import type { I18n } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
+import { signOrderToken } from '../checkout/orderToken.js';
 import { pick, type Lang } from '../catalog/i18n.js';
 import { assetUrl } from '../catalog/view.js';
 import { loadOrderView } from './load.js';
@@ -26,10 +27,21 @@ export function maskedAddress(a: ShipAddressSnapshot | null): MaskedAddress | nu
   return { recipient: maskName(a.recipientName), communeName: a.communeName, districtName: a.districtName, provinceName: a.provinceName };
 }
 
+function resumable(order: OrderRow, now: Date): boolean {
+  if (order.paymentStatus !== 'unpaid') return false;
+  if (order.status === 'awaiting_pickup_payment') return true;
+  return order.status === 'pending_payment' && (!order.reservedUntil || order.reservedUntil > now);
+}
+
 const notFound = () => new AppError('order_not_found', 404, 'We could not find an order with that number and phone');
 
 /** Order number + phone → status and timeline, without anything that identifies or locates the customer. */
-export async function trackOrder(db: Db, number: string, phoneE164: string | null, opts: { lang: Lang; assetBase: string }): Promise<{ order: Omit<OrderView, 'shipAddress' | 'contact'> & { shipAddress: MaskedAddress | null; contact: { name: string; phone: string; channel: string } } }> {
+export async function trackOrder(
+  db: Db,
+  number: string,
+  phoneE164: string | null,
+  opts: { lang: Lang; assetBase: string; tokenSecret: string; now: Date },
+): Promise<{ order: Omit<OrderView, 'shipAddress' | 'contact'> & { shipAddress: MaskedAddress | null; contact: { name: string; phone: string; channel: string } }; orderAccessToken: string | null }> {
   const normalized = number.trim().toUpperCase();
   if (!/^SC-\d{4}-[0-9A-Z]{5}$/.test(normalized) || !phoneE164) throw notFound();
   const [order] = await db.select().from(orders).where(and(eq(orders.number, normalized), eq(orders.contactPhoneE164, phoneE164)));
@@ -42,6 +54,9 @@ export async function trackOrder(db: Db, number: string, phoneE164: string | nul
       contact: { name: maskName(order.contactName), phone: `***${phoneE164.slice(-3)}`, channel: order.contactChannel },
       note: null,
     },
+    // A guest who closed the tab during payment can pick the order up again (pay, switch method or cancel),
+    // but only while it is unpaid and still holding stock.
+    orderAccessToken: resumable(order, opts.now) ? signOrderToken(order.number, opts.tokenSecret, opts.now) : null,
   };
 }
 

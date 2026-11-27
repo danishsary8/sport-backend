@@ -86,8 +86,9 @@ Customers sign in on the frontend with Firebase (phone number + SMS code, or Goo
 | `GET /v1/search/suggest?q=` | anyone | Type-ahead (min 2 characters; debounce on the client) |
 | `GET /v1/catalog/menu`, `/catalog/collections/:slug`, `/catalog/home` | anyone | Navigation, collection info, home sections |
 | `GET /v1/me/wishlist`, `PUT/DELETE /v1/me/wishlist/:idOrSlug` | signed in | Wishlist (max 200) |
+| `GET /v1/admin/stock/list?view=all\|low\|out\|count&category=&q=&page=` | staff, admin | The stock screen: products with every size at one branch, filter counts, product photo |
 | `GET /v1/admin/stock/lookup?q=`, `GET /v1/admin/stock?productId=`, `GET /v1/admin/stock/movements?variantId=` | staff, admin | Real stock numbers and history |
-| `POST /v1/admin/stock/sale`, `/stock/adjust`, `/stock/transfer` | staff, admin | Counter sales, counted corrections, branch transfers (branch-scoped staff: own branch only) |
+| `POST /v1/admin/stock/sale`, `/stock/adjust`, `/stock/count`, `/stock/transfer` | staff, admin | Counter sales, corrections by a difference or by the counted number (clears "needs count"), branch transfers (branch-scoped staff: own branch only) |
 | `GET/POST /v1/admin/products`, `GET/PATCH /v1/admin/products/:id`, `POST /v1/admin/products/:id/variants`, `PUT /v1/admin/products/:id/variants/:variantId` | admin | Product management and prices |
 
 Stock rules: customers only ever see `ok`, `low` (with 1–3 left) or `out`. The website holds back a safety buffer (setting `online_safety_buffer`, default 1 per size per branch) so a unit just sold in a shop isn't sold online too. Every stock change is recorded in `stock_movements`.

@@ -6,8 +6,9 @@ import { z } from 'zod';
 import type { AppContext } from '../../context.js';
 import { requireRole } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
-import { escapeLike } from '../catalog/listing.js';
-import { adjustStock, recordSale, transferStock } from '../stock/service.js';
+import { escapeLike, safetyBuffer } from '../catalog/listing.js';
+import { assetUrl } from '../catalog/view.js';
+import { adjustStock, countStock, recordSale, transferStock } from '../stock/service.js';
 import { assertBranchAccess, assertBranchExists, branchFor } from './branchAccess.js';
 
 const uuid = z.string().uuid();
@@ -63,6 +64,99 @@ export function adminStockRouter(ctx: AppContext): Router {
         });
       }
       res.json({ branchId: branch, products: [...products.values()] });
+    },
+  );
+
+  /**
+   * The stock screen's list: products with every size's numbers at one branch, sorted by name, with
+   * filters for what needs attention. "low" matches the overview's count (1 to 3 left to sell online, active
+   * products); "out" means nothing free at the branch; "count" means the row is waiting for a shelf count.
+   * A product shows when any of its sizes matches the filter, and the response says which sizes do.
+   */
+  router.get(
+    '/admin/stock/list',
+    ...staff,
+    validate({
+      query: z.object({
+        branchId: branchId.optional(),
+        view: z.enum(['all', 'low', 'out', 'count']).default('all'),
+        category: z.string().trim().min(1).max(60).optional(),
+        q: z.string().trim().max(80).optional(),
+        page: z.coerce.number().int().min(1).max(1000).default(1),
+        pageSize: z.coerce.number().int().min(1).max(50).default(20),
+      }),
+    }),
+    async (req, res) => {
+      const query = req.query as unknown as { branchId?: string; view: 'all' | 'low' | 'out' | 'count'; category?: string; q?: string; page: number; pageSize: number };
+      const branch = branchFor(req.user!, query.branchId);
+      await assertBranchExists(db, branch);
+      const buffer = await safetyBuffer(db);
+      const pattern = query.q ? `%${escapeLike(query.q.toLowerCase())}%` : null;
+      const rows = sql`
+        select p.id as pid, coalesce(s.needs_count, false) as needs_count,
+          (p.status = 'active' and greatest(0, coalesce(s.on_hand, 0) - coalesce(s.reserved, 0) - coalesce(s.online_buffer, ${buffer})) between 1 and 3) as is_low,
+          (coalesce(s.on_hand, 0) - coalesce(s.reserved, 0) <= 0) as is_out
+        from products p
+        join variants v on v.product_id = p.id and v.status = 'active'
+        left join categories c on c.id = p.category_id
+        left join stock s on s.variant_id = v.id and s.branch_id = ${branch}
+        where p.status <> 'archived'
+          and (${query.category ?? null}::text is null or c.slug = ${query.category ?? null})
+          and (${pattern}::text is null or lower(v.sku) like ${pattern} or p.search_text like ${pattern})`;
+      const match = { all: sql`true`, low: sql`is_low`, out: sql`is_out`, count: sql`needs_count` }[query.view];
+      const counts = await db.execute<{ all: number; low: number; out: number; count: number }>(sql`
+        with r as (${rows})
+        select count(distinct pid)::int as all, count(*) filter (where is_low)::int as low,
+          count(*) filter (where is_out)::int as out, count(*) filter (where needs_count)::int as count
+        from r`);
+      const page = await db.execute<{ pid: string; total: number }>(sql`
+        with r as (${rows}), hits as (select pid from r group by pid having bool_or(${match}))
+        select h.pid, count(*) over ()::int as total
+        from hits h join products p on p.id = h.pid
+        order by p.name_i18n->>'en', p.id
+        limit ${query.pageSize} offset ${(query.page - 1) * query.pageSize}`);
+      const ids = page.rows.map((r) => r.pid);
+      const detail = ids.length
+        ? await db.execute<{
+            product_id: string; slug: string; name: string; status: string; category: string | null; image: string | null;
+            variant_id: string; sku: string; size: string; color: string; on_hand: number | null; reserved: number | null;
+            online_buffer: number | null; needs_count: boolean | null;
+          }>(sql`
+            select p.id as product_id, p.slug, p.name_i18n->>'en' as name, p.status, c.name_i18n->>'en' as category,
+              (select i.path from product_images i where i.product_id = p.id order by i.sort, i.id limit 1) as image,
+              v.id as variant_id, v.sku, v.size_label as size, pc.name as color,
+              s.on_hand, s.reserved, s.online_buffer, s.needs_count
+            from products p
+            join variants v on v.product_id = p.id and v.status = 'active'
+            join product_colors pc on pc.id = v.color_id
+            left join categories c on c.id = p.category_id
+            left join stock s on s.variant_id = v.id and s.branch_id = ${branch}
+            where p.id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})
+            order by pc.sort, v.size_sort`)
+        : { rows: [] };
+      const products = new Map<string, Record<string, unknown> & { variants: unknown[] }>();
+      for (const id of ids) products.set(id, { id, variants: [] });
+      for (const r of detail.rows) {
+        const p = products.get(r.product_id)!;
+        Object.assign(p, { slug: r.slug, name: r.name, status: r.status, category: r.category, imageUrl: assetUrl(ctx.config.assetBaseUrl, r.image) });
+        const onHand = r.on_hand ?? 0;
+        const reserved = r.reserved ?? 0;
+        const online = Math.max(0, onHand - reserved - (r.online_buffer ?? buffer));
+        p.variants.push({
+          id: r.variant_id, sku: r.sku, size: r.size, color: r.color, branchId: branch,
+          onHand, reserved, available: onHand - reserved, needsCount: r.needs_count ?? false,
+          low: r.status === 'active' && online >= 1 && online <= 3,
+        });
+      }
+      res.json({
+        branchId: branch,
+        view: query.view,
+        page: query.page,
+        pageSize: query.pageSize,
+        total: page.rows[0]?.total ?? 0,
+        counts: counts.rows[0] ?? { all: 0, low: 0, out: 0, count: 0 },
+        products: [...products.values()],
+      });
     },
   );
 
@@ -132,6 +226,25 @@ export function adminStockRouter(ctx: AppContext): Router {
       await assertBranchExists(db, req.body.branchId);
       const row = await adjustStock(db, { ...req.body, actorUserId: req.user!.id });
       res.json({ stock: row });
+    },
+  );
+
+  router.post(
+    '/admin/stock/count',
+    ...staff,
+    validate({
+      body: z.object({
+        variantId: uuid,
+        branchId,
+        count: z.number().int().min(0).max(99999),
+        note: z.string().trim().max(200).optional(),
+      }),
+    }),
+    async (req, res) => {
+      assertBranchAccess(req.user!, req.body.branchId);
+      await assertBranchExists(db, req.body.branchId);
+      const { stock: row, delta } = await countStock(db, { ...req.body, actorUserId: req.user!.id });
+      res.json({ stock: row, delta });
     },
   );
 

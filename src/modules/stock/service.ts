@@ -173,6 +173,43 @@ export async function adjustStock(
   );
 }
 
+/**
+ * A shelf count: the number on the shelf replaces what the system thinks is there. The difference is written
+ * as one admin adjustment (none when the count matches), and the row's "needs count" flag is cleared either way.
+ */
+export async function countStock(
+  db: Db,
+  input: { variantId: string; branchId: string; count: number; note?: string; actorUserId?: string | null },
+): Promise<{ stock: StockRow; delta: number }> {
+  return db.transaction(async (tx) => {
+    await assertVariantExists(tx, input.variantId);
+    await tx.insert(stock).values({ variantId: input.variantId, branchId: input.branchId }).onConflictDoNothing();
+    const [current] = await tx
+      .select()
+      .from(stock)
+      .where(and(eq(stock.variantId, input.variantId), eq(stock.branchId, input.branchId)))
+      .for('update');
+    const delta = input.count - current!.onHand;
+    if (delta === 0) {
+      const [row] = await tx
+        .update(stock)
+        .set({ needsCount: false, updatedAt: sql`now()` })
+        .where(and(eq(stock.variantId, input.variantId), eq(stock.branchId, input.branchId)))
+        .returning();
+      return { stock: row!, delta };
+    }
+    const row = await applyMovement(tx, {
+      variantId: input.variantId,
+      branchId: input.branchId,
+      deltaOnHand: delta,
+      reason: 'admin_adjust',
+      note: input.note?.trim() || 'Counted',
+      actorUserId: input.actorUserId,
+    });
+    return { stock: row, delta };
+  });
+}
+
 export async function transferStock(
   db: Db,
   input: { variantId: string; from: string; to: string; qty: number; actorUserId?: string | null },

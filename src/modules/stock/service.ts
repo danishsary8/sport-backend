@@ -18,7 +18,8 @@ export type StockReason =
   | 'exchange_reserve'
   | 'exchange_commit'
   | 'exchange_release'
-  | 'order_cancel';
+  | 'order_cancel'
+  | 'restock';
 
 export type { Tx } from '../../db/exec.js';
 import type { Tx } from '../../db/exec.js';
@@ -208,6 +209,35 @@ export async function countStock(
     });
     return { stock: row, delta };
   });
+}
+
+/**
+ * A delivery: adds units to many sizes at one branch in one go. Every line is applied or none is, and each
+ * gets a "restock" movement sharing one reference, so the delivery reads as one event in the history.
+ */
+export async function restockStock(
+  db: Db,
+  input: { branchId: string; lines: { variantId: string; qty: number }[]; note?: string; actorUserId?: string | null },
+): Promise<{ refId: string; sizes: number; units: number }> {
+  const refId = `RESTOCK-${randomUUID().slice(0, 8).toUpperCase()}`;
+  const byVariant = new Map<string, number>();
+  for (const l of input.lines) byVariant.set(l.variantId, (byVariant.get(l.variantId) ?? 0) + l.qty);
+  await db.transaction(async (tx) => {
+    for (const variantId of byVariant.keys()) await assertVariantExists(tx, variantId);
+    await lockStock(tx, [...byVariant.keys()].map((variantId) => ({ variantId, branchId: input.branchId })));
+    for (const [variantId, qty] of byVariant) {
+      await applyMovement(tx, {
+        variantId,
+        branchId: input.branchId,
+        deltaOnHand: qty,
+        reason: 'restock',
+        refId,
+        note: input.note?.trim() || undefined,
+        actorUserId: input.actorUserId,
+      });
+    }
+  });
+  return { refId, sizes: byVariant.size, units: [...byVariant.values()].reduce((n, q) => n + q, 0) };
 }
 
 export async function transferStock(

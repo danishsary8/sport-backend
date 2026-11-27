@@ -93,3 +93,26 @@ describe('set count', () => {
     expect(res.body.error.code).toBe('held_for_online_order');
   });
 });
+
+describe('restock', () => {
+  const restock = (token: string, body: object) => request(ctx.app).post('/v1/admin/stock/restock').set(bearer(token)).send(body);
+
+  it('adds the same amount to every chosen size, as one delivery in the history', async () => {
+    const res = await restock(staff, { branchId: 'sonthormuk', lines: [{ variantId: jerseyM, qty: 5 }, { variantId: jerseyL, qty: 5 }], note: 'Supplier delivery' }).expect(200);
+    expect(res.body).toMatchObject({ sizes: 2, units: 10, refId: expect.stringMatching(/^RESTOCK-/) });
+    const rows = await database.pool.query("select variant_id, on_hand from stock where branch_id = 'sonthormuk' and variant_id = any($1)", [[jerseyM, jerseyL]]);
+    expect(Object.fromEntries(rows.rows.map((r) => [r.variant_id, r.on_hand]))).toEqual({ [jerseyM]: 8, [jerseyL]: 5 });
+    const moves = await database.pool.query("select ref_id, note, delta_on_hand from stock_movements where reason = 'restock' and ref_id = $1", [res.body.refId]);
+    expect(moves.rows).toHaveLength(2);
+    expect(moves.rows.every((m) => m.note === 'Supplier delivery' && m.delta_on_hand === 5)).toBe(true);
+  });
+
+  it('applies nothing when one size is unknown', async () => {
+    await restock(admin, { branchId: 'sonthormuk', lines: [{ variantId: jerseyM, qty: 2 }, { variantId: '00000000-0000-4000-8000-000000000000', qty: 2 }] }).expect(404);
+    expect((await database.pool.query("select on_hand from stock where branch_id = 'sonthormuk' and variant_id = $1", [jerseyM])).rows[0].on_hand).toBe(3);
+  });
+
+  it('keeps branch staff to their own branch', async () => {
+    await restock(staff, { branchId: 'sensok', lines: [{ variantId: jerseyM, qty: 1 }] }).expect(403);
+  });
+});

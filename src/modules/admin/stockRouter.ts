@@ -8,7 +8,7 @@ import { requireRole } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { escapeLike, safetyBuffer } from '../catalog/listing.js';
 import { assetUrl } from '../catalog/view.js';
-import { adjustStock, countStock, recordSale, transferStock } from '../stock/service.js';
+import { adjustStock, countStock, recordSale, restockStock, transferStock } from '../stock/service.js';
 import { assertBranchAccess, assertBranchExists, branchFor } from './branchAccess.js';
 
 const uuid = z.string().uuid();
@@ -245,6 +245,25 @@ export function adminStockRouter(ctx: AppContext): Router {
       await assertBranchExists(db, req.body.branchId);
       const { stock: row, delta } = await countStock(db, { ...req.body, actorUserId: req.user!.id });
       res.json({ stock: row, delta });
+    },
+  );
+
+  router.post(
+    '/admin/stock/restock',
+    ...staff,
+    validate({
+      body: z.object({
+        branchId,
+        lines: z.array(z.object({ variantId: uuid, qty: z.number().int().min(1).max(999) })).min(1).max(500),
+        note: z.string().trim().max(200).optional(),
+      }),
+    }),
+    async (req, res) => {
+      assertBranchAccess(req.user!, req.body.branchId);
+      await assertBranchExists(db, req.body.branchId);
+      const result = await restockStock(db, { ...req.body, actorUserId: req.user!.id });
+      ctx.logger.info({ refId: result.refId, branchId: req.body.branchId, sizes: result.sizes, actorId: req.user!.id }, 'Restock recorded');
+      res.json(result);
     },
   );
 

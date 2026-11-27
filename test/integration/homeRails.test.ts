@@ -65,10 +65,25 @@ describe('starting best sellers', () => {
     const first = await seedBestSellers(database.db);
     expect(first.applied).toContain('barcelona-2627-home');
     expect(first.missing).toContain('man-united-9899');
+    expect(first.applied).not.toContain('psg-2627-third-ucl');
     const top = await slugs({ sort: 'best_selling' });
     expect(top.slice(0, 2)).toEqual(['fc-barcelona-2026-27-home-authentic-jersey', 'argentina-3-star-champions-edition-jersey']);
     await q("delete from sales_baseline where product_id = (select id from products where slug = 'fc-barcelona-2026-27-home-authentic-jersey')");
     expect((await seedBestSellers(database.db)).applied).toEqual([]);
     expect((await slugs({ sort: 'best_selling' }))[0]).toBe('argentina-3-star-champions-edition-jersey');
+  });
+});
+
+describe('retired starting best sellers', () => {
+  it('removes the head start this seed gave, once, and keeps a row set by hand', async () => {
+    const { seedBestSellers } = await import('../../src/db/seed/bestSellers.js');
+    await q("update settings set value = value - 'retired' where key = 'sales_baseline_applied'");
+    const psg = (await q("select id from products where slug = 'paris-saint-germain-2026-27-third-ucl-edition-jersey'")).rows[0].id;
+    await q("insert into sales_baseline (product_id, units, note) values ($1, 58, 'Starting best seller') on conflict (product_id) do update set units = 58, note = 'Starting best seller'", [psg]);
+    expect((await seedBestSellers(database.db)).removed).toEqual(['psg-2627-third-ucl']);
+    expect((await q('select 1 from sales_baseline where product_id = $1', [psg])).rowCount).toBe(0);
+    await q("insert into sales_baseline (product_id, units, note) values ($1, 5, 'Set by hand')", [psg]);
+    expect((await seedBestSellers(database.db)).removed).toEqual([]);
+    expect((await q('select units from sales_baseline where product_id = $1', [psg])).rows[0].units).toBe(5);
   });
 });

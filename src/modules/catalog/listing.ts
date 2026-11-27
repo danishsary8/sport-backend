@@ -1,4 +1,5 @@
 import { sql, type SQL } from 'drizzle-orm';
+import { continentSql, seasonSql } from './derived.js';
 import { z } from 'zod';
 import type { Db } from '../../db/client.js';
 import { AppError } from '../../lib/errors.js';
@@ -43,6 +44,10 @@ export const catalogFilterShape = {
   surface: many,
   kitType: many,
   garmentType: many,
+  /** "2026/27"-style seasons (repeatable, OR). */
+  season: many,
+  /** National-team continent: europe | south-america | north-america | africa | asia | oceania (repeatable, OR). */
+  continent: many,
   /** new | best_seller | limited | signature | retro | ucl | sale (repeatable, OR). */
   tag: manyTags,
   priceMin: cents,
@@ -126,7 +131,7 @@ export function aggregatesCte(buffer: number): SQL {
     ),
     base as (
       select p.*, b.slug as brand_slug, b.name as brand_name, c.slug as category_slug, c.name_i18n as category_name,
-        pa.price, pa.compare_at, pa.units, pa.sizes,
+        pa.price, pa.compare_at, pa.units, pa.sizes, ${seasonSql} as season, ${continentSql} as continent,
         case when pa.compare_at is not null and pa.compare_at > pa.price
           then round((pa.compare_at - pa.price) * 100.0 / pa.compare_at)::int end as discount_pct
       from products p
@@ -167,6 +172,8 @@ export function filterConditions(f: CatalogFilters, exclude?: FilterKey): SQL {
   for (const key of ['league', 'surface', 'kitType', 'garmentType'] as const) {
     if (use(key) && f[key]!.length) parts.push(sql`base.attributes->>${key} in ${f[key]}`);
   }
+  if (use('season') && f.season!.length) parts.push(sql`base.season in ${f.season}`);
+  if (use('continent') && f.continent!.length) parts.push(sql`base.continent in ${f.continent}`);
   if (use('priceMin')) parts.push(sql`base.price >= ${f.priceMin}`);
   if (use('priceMax')) parts.push(sql`base.price <= ${f.priceMax}`);
   if (use('discount')) parts.push(sql`coalesce(base.discount_pct, 0) >= ${DISCOUNT_BANDS[f.discount!]}`);

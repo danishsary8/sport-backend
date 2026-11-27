@@ -167,3 +167,50 @@ describe('empty parameters', () => {
     expect((await list('?priceMax=%20')).body.total).toBe(80);
   });
 });
+
+describe('national teams by continent, and seasons', () => {
+  const nationals = (CATALOG as { category: string; league?: string; club?: string; season?: string }[]).filter((p) => p.category === 'jerseys' && p.league === 'International');
+  const ofCountries = (...names: string[]) => nationals.filter((p) => names.some((n) => p.club!.startsWith(n))).length;
+
+  it('filters national-team kits by continent', async () => {
+    const sa = await list('?category=jerseys&continent=south-america&pageSize=48');
+    expect(sa.body.total).toBe(ofCountries('Argentina', 'Brazil'));
+    const asia = await list('?category=jerseys&continent=asia&continent=south-america&pageSize=48');
+    expect(asia.body.total).toBe(ofCountries('Argentina', 'Brazil', 'Cambodia', 'Japan', 'South Korea'));
+    // Club kits never have a continent.
+    const eu = await list('?category=jerseys&continent=europe&pageSize=48');
+    expect(eu.body.products.every((p: { slug: string }) => /national-team/.test(p.slug))).toBe(true);
+  });
+
+  it('filters by season', async () => {
+    const res = await list('?category=jerseys&season=2026/27&pageSize=48');
+    expect(res.body.total).toBe((CATALOG as { category: string; season?: string }[]).filter((p) => p.category === 'jerseys' && p.season === '2026/27').length);
+  });
+
+  it('offers continents in a fixed order and seasons newest first, with full-year labels', async () => {
+    const res = await request(app).get('/v1/catalog/filters?category=jerseys');
+    const continent = res.body.facets.find((f: { key: string }) => f.key === 'continent');
+    expect(continent.options.map((o: { value: string; label: string }) => [o.value, o.label])).toEqual([
+      ['europe', 'Europe'],
+      ['south-america', 'South America'],
+      ['asia', 'Asia'],
+    ]);
+    const season = res.body.facets.find((f: { key: string }) => f.key === 'season');
+    expect(season.options.map((o: { value: string }) => o.value)).toEqual(['2026/27', '2025/26', '2002', '1998/99']);
+    expect(season.options[0].label).toBe('2026–2027');
+  });
+
+  it('works out continent and season from the name for products added later', async () => {
+    await database.pool.query(`
+      with b as (select id from brands where slug = 'nike'), c as (select id from categories where slug = 'jerseys'),
+      p as (insert into products (slug, brand_id, category_id, name_i18n, status) select 'morocco-national-team-2030-31-home', b.id, c.id, '{"en":"Morocco National Team 2030/31 Home Jersey"}', 'active' from b, c returning id),
+      col as (insert into product_colors (product_id, name) select id, 'Red' from p returning id, product_id)
+      insert into variants (product_id, color_id, size_label, size_sort, sku, price_cents) select product_id, id, 'M', 20, 'MAR-3031-M', 1190 from col`);
+    try {
+      const res = await list('?category=jerseys&continent=africa&season=2030/31');
+      expect(res.body.products.map((p: { slug: string }) => p.slug)).toEqual(['morocco-national-team-2030-31-home']);
+    } finally {
+      await database.pool.query("delete from products where slug = 'morocco-national-team-2030-31-home'");
+    }
+  });
+});

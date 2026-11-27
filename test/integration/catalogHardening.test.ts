@@ -13,7 +13,7 @@ let database: Database;
 let ctx: ReturnType<typeof memberApp>;
 let admin: string;
 const q = (text: string, values: unknown[] = []) => database.pool.query(text, values);
-const NEW_KEYS = new Set(['color', 'tag', 'garmentType']);
+const NEW_KEYS = new Set(['color', 'tag', 'garmentType', 'season', 'continent']);
 
 beforeAll(async () => {
   database = await testDb();

@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import { bySeasonDesc, CONTINENTS, seasonLabel } from './derived.js';
 import type { Db } from '../../db/client.js';
 import { pick, type Lang } from './i18n.js';
 import { aggregatesCte, DISCOUNT_BANDS, filterConditions, type CatalogFilters, type FilterKey } from './listing.js';
@@ -44,6 +45,8 @@ interface FacetRow extends Record<string, unknown> {
   flags: Record<string, unknown> | null;
   price: number;
   d: number;
+  season: string | null;
+  continent: string | null;
   units: number;
   q_ok: boolean;
   sizes: { label: string; sort: number }[] | null;
@@ -93,6 +96,8 @@ function matches(r: FacetRow, f: CatalogFilters, exclude?: FilterKey): boolean {
   for (const key of ['league', 'surface', 'kitType', 'garmentType'] as const) {
     if (use(key) && f[key]!.length && !f[key]!.includes(text(r.attributes?.[key]) ?? '\u0000')) return false;
   }
+  if (use('season') && f.season!.length && !f.season!.includes(r.season ?? '\u0000')) return false;
+  if (use('continent') && f.continent!.length && !f.continent!.includes(r.continent ?? '\u0000')) return false;
   if (use('priceMin') && r.price < f.priceMin!) return false;
   if (use('priceMax') && r.price > f.priceMax!) return false;
   if (use('discount') && r.d < DISCOUNT_BANDS[f.discount!]!) return false;
@@ -128,7 +133,7 @@ export async function buildFacets(db: Db, f: CatalogFilters, lang: Lang, buffer:
   const [productRows, categoryRows] = await Promise.all([
     db.execute<FacetRow>(sql`
       with ${cte}
-      select base.id, base.category_slug, base.brand_slug, base.brand_name, base.attributes, base.flags, base.price,
+      select base.id, base.category_slug, base.brand_slug, base.brand_name, base.attributes, base.flags, base.price, base.season, base.continent,
         coalesce(base.discount_pct, 0) as d, base.units, (${qOk}) as q_ok,
         (select json_agg(json_build_object('label', v.size_label, 'sort', v.size_sort)) from variants v where v.product_id = base.id and v.status = 'active') as sizes,
         (select array_agg(pc.name order by pc.sort) from product_colors pc where pc.product_id = base.id) as colors
@@ -192,6 +197,20 @@ export async function buildFacets(db: Db, f: CatalogFilters, lang: Lang, buffer:
     checkbox('surface', 'Surface', attribute('surface'), f.surface),
     checkbox('kitType', 'Kit', attribute('kitType'), f.kitType),
     checkbox('garmentType', 'Type', attribute('garmentType'), f.garmentType),
+    checkbox(
+      'continent',
+      'Continent',
+      countBy(rows, f, 'continent', (r) => (r.continent ? [{ value: r.continent, label: CONTINENTS.find((c) => c.value === r.continent)?.label ?? r.continent }] : [])).sort(
+        (a, b) => CONTINENTS.findIndex((c) => c.value === a.value) - CONTINENTS.findIndex((c) => c.value === b.value),
+      ),
+      f.continent,
+    ),
+    checkbox(
+      'season',
+      'Season',
+      countBy(rows, f, 'season', (r) => (r.season ? [{ value: r.season, label: seasonLabel(r.season) }] : [])).sort((a, b) => bySeasonDesc(a.value, b.value)),
+      f.season,
+    ),
     checkbox('tag', 'Highlights', tagOptions, f.tag as string[] | undefined),
     {
       key: 'price',

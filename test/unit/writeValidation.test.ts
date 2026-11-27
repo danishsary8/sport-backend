@@ -19,6 +19,8 @@ const BODYLESS = new Set([
   "put '/admin/settings/pricing/:key'",
   "put '/admin/settings/:key'",
   "delete '/admin/products/:id/colors/:colorId'",
+  // The body is the photo itself: its type and first bytes are checked in the handler.
+  "post '/admin/media'",
 ]);
 
 function files(dir: string): string[] {

@@ -42,6 +42,7 @@ describe('loadConfig', () => {
       ...base,
       NODE_ENV: 'production',
       CORS_ORIGINS: 'https://shop.example',
+      PUBLIC_API_URL: 'https://api.shop.example',
       FIREBASE_PROJECT_ID: 'p',
       FIREBASE_SERVICE_ACCOUNT_JSON: '{"project_id":"p"}',
       PAYWAY_MERCHANT_ID: 'm',
@@ -58,6 +59,7 @@ describe('loadConfig', () => {
       ...base,
       NODE_ENV: 'production',
       CORS_ORIGINS: 'https://shop.example',
+      PUBLIC_API_URL: 'https://api.shop.example',
       FIREBASE_PROJECT_ID: 'p',
       FIREBASE_SERVICE_ACCOUNT_JSON: '{"project_id":"p"}',
     };
@@ -134,9 +136,24 @@ describe('loadConfig', () => {
       ...base,
       NODE_ENV: 'production',
       CORS_ORIGINS: 'https://shop.example',
+      PUBLIC_API_URL: 'https://api.shop.example',
       COOKIE_SECRET: 'change-me-to-32-or-more-random-characters',
     };
     expect(issuesFor(env).join('\n')).toContain('COOKIE_SECRET');
+  });
+
+  it('requires PUBLIC_API_URL to be a real address in production (uploaded photos are served from it)', () => {
+    const prod = { ...base, NODE_ENV: 'production', CORS_ORIGINS: 'https://shop.example' };
+    expect(issuesFor(prod).join('\n')).toContain('PUBLIC_API_URL');
+    expect(issuesFor({ ...prod, PUBLIC_API_URL: 'http://localhost:3000' }).join('\n')).toContain('PUBLIC_API_URL');
+    expect(issuesFor({ ...prod, PUBLIC_API_URL: 'https://api.shop.example' }).join('\n')).not.toContain('PUBLIC_API_URL');
+  });
+
+  it("falls back to Render's own external URL, so existing Render deploys keep starting", () => {
+    const prod = { ...base, NODE_ENV: 'production', CORS_ORIGINS: 'https://shop.example', RENDER_EXTERNAL_URL: 'https://sport-api.onrender.com/' };
+    expect(issuesFor(prod).join('\n')).not.toContain('PUBLIC_API_URL');
+    expect(loadConfig({ ...base, RENDER_EXTERNAL_URL: 'https://sport-api.onrender.com/' }).publicApiUrl).toBe('https://sport-api.onrender.com');
+    expect(loadConfig({ ...base, PUBLIC_API_URL: 'https://api.shop.example', RENDER_EXTERNAL_URL: 'https://x.onrender.com' }).publicApiUrl).toBe('https://api.shop.example');
   });
 
   it('requires Firebase credentials in production', () => {

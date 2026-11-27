@@ -2,6 +2,11 @@ import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 import { normalizePhone } from '../lib/phone.js';
 
+/** This API's public address: PUBLIC_API_URL, else Render's own external URL, else the local default. */
+function publicApiUrlOf(e: { PUBLIC_API_URL?: string; RENDER_EXTERNAL_URL?: string }): string {
+  return (e.PUBLIC_API_URL ?? e.RENDER_EXTERNAL_URL ?? 'http://localhost:3000').replace(/\/+$/, '');
+}
+
 export interface Config {
   nodeEnv: 'development' | 'test' | 'production';
   port: number;
@@ -139,7 +144,9 @@ const envSchema = z
     BAKONG_MERCHANT_NAME: optionalText.pipe(z.string().regex(/^[\x20-\x7E]+$/, 'must be plain English letters, numbers and spaces').max(25).optional()),
     BAKONG_MERCHANT_CITY: optionalText.pipe(z.string().regex(/^[\x20-\x7E]+$/, 'must be plain English letters, numbers and spaces').max(15).optional()),
     BAKONG_API_URL: optionalText.pipe(z.string().url().optional()),
-    PUBLIC_API_URL: z.string().trim().url().default('http://localhost:3000'),
+    PUBLIC_API_URL: z.string().trim().url().optional(),
+    /** Set by Render on every service: used when PUBLIC_API_URL is not set. */
+    RENDER_EXTERNAL_URL: z.string().trim().url().optional(),
     TELEGRAM_BOT_TOKEN: optionalText,
     TELEGRAM_CHAT_ID: optionalText,
     RESEND_API_KEY: optionalText,
@@ -162,6 +169,10 @@ const envSchema = z
           ctx.addIssue({ code: 'custom', path: [key], message: 'is required in production' });
         }
       }
+    }
+    // Uploaded product photos are served from this address, so it must be the API's real public URL.
+    if (env.NODE_ENV === 'production' && /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(publicApiUrlOf(env))) {
+      ctx.addIssue({ code: 'custom', path: ['PUBLIC_API_URL'], message: "must be this API's public address in production (uploaded photos are served from it)" });
     }
     if (env.NODE_ENV === 'production' && env.AUTH_TEST_MODE) {
       ctx.addIssue({ code: 'custom', path: ['AUTH_TEST_MODE'], message: 'must not be enabled in production' });
@@ -245,7 +256,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
           }
         : undefined,
     paymentsCashOnly: e.PAYMENT_METHODS_CASH_ONLY ?? false,
-    publicApiUrl: e.PUBLIC_API_URL.replace(/\/+$/, ''),
+    publicApiUrl: publicApiUrlOf(e),
     telegramBotToken: e.TELEGRAM_BOT_TOKEN,
     telegramChatId: e.TELEGRAM_CHAT_ID,
     resendApiKey: e.RESEND_API_KEY,

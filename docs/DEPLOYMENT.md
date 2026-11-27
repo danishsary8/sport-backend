@@ -32,7 +32,7 @@ Every variable is validated at start-up. The server refuses to start, and lists 
 | `PAYWAY_RETURN_URL` | **required** | This API's webhook: `https://api.<domain>/v1/webhooks/payway`. Register the same URL with ABA. |
 | `PAYWAY_CONTINUE_URL` | **required** | The shop page card payers return to: `https://<domain>/checkout/return` (the shop sends them on to their order). |
 | `PAYMENT_METHODS_CASH_ONLY` | optional | `true` lets production start without PayWay. Only cash on pickup is offered, so delivery orders are switched off until PayWay is set up. |
-| `PUBLIC_API_URL` | optional | This API's own URL (used only by development payment pages). |
+| `PUBLIC_API_URL` | **required in production** (on Render, `RENDER_EXTERNAL_URL` is used when it is not set) | This API's own public URL, e.g. `https://api.example.com`. Photos uploaded in the admin are served from `<PUBLIC_API_URL>/v1/media/…`, so a wrong value breaks product images. Put a CDN in front of `/v1/media/*` if traffic grows: each photo request reads from Postgres. |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | recommended | Staff alerts: new orders, payments, refunds owed, returns and questions. |
 | `RESEND_API_KEY`, `NOTIFICATION_FROM_EMAIL` | optional | Customer emails (payment received, status changes, returns). The domain must be verified in Resend. |
 | `TRUST_PROXY_HOPS` | optional (1) | How many proxies sit in front of the API. One load balancer (Cloud Run, Fly, Render, nginx) = 1; a CDN such as Cloudflare **plus** a load balancer = 2. If this is wrong, every shopper looks like the same IP and rate limits block them together. |

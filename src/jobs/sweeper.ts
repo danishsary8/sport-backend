@@ -14,6 +14,32 @@ import { releaseAllocations } from '../modules/stock/locking.js';
 
 export const JOBS_LOCK_KEY = 727001;
 const GUEST_CART_DAYS = 60;
+/** An upload nobody saved is kept this long, so an editor with unsaved photos open doesn't lose them. */
+export const UNUSED_MEDIA_HOURS = 24;
+const MEDIA_CLEANUP_EVERY_MS = 60 * 60 * 1000;
+let lastMediaCleanup = 0;
+
+/**
+ * Deletes uploaded photos older than UNUSED_MEDIA_HOURS that nothing points at: no product photo, brand logo
+ * or past order's snapshot uses "media/<id>.<ext>". At most 500 per call. Returns how many went.
+ */
+export async function cleanupUnusedMedia(database: Database, now: Date): Promise<number> {
+  const cutoff = new Date(now.getTime() - UNUSED_MEDIA_HOURS * 3_600_000);
+  // "media/<id>.<ext>" -> "<id>"
+  const id = (col: string) => `split_part(split_part(${col}, '/', 2), '.', 1)`;
+  const r = await database.pool.query(
+    `delete from media_files where id in (
+       select m.id from media_files m
+       where m.created_at < $1
+         and m.id::text not in (
+           select ${id('path')} from product_images where path like 'media/%'
+           union all select ${id('logo_path')} from brands where logo_path like 'media/%'
+           union all select ${id("product_snapshot->>'imagePath'")} from order_items where product_snapshot->>'imagePath' like 'media/%')
+       order by m.created_at limit 500)`,
+    [cutoff],
+  );
+  return r.rowCount ?? 0;
+}
 /** Unpaid orders whose hold can run out (an unpaid pickup order may already be marked ready). */
 const EXPIRABLE: OrderStatus[] = ['pending_payment', 'awaiting_pickup_payment', 'ready_for_pickup'];
 /** If the payment service can't be reached, a hold ends anyway this long after it was due (ops are alerted). */
@@ -33,6 +59,7 @@ export interface SweepResult {
   expired: number;
   notifications: { sent: number; failed: number; skipped: number };
   guestCartsDeleted: number;
+  mediaDeleted: number;
 }
 
 /**
@@ -124,7 +151,7 @@ function breakerFor(provider: PaymentProvider): PaymentProvider {
 export async function sweepOnce(input: SweepDeps & { shouldStop?: () => boolean }): Promise<SweepResult> {
   const deps = { ...input, payments: breakerFor(input.payments) };
   const stopping = () => input.shouldStop?.() === true;
-  const result: SweepResult = { locked: false, checked: 0, expired: 0, notifications: { sent: 0, failed: 0, skipped: 0 }, guestCartsDeleted: 0 };
+  const result: SweepResult = { locked: false, checked: 0, expired: 0, notifications: { sent: 0, failed: 0, skipped: 0 }, guestCartsDeleted: 0, mediaDeleted: 0 };
   const { db } = deps.database;
   const client = await deps.database.pool.connect();
   let released = false;
@@ -204,6 +231,16 @@ export async function sweepOnce(input: SweepDeps & { shouldStop?: () => boolean 
       } catch (error) {
         deps.logger.error({ err: safeError(error) }, 'Sweeper: guest cart cleanup failed');
       }
+
+      // Unsaved uploads: hourly, as it reads every order line's photo.
+      if (now.getTime() - lastMediaCleanup >= MEDIA_CLEANUP_EVERY_MS) {
+        try {
+          result.mediaDeleted = await cleanupUnusedMedia(deps.database, now);
+          lastMediaCleanup = now.getTime();
+        } catch (error) {
+          deps.logger.error({ err: safeError(error) }, 'Sweeper: unused photo cleanup failed');
+        }
+      }
     } finally {
       try {
         await client.query('select pg_advisory_unlock($1)', [JOBS_LOCK_KEY]);
@@ -229,7 +266,7 @@ export function startScheduler(deps: SweepDeps & { intervalMs?: number; stopTime
     if (stopped) return Promise.resolve();
     current = sweepOnce({ ...deps, shouldStop: () => stopped })
       .then((r) => {
-        if (r.expired || r.checked || r.notifications.sent || r.notifications.failed || r.guestCartsDeleted) deps.logger.info({ sweep: r }, 'Sweeper run');
+        if (r.expired || r.checked || r.notifications.sent || r.notifications.failed || r.guestCartsDeleted || r.mediaDeleted) deps.logger.info({ sweep: r }, 'Sweeper run');
       })
       .catch((error: unknown) => deps.logger.error({ err: safeError(error) }, 'Sweeper run failed'))
       .finally(() => {

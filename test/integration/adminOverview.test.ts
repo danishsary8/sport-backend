@@ -154,7 +154,7 @@ describe('GET /v1/admin/overview/sales', () => {
   it('for staff, counts only the line items their store handled', async () => {
     const [b1, b2] = (await q('select id from branches order by id limit 2')).rows.map((r) => r.id as string);
     const [v1, v2] = (await q('select id from variants order by id limit 2')).rows.map((r) => r.id as string);
-    const id = await paid(0, 10000, 'confirmed', { id: v1, qty: 1 });
+    const id = await paid(0, 10000, 'confirmed', { id: v1!, qty: 1 });
     await q(`insert into order_items (order_id, variant_id, product_snapshot, unit_price_cents, line_total_cents, qty) values ($1, $2, '{}', 7000, 7000, 1)`, [id, v2]);
     const items = (await q('select id, variant_id from order_items where order_id = $1', [id])).rows;
     for (const it of items) await q('insert into order_item_allocations (order_item_id, branch_id, qty) values ($1, $2, 1)', [it.id, it.variant_id === v1 ? b1 : b2]);

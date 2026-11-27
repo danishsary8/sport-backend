@@ -31,9 +31,11 @@ const BATCH = 500;
 export const CATEGORY_SEED = [
   { slug: 'boots', nameI18n: { en: 'Football Boots' }, sort: 1 },
   { slug: 'jerseys', nameI18n: { en: 'Jerseys & Kits' }, sort: 2 },
-  { slug: 'f1', nameI18n: { en: 'F1 Motorsport' }, sort: 3 },
-  { slug: 'balls', nameI18n: { en: 'Match Balls' }, sort: 4 },
-  { slug: 'essentials', nameI18n: { en: 'GK & Essentials' }, sort: 5 },
+  { slug: 'balls', nameI18n: { en: 'Match Balls' }, sort: 3 },
+  { slug: 'jackets', nameI18n: { en: 'Jackets' }, sort: 4 },
+  { slug: 'f1', nameI18n: { en: 'F1 Motorsport' }, sort: 5 },
+  // Kept for its products; the shop leaves it out of the top menu.
+  { slug: 'essentials', nameI18n: { en: 'GK & Essentials' }, sort: 6 },
 ];
 
 /** Settings created once with defaults; never overwritten by later seeds (admins may change them). */

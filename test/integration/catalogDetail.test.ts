@@ -101,6 +101,12 @@ describe('menu, collections and home', () => {
     expect(res.body.collections.map((c: { slug: string }) => c.slug)).toContain('best-sellers');
   });
 
+  it('lists the categories in menu order, with Jackets before F1', async () => {
+    const res = await request(app).get('/v1/catalog/menu');
+    expect(res.body.categories.map((c: { slug: string }) => c.slug)).toEqual(['boots', 'jerseys', 'balls', 'jackets', 'f1', 'essentials']);
+    expect(res.body.categories.find((c: { slug: string }) => c.slug === 'jackets').name).toBe('Jackets');
+  });
+
   it('lists a collection through its saved filter', async () => {
     const res = await request(app).get('/v1/catalog/products?collection=best-sellers&pageSize=48');
     expect(res.status).toBe(200);

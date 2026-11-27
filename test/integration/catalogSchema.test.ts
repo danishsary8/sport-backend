@@ -67,7 +67,7 @@ describe('catalog schema', () => {
 
   it('seeds categories and the online safety buffer', async () => {
     const cats = await database.pool.query('select slug from categories order by sort');
-    expect(cats.rows.map((c) => c.slug)).toEqual(['boots', 'jerseys', 'f1', 'balls', 'essentials']);
+    expect(cats.rows.map((c) => c.slug)).toEqual(['boots', 'jerseys', 'balls', 'jackets', 'f1', 'essentials']);
     const s = await database.pool.query("select value from settings where key = 'online_safety_buffer'");
     expect(s.rows[0]?.value).toEqual({ units: 1 });
   });

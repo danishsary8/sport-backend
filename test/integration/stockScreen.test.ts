@@ -26,9 +26,9 @@ beforeAll(async () => {
 });
 afterAll(closeTestDb);
 beforeEach(async () => {
-  await database.pool.query("update settings set value = '{\"units\": 0}' where key = 'online_safety_buffer'");
   await database.pool.query('update stock set needs_count = false');
-  await setStockAt(database, jerseyM, { sonthormuk: 2 });
+  // With the default safety buffer of 1, three on the shelf leaves 2 to sell online: running low.
+  await setStockAt(database, jerseyM, { sonthormuk: 3 });
   await setStockAt(database, jerseyL, { sonthormuk: 0 });
 });
 
@@ -40,7 +40,7 @@ describe('stock screen list', () => {
     expect(res.body.total).toBeGreaterThanOrEqual(1);
     const product = res.body.products.find((p: { slug: string }) => p.slug === JERSEY);
     expect(product).toMatchObject({ slug: JERSEY, status: expect.any(String) });
-    expect(product.variants.find((v: { id: string }) => v.id === jerseyM)).toMatchObject({ onHand: 2, available: 2, low: true, needsCount: false });
+    expect(product.variants.find((v: { id: string }) => v.id === jerseyM)).toMatchObject({ onHand: 3, available: 3, low: true, needsCount: false });
     expect(res.body.counts.all).toBe(res.body.total);
     expect(res.body.counts.low).toBeGreaterThanOrEqual(1);
     expect(res.body.counts.out).toBeGreaterThanOrEqual(1);
@@ -74,16 +74,16 @@ describe('set count', () => {
   it('replaces the number on the shelf, logs the difference and clears the count flag', async () => {
     await database.pool.query("update stock set needs_count = true where variant_id = $1 and branch_id = 'sonthormuk'", [jerseyM]);
     const res = await request(ctx.app).post('/v1/admin/stock/count').set(bearer(staff)).send({ variantId: jerseyM, branchId: 'sonthormuk', count: 5 }).expect(200);
-    expect(res.body).toMatchObject({ delta: 3, stock: { onHand: 5, needsCount: false } });
+    expect(res.body).toMatchObject({ delta: 2, stock: { onHand: 5, needsCount: false } });
     const moves = await database.pool.query("select delta_on_hand, note from stock_movements where variant_id = $1 and reason = 'admin_adjust' order by id desc limit 1", [jerseyM]);
-    expect(moves.rows[0]).toEqual({ delta_on_hand: 3, note: 'Counted' });
+    expect(moves.rows[0]).toEqual({ delta_on_hand: 2, note: 'Counted' });
   });
 
   it('clears the flag without a movement when the count matches', async () => {
     await database.pool.query("update stock set needs_count = true where variant_id = $1 and branch_id = 'sonthormuk'", [jerseyM]);
     const before = (await database.pool.query('select count(*)::int as n from stock_movements where variant_id = $1', [jerseyM])).rows[0].n;
-    const res = await request(ctx.app).post('/v1/admin/stock/count').set(bearer(admin)).send({ variantId: jerseyM, branchId: 'sonthormuk', count: 2 }).expect(200);
-    expect(res.body).toMatchObject({ delta: 0, stock: { onHand: 2, needsCount: false } });
+    const res = await request(ctx.app).post('/v1/admin/stock/count').set(bearer(admin)).send({ variantId: jerseyM, branchId: 'sonthormuk', count: 3 }).expect(200);
+    expect(res.body).toMatchObject({ delta: 0, stock: { onHand: 3, needsCount: false } });
     expect((await database.pool.query('select count(*)::int as n from stock_movements where variant_id = $1', [jerseyM])).rows[0].n).toBe(before);
   });
 

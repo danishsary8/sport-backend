@@ -30,7 +30,7 @@ const manyTags = z
   .pipe(z.array(z.enum(TAGS)).max(TAGS.length))
   .optional();
 
-export const SORTS = ['popular', 'new', 'price_asc', 'price_desc', 'discount'] as const;
+export const SORTS = ['popular', 'best_selling', 'new', 'price_asc', 'price_desc', 'discount'] as const;
 /** discount=1|2|3 → at least 10%, 30%, 50% off. */
 export const DISCOUNT_BANDS: Record<string, number> = { '1': 10, '2': 30, '3': 50 };
 
@@ -186,11 +186,31 @@ export function filterConditions(f: CatalogFilters, exclude?: FilterKey): SQL {
   return sql.join(parts, sql` and `);
 }
 
+/** Units of a product sold in the last 90 days: paid, uncancelled online orders plus counter sales. */
+export function unitsSold(productId: SQL): SQL {
+  return sql`(
+    coalesce((select sum(i.qty) from order_items i
+      join variants v on v.id = i.variant_id
+      join orders o on o.id = i.order_id
+      where v.product_id = ${productId} and o.payment_status = 'paid' and o.status not in ('cancelled', 'expired')
+        and o.paid_at > now() - interval '90 days'), 0)
+    + coalesce((select -sum(m.delta_on_hand) from stock_movements m
+      join variants v on v.id = m.variant_id
+      where v.product_id = ${productId} and m.reason = 'store_sale' and m.created_at > now() - interval '90 days'), 0)
+  )`;
+}
+
 export function orderBy(sort: CatalogQuery['sort'], q: string | undefined): SQL {
   const relevance = q ? sql`word_similarity(${searchNeedle(q)}, base.search_text) desc, ` : sql``;
   switch (sort) {
     case 'new':
-      return sql`coalesce((base.flags->>'newArrival')::boolean, false) desc, base.created_at desc, base.slug`;
+      // Newest first: the products most recently added to the shop.
+      return sql`base.created_at desc, base.slug`;
+    case 'best_selling':
+      // Units actually sold in the last 90 days (paid online orders that were not cancelled, plus counter
+      // sales). Until a product has sales, the hand-picked "best seller" flag and then "featured" order it.
+      return sql`${unitsSold(sql`base.id`)} desc, coalesce((base.flags->>'bestSeller')::boolean, false) desc,
+        coalesce((base.flags->>'featured')::boolean, false) desc, base.created_at desc, base.slug`;
     case 'price_asc':
       return sql`base.price asc, base.slug`;
     case 'price_desc':

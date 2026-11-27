@@ -46,9 +46,9 @@ const DEFAULT_HOME_SECTIONS = [
     sort: 1,
     payload: { title: { en: 'Matchday gear for Phnom Penh' }, subtitle: { en: 'Boots, kits and F1 teamwear across 3 branches' }, imagePath: null, link: { collection: 'new-arrivals' } },
   },
-  { type: 'product_rail' as const, sort: 2, payload: { title: { en: 'New arrivals' }, query: { tag: ['new'], sort: 'new' } } },
+  { type: 'product_rail' as const, sort: 2, payload: { title: { en: 'Best sellers' }, query: { sort: 'best_selling' } } },
   { type: 'category_grid' as const, sort: 3, payload: { title: { en: 'Shop by category' }, categories: ['boots', 'jerseys', 'f1', 'balls', 'jackets'] } },
-  { type: 'product_rail' as const, sort: 4, payload: { title: { en: 'Best sellers' }, query: { tag: ['best_seller'] } } },
+  { type: 'product_rail' as const, sort: 4, payload: { title: { en: 'New arrivals' }, query: { sort: 'new' } } },
 ];
 
 const DEFAULT_SETTINGS: { key: string; value: Record<string, unknown> }[] = [

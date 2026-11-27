@@ -186,9 +186,14 @@ export function filterConditions(f: CatalogFilters, exclude?: FilterKey): SQL {
   return sql.join(parts, sql` and `);
 }
 
-/** Units of a product sold in the last 90 days: paid, uncancelled online orders plus counter sales. */
+/**
+ * Units of a product sold in the last 90 days (paid, uncancelled online orders plus counter sales), plus its
+ * starting sales from `sales_baseline`.
+ */
 export function unitsSold(productId: SQL): SQL {
   return sql`(
+    coalesce((select sb.units from sales_baseline sb where sb.product_id = ${productId}), 0)
+    +
     coalesce((select sum(i.qty) from order_items i
       join variants v on v.id = i.variant_id
       join orders o on o.id = i.order_id

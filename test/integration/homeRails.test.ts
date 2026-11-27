@@ -56,3 +56,19 @@ describe('home page rails', () => {
     expect(titles.indexOf('product_rail:New arrivals')).toBeGreaterThan(titles.indexOf('category_grid:Shop by category'));
   });
 });
+
+describe('starting best sellers', () => {
+  it('gives the chosen products a head start once, and leaves deleted ones out', async () => {
+    const { seedBestSellers } = await import('../../src/db/seed/bestSellers.js');
+    await q("delete from settings where key = 'sales_baseline_applied'");
+    await q('delete from sales_baseline');
+    const first = await seedBestSellers(database.db);
+    expect(first.applied).toContain('barcelona-2627-home');
+    expect(first.missing).toContain('man-united-9899');
+    const top = await slugs({ sort: 'best_selling' });
+    expect(top.slice(0, 2)).toEqual(['fc-barcelona-2026-27-home-authentic-jersey', 'argentina-3-star-champions-edition-jersey']);
+    await q("delete from sales_baseline where product_id = (select id from products where slug = 'fc-barcelona-2026-27-home-authentic-jersey')");
+    expect((await seedBestSellers(database.db)).applied).toEqual([]);
+    expect((await slugs({ sort: 'best_selling' }))[0]).toBe('argentina-3-star-champions-edition-jersey');
+  });
+});

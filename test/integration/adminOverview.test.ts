@@ -98,3 +98,60 @@ describe('logs', () => {
     await request(ctx.app).post('/v1/admin/notifications/test').set(bearer(staff)).send({ channel: 'telegram' }).expect(403);
   });
 });
+
+describe('GET /v1/admin/overview/sales', () => {
+  async function paid(daysAgo: number, total: number, status = 'confirmed', variant?: { id: string; qty: number }) {
+    seq += 1;
+    const id = (
+      await q(
+        `insert into orders (number, contact_name, contact_phone_e164, contact_channel, fulfillment, status, payment_status, payment_method,
+           merchandise_cents, discount_cents, shipping_cents, total_cents, khr_rate, total_khr, pricing, paid_at, created_at)
+         values ($1, 'A', '+85512345678', 'phone', 'delivery', $2, 'paid', 'aba_khqr', $3, 0, 0, $3, 4100, 0, '{}',
+           now() - ($4 || ' days')::interval, now() - ($4 || ' days')::interval) returning id`,
+        [`SC-2611-SL${String(seq).padStart(3, '0')}`, status, total, String(daysAgo)],
+      )
+    ).rows[0].id as string;
+    if (variant)
+      await q(
+        `insert into order_items (order_id, variant_id, product_snapshot, unit_price_cents, line_total_cents, qty) values ($1, $2, '{}', $3::int, $3::int * $4::int, $4::int)`,
+        [id, variant.id, total / variant.qty, variant.qty],
+      );
+    return id;
+  }
+
+  it('gives one bucket per day with paid orders and takings, zeros filled, cancelled left out', async () => {
+    await paid(0, 10000);
+    await paid(0, 5000);
+    await paid(2, 3000);
+    await paid(1, 99999, 'cancelled');
+    const res = await request(ctx.app).get('/v1/admin/overview/sales').query({ days: 7 }).set(bearer(admin)).expect(200);
+    expect(res.body.days).toHaveLength(7);
+    const last = res.body.days.at(-1);
+    expect(last).toMatchObject({ paidOrders: 2, revenueCents: 15000 });
+    expect(res.body.days.at(-2)).toMatchObject({ paidOrders: 0, revenueCents: 0 });
+    expect(res.body.days.at(-3)).toMatchObject({ paidOrders: 1, revenueCents: 3000 });
+    expect(last.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(res.body.totals).toMatchObject({ paidOrders: 3, revenueCents: 18000, averageOrderCents: 6000 });
+  });
+
+  it('compares with the period before', async () => {
+    await paid(1, 4000);
+    await paid(9, 2000);
+    const res = await request(ctx.app).get('/v1/admin/overview/sales').query({ days: 7 }).set(bearer(admin)).expect(200);
+    expect(res.body.totals.revenueCents).toBe(4000);
+    expect(res.body.previous.revenueCents).toBe(2000);
+  });
+
+  it('lists the best sellers and takings by category', async () => {
+    const [v] = (await q("select v.id from variants v join products p on p.id = v.product_id join categories c on c.id = p.category_id where c.slug = 'boots' limit 1")).rows;
+    await paid(0, 18000, 'confirmed', { id: v.id, qty: 2 });
+    const res = await request(ctx.app).get('/v1/admin/overview/sales').set(bearer(admin)).expect(200);
+    expect(res.body.days).toHaveLength(14);
+    expect(res.body.topProducts[0]).toMatchObject({ qty: 2, revenueCents: 18000, name: expect.any(String) });
+    expect(res.body.byCategory.find((c: { slug: string }) => c.slug === 'boots')).toMatchObject({ revenueCents: 18000 });
+  });
+
+  it('refuses a range outside 7 to 90 days', async () => {
+    await request(ctx.app).get('/v1/admin/overview/sales').query({ days: 3 }).set(bearer(admin)).expect(400);
+  });
+});

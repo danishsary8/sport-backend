@@ -1,5 +1,8 @@
 import { sql } from 'drizzle-orm';
 import { Router } from 'express';
+import { z } from 'zod';
+import { validate } from '../../middleware/validate.js';
+import { assetUrl } from '../catalog/view.js';
 import type { AppContext } from '../../context.js';
 import { requireRole } from '../../middleware/auth.js';
 import { orderScope } from '../orders/admin.js';
@@ -48,6 +51,64 @@ export function adminOverviewRouter(ctx: AppContext): Router {
       lowStockRows: n.low_stock,
       needsCountRows: n.needs_count,
       outboxFailed: n.outbox_failed,
+      branch,
+    });
+  });
+
+  const salesQuery = z.object({ days: z.coerce.number().int().min(7).max(90).default(14) });
+
+  /**
+   * Takings for the charts: one bucket per Phnom Penh day (empty days included), totals against the period
+   * before, best sellers and takings by category. Paid, not cancelled or expired, by payment day.
+   */
+  router.get('/admin/overview/sales', ...ctx.member, requireRole('staff', 'admin'), validate({ query: salesQuery }), async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const { days } = req.query as unknown as z.infer<typeof salesQuery>;
+    const branch = orderScope(req.user!).branchId;
+    const scope = branch
+      ? sql`and (exists (select 1 from order_item_allocations a join order_items i on i.id = a.order_item_id where i.order_id = o.id and a.branch_id = ${branch}) or o.pickup_branch_id = ${branch})`
+      : sql``;
+    const today = sql`(now() at time zone 'Asia/Phnom_Penh')::date`;
+    const day = sql`(o.paid_at at time zone 'Asia/Phnom_Penh')::date`;
+    const sold = sql`o.payment_status = 'paid' and o.status not in ('cancelled', 'expired') ${scope}`;
+    const inRange = (from: number, to: number) => sql`${day} between ${today} - ${from}::int and ${today} - ${to}::int`;
+
+    const [series, totals, top, byCategory] = await Promise.all([
+      db.execute<{ date: string; paid_orders: number; revenue_cents: number }>(sql`
+        select to_char(d, 'YYYY-MM-DD') as date, count(o.id)::int as paid_orders, coalesce(sum(o.total_cents), 0)::int as revenue_cents
+        from generate_series(${today} - ${days - 1}::int, ${today}, interval '1 day') d
+        left join orders o on ${day} = d::date and ${sold}
+        group by d order by d`),
+      db.execute<{ period: string; paid_orders: number; revenue_cents: number }>(sql`
+        select case when ${inRange(days - 1, 0)} then 'now' else 'before' end as period,
+          count(*)::int as paid_orders, coalesce(sum(o.total_cents), 0)::int as revenue_cents
+        from orders o where ${sold} and ${inRange(days * 2 - 1, 0)} group by 1`),
+      db.execute<{ product_id: string; name: string; image: string | null; qty: number; revenue_cents: number }>(sql`
+        select p.id as product_id, p.name_i18n->>'en' as name,
+          (select i.path from product_images i where i.product_id = p.id order by i.sort, i.id limit 1) as image,
+          sum(oi.qty)::int as qty, sum(oi.line_total_cents)::int as revenue_cents
+        from orders o join order_items oi on oi.order_id = o.id join variants v on v.id = oi.variant_id join products p on p.id = v.product_id
+        where ${sold} and ${inRange(days - 1, 0)}
+        group by p.id order by revenue_cents desc, qty desc limit 5`),
+      db.execute<{ slug: string; name: string; revenue_cents: number }>(sql`
+        select c.slug, c.name_i18n->>'en' as name, sum(oi.line_total_cents)::int as revenue_cents
+        from orders o join order_items oi on oi.order_id = o.id join variants v on v.id = oi.variant_id
+          join products p on p.id = v.product_id join categories c on c.id = p.category_id
+        where ${sold} and ${inRange(days - 1, 0)}
+        group by c.slug, c.name_i18n order by revenue_cents desc`),
+    ]);
+    const period = (name: string) => {
+      const r = totals.rows.find((t) => t.period === name);
+      const paidOrders = r?.paid_orders ?? 0;
+      const revenueCents = r?.revenue_cents ?? 0;
+      return { paidOrders, revenueCents, averageOrderCents: paidOrders ? Math.round(revenueCents / paidOrders) : 0 };
+    };
+    res.json({
+      days: series.rows.map((r) => ({ date: r.date, paidOrders: r.paid_orders, revenueCents: r.revenue_cents })),
+      totals: period('now'),
+      previous: period('before'),
+      topProducts: top.rows.map((r) => ({ productId: r.product_id, name: r.name, imageUrl: assetUrl(ctx.config.assetBaseUrl, r.image), qty: r.qty, revenueCents: r.revenue_cents })),
+      byCategory: byCategory.rows.map((r) => ({ slug: r.slug, name: r.name, revenueCents: r.revenue_cents })),
       branch,
     });
   });

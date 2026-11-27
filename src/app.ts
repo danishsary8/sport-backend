@@ -36,7 +36,8 @@ import { questionsRouter } from './modules/questions/router.js';
 import { adminOverviewRouter } from './modules/admin/overviewRouter.js';
 import { adminLogsRouter } from './modules/admin/logsRouter.js';
 import { systemHealthRouter } from './modules/health/system/router.js';
-import { adminMediaRouter, publicMediaRouter } from './modules/admin/mediaRouter.js';
+import { adminMediaRouter, MEDIA_MAX_BYTES, publicMediaRouter } from './modules/admin/mediaRouter.js';
+import { createImageFetcher, type ImageFetcher } from './modules/admin/remoteImage.js';
 import { setMediaBase } from './modules/catalog/view.js';
 import { devPaymentsRouter } from './modules/payments/devRouter.js';
 import { geoRouter } from './modules/geo/router.js';
@@ -62,6 +63,8 @@ export interface AppDeps {
   payments?: PaymentProvider;
   /** Defaults to Telegram/Resend from config (unconfigured channels report configured: false). */
   notifiers?: { telegram: Notifier; email: Notifier };
+  /** Defaults to the real https downloader (public addresses only). */
+  imageFetcher?: ImageFetcher;
 }
 
 export function createApp(deps: AppDeps): express.Express {
@@ -130,6 +133,7 @@ export function createApp(deps: AppDeps): express.Express {
     identity: deps.identity,
     bootstrapAdmins: deps.bootstrapAdmins ?? { phones: config.bootstrapAdminPhones, emails: config.bootstrapAdminEmails },
     payments: deps.payments ?? createPaymentProvider(config),
+    imageFetcher: deps.imageFetcher ?? createImageFetcher({ maxBytes: MEDIA_MAX_BYTES }),
     notifiers: deps.notifiers ?? {
       telegram: telegramNotifier({ botToken: config.telegramBotToken, chatId: config.telegramChatId }),
       email: resendNotifier({ apiKey: config.resendApiKey, from: config.notificationFromEmail }),

@@ -1,10 +1,12 @@
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import express, { Router } from 'express';
 import type { AppContext } from '../../context.js';
 import { mediaFiles } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
 import { requireRole } from '../../middleware/auth.js';
 import { assetUrl } from '../catalog/view.js';
+import { validate } from '../../middleware/validate.js';
 
 export const MEDIA_MAX_BYTES = 4 * 1024 * 1024;
 
@@ -33,12 +35,27 @@ export function adminMediaRouter(ctx: AppContext): Router {
       const body = req.body as Buffer;
       if (!Buffer.isBuffer(body) || body.length === 0) throw new AppError('validation_failed', 400, 'The photo is empty');
       if (!kind.looksRight(body)) throw new AppError('validation_failed', 400, 'This file is not a real photo of that type');
-      const [row] = await db.insert(mediaFiles).values({ contentType: type, bytes: body, size: body.length, uploadedBy: req.user!.id }).returning({ id: mediaFiles.id });
-      const path = `media/${row!.id}.${kind.ext}`;
-      ctx.logger.info({ mediaId: row!.id, bytes: body.length, actorId: req.user!.id }, 'Photo uploaded');
-      res.status(201).json({ path, url: assetUrl(ctx.config.assetBaseUrl, path) });
+      res.status(201).json(await store(type, body, req.user!.id));
     },
   );
+
+  // A photo from a web link (e.g. a CSV import's photo column): downloaded by the server, then stored like an upload.
+  // The type comes from the file's own bytes, not the link or the remote server's headers.
+  router.post('/admin/media/from-url', ...ctx.member, requireRole('admin'), validate({ body: z.object({ url: z.string().trim().min(1).max(2000) }) }), async (req, res) => {
+    const { url } = req.body as { url: string };
+    const body = await ctx.imageFetcher(url);
+    const type = Object.keys(TYPES).find((t) => TYPES[t]!.looksRight(body));
+    if (!type) throw new AppError('validation_failed', 400, 'That link is not a JPG, PNG or WebP photo');
+    ctx.logger.info({ host: new URL(url).host, actorId: req.user!.id }, 'Photo downloaded from a link');
+    res.status(201).json(await store(type, body, req.user!.id));
+  });
+
+  async function store(type: string, body: Buffer, actorId: string) {
+    const [row] = await db.insert(mediaFiles).values({ contentType: type, bytes: body, size: body.length, uploadedBy: actorId }).returning({ id: mediaFiles.id });
+    const path = `media/${row!.id}.${TYPES[type]!.ext}`;
+    ctx.logger.info({ mediaId: row!.id, bytes: body.length, actorId }, 'Photo uploaded');
+    return { path, url: assetUrl(ctx.config.assetBaseUrl, path) };
+  }
   return router;
 }
 

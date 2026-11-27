@@ -5,6 +5,8 @@ import { bearer, memberApp } from '../helpers/app.js';
 import { withCatalog } from '../helpers/catalog.js';
 import { closeTestDb, testDb } from '../helpers/db.js';
 import { testConfig } from '../helpers/testConfig.js';
+import { AppError } from '../../src/lib/errors.js';
+import type { ImageFetcher } from '../../src/modules/admin/remoteImage.js';
 
 // The smallest valid PNG: 1×1 transparent pixel.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
@@ -27,6 +29,13 @@ beforeAll(async () => {
   await request(ctx.app).post('/v1/auth/session').set(bearer(customer));
 });
 afterAll(closeTestDb);
+
+/** An app whose photo downloader is fake: returns the bytes for a link (or throws like the real one). */
+function memberAppWith(download: (url: string) => Promise<Buffer>): () => ReturnType<typeof memberApp> {
+  let app: ReturnType<typeof memberApp> | undefined;
+  const fetchImage: ImageFetcher = download;
+  return () => (app ??= memberApp(database, ctx.fake, { imageFetcher: fetchImage }));
+}
 
 describe('product photo uploads', () => {
   it('stores an uploaded photo and serves it back, byte for byte, cacheable from another origin', async () => {
@@ -70,5 +79,35 @@ describe('product photo uploads', () => {
     await request(ctx.app).put(`/v1/admin/products/${product.id}/images`).set(bearer(admin)).send({ images: [{ path: body.path }] }).expect(200);
     const detail = await request(ctx.app).get(`/v1/catalog/products/${product.slug}`).expect(200);
     expect(detail.body.product.imageUrl).toBe(body.url);
+  });
+});
+
+describe('photos from links', () => {
+  const WEBP = Buffer.concat([Buffer.from('RIFF'), Buffer.from([0x10, 0, 0, 0]), Buffer.from('WEBPVP8 '), Buffer.alloc(8)]);
+  const seen: string[] = [];
+  const fetched = memberAppWith(async (url: string) => {
+    seen.push(url);
+    if (url.endsWith('/front.webp')) return WEBP;
+    if (url.endsWith('/page.html')) return Buffer.from('<html>');
+    throw new AppError('validation_failed', 400, 'Could not download that photo (HTTP 404)');
+  });
+  const fromUrl = (token: string, url: unknown) => request(fetched().app).post('/v1/admin/media/from-url').set(bearer(token)).send({ url });
+
+  it('downloads a photo and stores it like an upload, typed by its contents', async () => {
+    const res = await fromUrl(admin, 'https://cdn.example.com/front.webp').expect(201);
+    expect(res.body.path).toMatch(/^media\/[0-9a-f-]{36}\.webp$/);
+    expect(seen).toContain('https://cdn.example.com/front.webp');
+    const row = (await q('select content_type, size from media_files where id = $1', [res.body.path.slice(6, 42)])).rows[0];
+    expect(row).toEqual({ content_type: 'image/webp', size: WEBP.length });
+  });
+
+  it('refuses a link that is not a photo, and passes on download problems', async () => {
+    expect((await fromUrl(admin, 'https://cdn.example.com/page.html').expect(400)).body.error.message).toBe('That link is not a JPG, PNG or WebP photo');
+    expect((await fromUrl(admin, 'https://cdn.example.com/missing.webp').expect(400)).body.error.message).toBe('Could not download that photo (HTTP 404)');
+    await fromUrl(admin, 42).expect(400);
+  });
+
+  it('is for admins only', async () => {
+    await fromUrl(customer, 'https://cdn.example.com/front.webp').expect(403);
   });
 });

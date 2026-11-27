@@ -4,6 +4,7 @@ import type { Database } from './db/client.js';
 import type { IdentityProvider } from './lib/identity.js';
 import type { Logger } from './lib/logger.js';
 import type { PaymentProvider } from './modules/payments/provider.js';
+import type { ImageFetcher } from './modules/admin/remoteImage.js';
 import type { Notifier } from './modules/notifications/notifier.js';
 import { optionalAuth, optionalUser, requireAuth, requireUser } from './middleware/auth.js';
 import { createRateLimitMiddleware, DEFAULT_RATE_LIMIT_WINDOW_MS, InMemoryRateLimitStore, type RateLimitStore } from './middleware/rateLimit.js';
@@ -18,6 +19,8 @@ export interface AppContext {
   bootstrapAdmins: BootstrapAdmins;
   payments: PaymentProvider;
   notifiers: { telegram: Notifier; email: Notifier };
+  /** Downloads photos from web links (CSV import). */
+  imageFetcher: ImageFetcher;
   /** requireAuth + requireUser: the route needs a signed-in, non-deleted user. */
   member: RequestHandler[];
   /** Guests allowed; with a valid token, req.auth and req.user are set (deleted accounts rejected). */

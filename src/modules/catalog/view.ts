@@ -20,8 +20,15 @@ export interface ProductCard {
   lowStockCount: number | null;
 }
 
+/** Where uploaded photos ("media/<id>.<ext>") are served: this API's public address. Set once at start-up. */
+let mediaBase = '';
+export function setMediaBase(publicApiUrl: string): void {
+  mediaBase = publicApiUrl.replace(/\/+$/, '');
+}
+
 export function assetUrl(base: string, path: string | null | undefined): string | null {
   if (!path) return null;
+  if (path.startsWith('media/')) return `${mediaBase}/v1/${path}`;
   return `${base.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
 }
 

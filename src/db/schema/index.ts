@@ -9,3 +9,4 @@ export * from './stock.js';
 export * from './users.js';
 export * from './orders.js';
 export * from './postPurchase.js';
+export * from './media.js';

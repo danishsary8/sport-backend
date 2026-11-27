@@ -36,6 +36,8 @@ import { questionsRouter } from './modules/questions/router.js';
 import { adminOverviewRouter } from './modules/admin/overviewRouter.js';
 import { adminLogsRouter } from './modules/admin/logsRouter.js';
 import { systemHealthRouter } from './modules/health/system/router.js';
+import { adminMediaRouter, publicMediaRouter } from './modules/admin/mediaRouter.js';
+import { setMediaBase } from './modules/catalog/view.js';
 import { devPaymentsRouter } from './modules/payments/devRouter.js';
 import { geoRouter } from './modules/geo/router.js';
 import { wishlistRouter } from './modules/wishlist/router.js';
@@ -120,6 +122,7 @@ export function createApp(deps: AppDeps): express.Express {
       }),
     );
   }
+  setMediaBase(config.publicApiUrl);
   const ctx = createContext({
     config,
     logger,
@@ -148,9 +151,11 @@ export function createApp(deps: AppDeps): express.Express {
   const dev = devPaymentsRouter(ctx);
   if (dev) v1.use(dev);
   unlimited.use(webhookRouter(ctx));
+  unlimited.use(publicMediaRouter(ctx));
   v1.use(adminUsersRouter(ctx));
   v1.use(adminStockRouter(ctx));
   v1.use(adminProductsRouter(ctx));
+  v1.use(adminMediaRouter(ctx));
   v1.use(adminPricingRouter(ctx));
   v1.use(adminSettingsRouter(ctx));
   v1.use(adminOrdersRouter(ctx));

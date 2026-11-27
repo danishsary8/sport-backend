@@ -34,7 +34,7 @@ beforeAll(async () => {
 });
 afterAll(closeTestDb);
 
-const api = (method: 'get' | 'post' | 'patch' | 'put', path: string, token: string, body?: object) => {
+const api = (method: 'get' | 'post' | 'patch' | 'put' | 'delete', path: string, token: string, body?: object) => {
   const r = request(ctx.app)[method](`/v1/admin${path}`).set(bearer(token));
   return body ? r.send(body) : r;
 };
@@ -186,6 +186,27 @@ describe('admin product management', () => {
     expect(single.body.product.variants.find((v: { id: string }) => v.id === one.id).priceCents).toBe(999);
     // Staff cannot change prices.
     expect((await api('put', `/products/${id}/prices`, t.staffAll, { priceCents: 1 })).status).toBe(403);
+  });
+
+  it('deletes a product that was never ordered, and refuses one with orders', async () => {
+    const made = await api('post', '/products', t.admin, { ...newProduct, slug: 'delete-me-bib' });
+    const id = made.body.product.id as string;
+    expect((await api('delete', `/products/${id}`, t.staffAll)).status).toBe(403);
+    expect((await api('delete', `/products/${id}`, t.admin)).status).toBe(204);
+    expect((await q('select count(*)::int as n from products where id = $1', [id])).rows[0].n).toBe(0);
+    expect((await q('select count(*)::int as n from variants where product_id = $1', [id])).rows[0].n).toBe(0);
+    expect((await api('delete', `/products/${id}`, t.admin)).status).toBe(404);
+
+    // A product with an order line stays: order history must keep pointing at it.
+    const ordered = (await q('select product_id from variants where id = $1', [variantId])).rows[0].product_id as string;
+    await q(`insert into orders (number, contact_name, contact_phone_e164, contact_channel, fulfillment, status, payment_status, payment_method, merchandise_cents, discount_cents, shipping_cents, total_cents, khr_rate, total_khr, pricing)
+      values ('SC-2611-DEL01', 'A', '+85512345678', 'phone', 'delivery', 'confirmed', 'paid', 'aba_khqr', 100, 0, 0, 100, 4100, 0, '{}')`);
+    await q(`insert into order_items (order_id, variant_id, product_snapshot, unit_price_cents, line_total_cents, qty) select id, $1, '{}', 100, 100, 1 from orders where number = 'SC-2611-DEL01'`, [variantId]);
+    const refused = await api('delete', `/products/${ordered}`, t.admin);
+    expect(refused.status).toBe(409);
+    expect(refused.body.error.message).toBe('This product has orders, so it cannot be deleted. Archive it instead.');
+    expect((await q('select count(*)::int as n from products where id = $1', [ordered])).rows[0].n).toBe(1);
+    await q("delete from orders where number = 'SC-2611-DEL01'");
   });
 
   it('rejects a compare-at price that is not above the price', async () => {

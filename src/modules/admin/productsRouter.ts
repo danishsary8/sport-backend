@@ -366,6 +366,25 @@ export function adminProductsRouter(ctx: AppContext): Router {
     res.status(201).json({ product: await adminView(db, id, ctx.config.assetBaseUrl) });
   });
 
+  // Deletes a product for good, with its sizes, stock, photos and wishlist entries. Refused when any order (or
+  // return exchange) points at one of its sizes, so order history stays intact; archive those instead.
+  router.delete('/admin/products/:id', ...admin, async (req, res) => {
+    const id = String(req.params.id);
+    if (!UUID.test(id)) throw new AppError('not_found', 404, 'Product not found');
+    const name = await db.transaction(async (tx) => {
+      const [p] = await tx.select({ id: products.id, name: products.nameI18n }).from(products).where(eq(products.id, id)).for('update');
+      if (!p) throw new AppError('not_found', 404, 'Product not found');
+      const used = await tx.execute<{ used: boolean }>(sql`select exists (
+        select 1 from order_items oi join variants v on v.id = oi.variant_id where v.product_id = ${id}
+        union all select 1 from rma_items ri join variants v on v.id = ri.exchange_variant_id where v.product_id = ${id}) as used`);
+      if (used.rows[0]?.used) throw new AppError('product_has_orders', 409, 'This product has orders, so it cannot be deleted. Archive it instead.');
+      await tx.delete(products).where(eq(products.id, id));
+      return p.name.en;
+    });
+    ctx.logger.info({ productId: id, name, actorId: req.user!.id }, 'Product deleted');
+    res.status(204).end();
+  });
+
   // One price (and optional "was" price) for every size of the product, in one transaction.
   router.put('/admin/products/:id/prices', ...admin, validate({ body: allPricesSchema }), async (req, res) => {
     const id = String(req.params.id);

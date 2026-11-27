@@ -151,6 +151,33 @@ describe('GET /v1/admin/overview/sales', () => {
     expect(res.body.byCategory.find((c: { slug: string }) => c.slug === 'boots')).toMatchObject({ revenueCents: 18000 });
   });
 
+  it('for staff, counts only the line items their store handled', async () => {
+    const [b1, b2] = (await q('select id from branches order by id limit 2')).rows.map((r) => r.id as string);
+    const [v1, v2] = (await q('select id from variants order by id limit 2')).rows.map((r) => r.id as string);
+    const id = await paid(0, 10000, 'confirmed', { id: v1, qty: 1 });
+    await q(`insert into order_items (order_id, variant_id, product_snapshot, unit_price_cents, line_total_cents, qty) values ($1, $2, '{}', 7000, 7000, 1)`, [id, v2]);
+    const items = (await q('select id, variant_id from order_items where order_id = $1', [id])).rows;
+    for (const it of items) await q('insert into order_item_allocations (order_item_id, branch_id, qty) values ($1, $2, 1)', [it.id, it.variant_id === v1 ? b1 : b2]);
+    const staff = await staffToken(ctx.app, database, ctx.fake, 'ov-staff-b1', 'staff', b1);
+    const res = await request(ctx.app).get('/v1/admin/overview/sales').set(bearer(staff)).expect(200);
+    expect(res.body.topProducts).toHaveLength(1);
+    expect(res.body.topProducts[0]).toMatchObject({ revenueCents: 10000 });
+    expect(res.body.byCategory.reduce((n: number, c: { revenueCents: number }) => n + c.revenueCents, 0)).toBe(10000);
+  });
+
+  it('cuts the period before at the same time of day, so a part-finished today compares fairly', async () => {
+    // Paid 7 days ago plus one hour: later in that day than now, so it falls after the cut.
+    await q(
+      `insert into orders (number, contact_name, contact_phone_e164, contact_channel, fulfillment, status, payment_status, payment_method,
+         merchandise_cents, discount_cents, shipping_cents, total_cents, khr_rate, total_khr, pricing, paid_at, created_at)
+       values ('SC-2611-CUT01', 'A', '+85512345678', 'phone', 'delivery', 'confirmed', 'paid', 'aba_khqr', 500, 0, 0, 500, 4100, 0, '{}',
+         now() - interval '7 days' + interval '1 hour', now() - interval '8 days')`,
+    );
+    await paid(8, 2000);
+    const res = await request(ctx.app).get('/v1/admin/overview/sales').query({ days: 7 }).set(bearer(admin)).expect(200);
+    expect(res.body.previous.revenueCents).toBe(2000);
+  });
+
   it('refuses a range outside 7 to 90 days', async () => {
     await request(ctx.app).get('/v1/admin/overview/sales').query({ days: 3 }).set(bearer(admin)).expect(400);
   });

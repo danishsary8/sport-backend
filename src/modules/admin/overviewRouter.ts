@@ -25,8 +25,8 @@ export function adminOverviewRouter(ctx: AppContext): Router {
     const r = await db.execute<Record<string, number>>(sql`
       select
         (select count(*) from orders o where (o.created_at at time zone 'Asia/Phnom_Penh')::date = ${today} ${orderScopeSql})::int as orders_today,
-        (select count(*) from orders o where o.payment_status = 'paid' and o.status not in ('cancelled', 'expired') and (o.paid_at at time zone 'Asia/Phnom_Penh')::date = ${today} ${orderScopeSql})::int as paid_today,
-        (select coalesce(sum(o.total_cents), 0) from orders o where o.payment_status = 'paid' and o.status not in ('cancelled', 'expired') and (o.paid_at at time zone 'Asia/Phnom_Penh')::date = ${today} ${orderScopeSql})::int as revenue_today,
+        (select count(*) from orders o where o.payment_status = 'paid' and o.status not in ('cancelled', 'expired') and o.paid_at >= (${today})::timestamp at time zone 'Asia/Phnom_Penh' ${orderScopeSql})::int as paid_today,
+        (select coalesce(sum(o.total_cents), 0) from orders o where o.payment_status = 'paid' and o.status not in ('cancelled', 'expired') and o.paid_at >= (${today})::timestamp at time zone 'Asia/Phnom_Penh' ${orderScopeSql})::int as revenue_today,
         (select count(*) from orders o where o.status = 'pending_payment' ${orderScopeSql})::int as pending_payments,
         (select count(*) from orders o where o.needs_refund ${orderScopeSql})::int as needs_refund,
         (select count(*) from orders o where o.status = 'confirmed' ${orderScopeSql})::int as confirmed,
@@ -69,32 +69,39 @@ export function adminOverviewRouter(ctx: AppContext): Router {
       ? sql`and (exists (select 1 from order_item_allocations a join order_items i on i.id = a.order_item_id where i.order_id = o.id and a.branch_id = ${branch}) or o.pickup_branch_id = ${branch})`
       : sql``;
     const today = sql`(now() at time zone 'Asia/Phnom_Penh')::date`;
-    const day = sql`(o.paid_at at time zone 'Asia/Phnom_Penh')::date`;
+    // Ranges are on paid_at itself so orders_paid_at_idx serves them.
+    const dayStart = (back: number) => sql`((${today} - ${back}::int)::timestamp at time zone 'Asia/Phnom_Penh')`;
     const sold = sql`o.payment_status = 'paid' and o.status not in ('cancelled', 'expired') ${scope}`;
-    const inRange = (from: number, to: number) => sql`${day} between ${today} - ${from}::int and ${today} - ${to}::int`;
+    const current = sql`o.paid_at >= ${dayStart(days - 1)}`;
+    // The period before stops at the same time of day as now, so a half-finished today is compared fairly.
+    const before = sql`o.paid_at >= ${dayStart(days * 2 - 1)} and o.paid_at < now() - make_interval(days => ${days}::int)`;
+    // Staff see only line items their store handled, not whole multi-store orders.
+    const itemScope = branch
+      ? sql`and (exists (select 1 from order_item_allocations a where a.order_item_id = oi.id and a.branch_id = ${branch}) or o.pickup_branch_id = ${branch})`
+      : sql``;
 
     const [series, totals, top, byCategory] = await Promise.all([
       db.execute<{ date: string; paid_orders: number; revenue_cents: number }>(sql`
         select to_char(d, 'YYYY-MM-DD') as date, count(o.id)::int as paid_orders, coalesce(sum(o.total_cents), 0)::int as revenue_cents
         from generate_series(${today} - ${days - 1}::int, ${today}, interval '1 day') d
-        left join orders o on ${day} = d::date and ${sold}
+        left join orders o on o.paid_at >= (d::date::timestamp at time zone 'Asia/Phnom_Penh') and o.paid_at < ((d::date + 1)::timestamp at time zone 'Asia/Phnom_Penh') and ${sold}
         group by d order by d`),
       db.execute<{ period: string; paid_orders: number; revenue_cents: number }>(sql`
-        select case when ${inRange(days - 1, 0)} then 'now' else 'before' end as period,
+        select case when ${current} then 'now' else 'before' end as period,
           count(*)::int as paid_orders, coalesce(sum(o.total_cents), 0)::int as revenue_cents
-        from orders o where ${sold} and ${inRange(days * 2 - 1, 0)} group by 1`),
+        from orders o where ${sold} and (${current} or (${before})) group by 1`),
       db.execute<{ product_id: string; name: string; image: string | null; qty: number; revenue_cents: number }>(sql`
         select p.id as product_id, p.name_i18n->>'en' as name,
           (select i.path from product_images i where i.product_id = p.id order by i.sort, i.id limit 1) as image,
           sum(oi.qty)::int as qty, sum(oi.line_total_cents)::int as revenue_cents
         from orders o join order_items oi on oi.order_id = o.id join variants v on v.id = oi.variant_id join products p on p.id = v.product_id
-        where ${sold} and ${inRange(days - 1, 0)}
+        where ${sold} and ${current} ${itemScope}
         group by p.id order by revenue_cents desc, qty desc limit 5`),
       db.execute<{ slug: string; name: string; revenue_cents: number }>(sql`
         select c.slug, c.name_i18n->>'en' as name, sum(oi.line_total_cents)::int as revenue_cents
         from orders o join order_items oi on oi.order_id = o.id join variants v on v.id = oi.variant_id
           join products p on p.id = v.product_id join categories c on c.id = p.category_id
-        where ${sold} and ${inRange(days - 1, 0)}
+        where ${sold} and ${current} ${itemScope}
         group by c.slug, c.name_i18n order by revenue_cents desc`),
     ]);
     const period = (name: string) => {

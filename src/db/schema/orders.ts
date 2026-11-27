@@ -122,6 +122,7 @@ export const orders = pgTable(
     index('orders_user_idx').on(t.userId, t.createdAt),
     index('orders_phone_idx').on(t.contactPhoneE164),
     index('orders_status_reserved_idx').on(t.status, t.reservedUntil),
+    index('orders_paid_at_idx').on(t.paidAt).where(sql`${t.paymentStatus} = 'paid'`),
   ],
 );
 

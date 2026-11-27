@@ -85,6 +85,13 @@
       "when": 1795771322467,
       "tag": "0011_media_files",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795786070313,
+      "tag": "0012_orders_paid_at_idx",
+      "breakpoints": true
     }
   ]
 }

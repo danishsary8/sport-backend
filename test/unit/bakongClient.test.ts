@@ -3,7 +3,7 @@ import { BAKONG_CHECK_PATH, BakongProvider } from '../../src/modules/payments/ba
 import { createPaymentProvider } from '../../src/modules/payments/provider.js';
 import { testConfig } from '../helpers/testConfig.js';
 
-const cfg = { token: 'test-token', accountId: 'sportcastle@aba', merchantName: 'Sport Castle', merchantCity: 'Phnom Penh', apiUrl: 'https://api-bakong.example' };
+const cfg = { token: 'test-token', accountId: 'sportcastle@aba', merchantName: 'Sport Heaven', merchantCity: 'Phnom Penh', apiUrl: 'https://api-bakong.example' };
 const now = new Date('2026-11-27T03:00:00Z');
 const input = {
   tranId: 'SC2611ABCDE-1',

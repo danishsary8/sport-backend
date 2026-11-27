@@ -1,4 +1,4 @@
-# Deploying the Sport Castle API
+# Deploying the Sport Heaven API
 
 This runbook takes the API from this repository to a live server that shoppers use. The storefront (`sport-heaven`) is deployed separately as static files. For everything you have to supply yourself (accounts, keys, prices), see `docs/superpowers/OWNER-TODO.md`.
 

@@ -97,7 +97,7 @@ export function adminLogsRouter(ctx: AppContext): Router {
       return;
     }
     try {
-      await notifier.send({ channel, to, subject: 'Sport Castle test message', text: `✅ Test message from the Sport Castle API (${new Date().toISOString()}).` });
+      await notifier.send({ channel, to, subject: 'Sport Heaven test message', text: `✅ Test message from the Sport Heaven API (${new Date().toISOString()}).` });
       res.json({ sent: true });
     } catch (error) {
       res.json({ sent: false, error: (error instanceof Error ? error.message : String(error)).slice(0, 200) });

@@ -79,8 +79,8 @@ describe('loadConfig', () => {
     });
 
     it('lets production take payments through Bakong instead of PayWay', () => {
-      const cfg = loadConfig({ ...prod, BAKONG_TOKEN: 'tok', BAKONG_ACCOUNT_ID: 'sportcastle@aba', BAKONG_MERCHANT_NAME: 'Sport Castle' });
-      expect(cfg.bakong).toEqual({ token: 'tok', accountId: 'sportcastle@aba', merchantName: 'Sport Castle', merchantCity: 'Phnom Penh', apiUrl: 'https://api-bakong.nbc.gov.kh' });
+      const cfg = loadConfig({ ...prod, BAKONG_TOKEN: 'tok', BAKONG_ACCOUNT_ID: 'sportcastle@aba', BAKONG_MERCHANT_NAME: 'Sport Heaven' });
+      expect(cfg.bakong).toEqual({ token: 'tok', accountId: 'sportcastle@aba', merchantName: 'Sport Heaven', merchantCity: 'Phnom Penh', apiUrl: 'https://api-bakong.nbc.gov.kh' });
       expect(cfg.paywayMerchantId).toBeUndefined();
     });
 

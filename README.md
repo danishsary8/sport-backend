@@ -1,6 +1,6 @@
-# Sport Castle API (`sport-backend`)
+# Sport Heaven API (`sport-backend`)
 
-The commerce backend for Sport Castle, a Phnom Penh football / futsal / F1 store: catalog, cart, checkout, KHQR payments, orders and member accounts. The frontend lives in `sport-heaven`.
+The commerce backend for Sport Heaven, a Phnom Penh football / futsal / F1 store: catalog, cart, checkout, KHQR payments, orders and member accounts. The frontend lives in `sport-heaven`.
 
 - Design: `docs/superpowers/specs/2026-11-25-backend-production-design.md`
 - Plans: `docs/superpowers/plans/`

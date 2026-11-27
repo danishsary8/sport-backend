@@ -14,7 +14,7 @@ documentation and is marked `VERIFY AGAINST BAKONG`: confirm it with the real-mo
 |---|---|---|
 | `BAKONG_TOKEN` | API token for checking payments | Register at **api-bakong.nbc.gov.kh** (Bakong Open API) with your email. A token from another project works too, but if it expires or is revoked both projects stop confirming payments. |
 | `BAKONG_ACCOUNT_ID` | The shop's account that **receives the money**, e.g. `sportcastle@aba` | In your bank app (ABA: Profile → your Bakong ID / KHQR). **Must be the shop's own account**: the money goes wherever this points. |
-| `BAKONG_MERCHANT_NAME` | Name the payer sees, plain English, max 25 characters | e.g. `Sport Castle` |
+| `BAKONG_MERCHANT_NAME` | Name the payer sees, plain English, max 25 characters | e.g. `Sport Heaven` |
 | `BAKONG_MERCHANT_CITY` | Optional, max 15 characters | Default `Phnom Penh` |
 
 ## 2. Turn it on (Render → sport-castle-api → Environment)

@@ -99,6 +99,6 @@ export function render(template: Template, n: OrderNotice, channel: 'telegram' |
   }
   const text = lines.join('\n');
   if (channel !== 'email') return { subject, text };
-  const html = `<div style="font-family:sans-serif">${lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('')}<p>Sport Castle</p></div>`;
+  const html = `<div style="font-family:sans-serif">${lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('')}<p>Sport Heaven</p></div>`;
   return { subject, text, html };
 }

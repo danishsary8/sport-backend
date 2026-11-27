@@ -59,7 +59,7 @@ export async function start(env: NodeJS.ProcessEnv = process.env, hooks: { onDat
   }
   const { port } = server.address() as AddressInfo;
   const url = `http://127.0.0.1:${port}`;
-  logger.info({ port, env: config.nodeEnv }, 'Sport Castle API listening');
+  logger.info({ port, env: config.nodeEnv }, 'Sport Heaven API listening');
 
   const scheduler = config.jobsEnabled
     ? startScheduler({

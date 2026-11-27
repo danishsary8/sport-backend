@@ -27,7 +27,7 @@ beforeAll(async () => {
   await withCatalog(database);
   await seed(database.db);
   await setProductStock(database, JERSEY, 10);
-  const provider = new BakongProvider({ token: 't', accountId: 'sportcastle@aba', merchantName: 'Sport Castle', merchantCity: 'Phnom Penh', apiUrl: 'https://bakong.test' }, bakongApi);
+  const provider = new BakongProvider({ token: 't', accountId: 'sportcastle@aba', merchantName: 'Sport Heaven', merchantCity: 'Phnom Penh', apiUrl: 'https://bakong.test' }, bakongApi);
   ctx = memberApp(database, undefined, { payments: provider });
   token = ctx.fake.token({ uid: 'bakong-member', phone: '+85512009500', email: 'b@example.com', emailVerified: true, name: 'Bakong Buyer' });
 });

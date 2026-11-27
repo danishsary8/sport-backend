@@ -23,7 +23,9 @@ Check: open `https://api.<your-domain>/ready`. It should show `{"status":"ready"
 
 Check: sign in on the shop with that phone, then open `https://<your-domain>/admin`. You should see the admin overview.
 
-## Step 3: Payments (ABA PayWay)
+## Step 3: Payments (Bakong KHQR, or ABA PayWay)
+
+**Quickest: Bakong KHQR** (any banking app, no merchant contract): follow `docs/BAKONG-SETUP.md`. Use PayWay below only if you also want card payments.
 
 10. **Open an ABA PayWay merchant account.** Get the sandbox and production `PAYWAY_MERCHANT_ID` and `PAYWAY_API_KEY`, and ask which methods your contract includes (KHQR, card, ACLEDA, Wing).
 11. **Register the webhook** `https://api.<your-domain>/v1/webhooks/payway` with ABA, and set it as `PAYWAY_RETURN_URL`.

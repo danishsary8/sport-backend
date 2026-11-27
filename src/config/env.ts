@@ -26,7 +26,9 @@ export interface Config {
   paywayReturnUrl: string | undefined;
   /** Where the browser goes after a card payment, e.g. https://example.com/checkout/return. */
   paywayContinueUrl: string | undefined;
-  /** Production may run without PayWay only when the shop takes cash on pickup alone. */
+  /** Bakong KHQR (used when PayWay is not configured); undefined when its settings are not set. */
+  bakong: BakongSettings | undefined;
+  /** Production may run without an online payment service only when the shop takes cash on pickup alone. */
   paymentsCashOnly: boolean;
   /** This API's public base URL (dev payment pages link back to it). */
   publicApiUrl: string;
@@ -40,6 +42,14 @@ export interface Config {
   jobsEnabled: boolean;
   /** Test sign-in tokens instead of Firebase (end-to-end tests). Refused in production. */
   authTestMode: boolean;
+}
+
+export interface BakongSettings {
+  token: string;
+  accountId: string;
+  merchantName: string;
+  merchantCity: string;
+  apiUrl: string;
 }
 
 export class ConfigError extends Error {
@@ -124,6 +134,11 @@ const envSchema = z
     PAYWAY_RETURN_URL: optionalText.pipe(z.string().url().optional()),
     PAYWAY_CONTINUE_URL: optionalText.pipe(z.string().url().optional()),
     PAYMENT_METHODS_CASH_ONLY: booleanText,
+    BAKONG_TOKEN: optionalText,
+    BAKONG_ACCOUNT_ID: optionalText.pipe(z.string().regex(/^[A-Za-z0-9._-]+@[A-Za-z0-9._-]+$/, 'must look like name@bank, e.g. sportcastle@aba').max(32).optional()),
+    BAKONG_MERCHANT_NAME: optionalText.pipe(z.string().regex(/^[\x20-\x7E]+$/, 'must be plain English letters, numbers and spaces').max(25).optional()),
+    BAKONG_MERCHANT_CITY: optionalText.pipe(z.string().regex(/^[\x20-\x7E]+$/, 'must be plain English letters, numbers and spaces').max(15).optional()),
+    BAKONG_API_URL: optionalText.pipe(z.string().url().optional()),
     PUBLIC_API_URL: z.string().trim().url().default('http://localhost:3000'),
     TELEGRAM_BOT_TOKEN: optionalText,
     TELEGRAM_CHAT_ID: optionalText,
@@ -155,10 +170,18 @@ const envSchema = z
       const missing = env.PAYWAY_MERCHANT_ID === undefined ? 'PAYWAY_MERCHANT_ID' : 'PAYWAY_API_KEY';
       ctx.addIssue({ code: 'custom', path: [missing], message: 'PAYWAY_MERCHANT_ID and PAYWAY_API_KEY must be set together' });
     }
-    if (env.NODE_ENV === 'production' && !env.PAYMENT_METHODS_CASH_ONLY) {
+    const bakongKeys = ['BAKONG_TOKEN', 'BAKONG_ACCOUNT_ID', 'BAKONG_MERCHANT_NAME'] as const;
+    const bakongSet = bakongKeys.filter((k) => env[k] !== undefined);
+    if (bakongSet.length > 0 && bakongSet.length < bakongKeys.length) {
+      for (const key of bakongKeys.filter((k) => env[k] === undefined)) {
+        ctx.addIssue({ code: 'custom', path: [key], message: `${bakongKeys.join(', ')} must be set together` });
+      }
+    }
+    // Production takes online payments through PayWay or Bakong, or runs cash-only.
+    if (env.NODE_ENV === 'production' && !env.PAYMENT_METHODS_CASH_ONLY && bakongSet.length < bakongKeys.length) {
       for (const key of ['PAYWAY_MERCHANT_ID', 'PAYWAY_API_KEY', 'PAYWAY_RETURN_URL', 'PAYWAY_CONTINUE_URL'] as const) {
         if (env[key] === undefined) {
-          ctx.addIssue({ code: 'custom', path: [key], message: 'is required in production (or set PAYMENT_METHODS_CASH_ONLY=true)' });
+          ctx.addIssue({ code: 'custom', path: [key], message: 'is required in production (or set up Bakong with BAKONG_TOKEN, BAKONG_ACCOUNT_ID and BAKONG_MERCHANT_NAME, or set PAYMENT_METHODS_CASH_ONLY=true)' });
         }
       }
     }
@@ -211,6 +234,16 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     paywayBaseUrl: (e.PAYWAY_BASE_URL ?? 'https://checkout-sandbox.payway.com.kh').replace(/\/+$/, ''),
     paywayReturnUrl: e.PAYWAY_RETURN_URL,
     paywayContinueUrl: e.PAYWAY_CONTINUE_URL,
+    bakong:
+      e.BAKONG_TOKEN && e.BAKONG_ACCOUNT_ID && e.BAKONG_MERCHANT_NAME
+        ? {
+            token: e.BAKONG_TOKEN,
+            accountId: e.BAKONG_ACCOUNT_ID,
+            merchantName: e.BAKONG_MERCHANT_NAME,
+            merchantCity: e.BAKONG_MERCHANT_CITY ?? 'Phnom Penh',
+            apiUrl: (e.BAKONG_API_URL ?? 'https://api-bakong.nbc.gov.kh').replace(/\/+$/, ''),
+          }
+        : undefined,
     paymentsCashOnly: e.PAYMENT_METHODS_CASH_ONLY ?? false,
     publicApiUrl: e.PUBLIC_API_URL.replace(/\/+$/, ''),
     telegramBotToken: e.TELEGRAM_BOT_TOKEN,

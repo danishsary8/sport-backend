@@ -2,6 +2,7 @@ import { AppError } from '../../lib/errors.js';
 import type { Config } from '../../config/env.js';
 import type { PaymentMethod } from '../../db/schema/index.js';
 import { FakePaymentProvider } from './fake.js';
+import { BakongProvider } from './bakong/client.js';
 import { PayWayProvider } from './payway/client.js';
 
 export type ProviderStatus = 'pending' | 'approved' | 'declined' | 'cancelled' | 'refunded' | 'expired';
@@ -50,16 +51,26 @@ export function pickFields(body: unknown, keys: readonly string[]): Record<strin
   return out;
 }
 
+/** What the shop stored about an attempt when it was created (payments.raw), for providers that need it to look the payment up. */
+export interface PaymentRef {
+  raw: unknown;
+}
+
 /** A payment service: create a payment, ask its status, cancel it, recognise its webhooks. */
 export interface PaymentProvider {
-  readonly name: 'payway' | 'fake';
+  readonly name: 'payway' | 'bakong' | 'fake';
+  /** The payment methods this service can take (the shop's settings can switch some off). */
+  readonly methods: readonly PaymentMethod[];
   createTransaction(input: CreateTransactionInput): Promise<{ instructions: PaymentInstructions; raw: unknown }>;
-  checkTransaction(tranId: string): Promise<TransactionCheck>;
+  checkTransaction(tranId: string, ref?: PaymentRef): Promise<TransactionCheck>;
   cancelTransaction(tranId: string): Promise<void>;
   verifyWebhook(rawBody: Buffer, headers: Record<string, string | undefined>): WebhookVerification;
 }
 
-/** PayWay when credentials are configured, otherwise the local fake (production config refuses that case). */
+/**
+ * PayWay when its credentials are set, else Bakong KHQR when its settings are, else the local fake outside
+ * production (production then refuses online payment: cash-only mode).
+ */
 export function createPaymentProvider(config: Config, fetchImpl: typeof fetch = fetch): PaymentProvider {
   if (config.paywayMerchantId && config.paywayApiKey) {
     return new PayWayProvider(
@@ -73,6 +84,7 @@ export function createPaymentProvider(config: Config, fetchImpl: typeof fetch = 
       fetchImpl,
     );
   }
+  if (config.bakong) return new BakongProvider(config.bakong, fetchImpl);
   // Production never fakes payments: without PayWay keys (cash-only mode) every online payment is refused.
   if (config.nodeEnv === 'production') return new DisabledPaymentProvider();
   return new FakePaymentProvider({ publicApiUrl: config.publicApiUrl });
@@ -81,6 +93,7 @@ export function createPaymentProvider(config: Config, fetchImpl: typeof fetch = 
 /** Stands in for PayWay when the shop runs cash-only: refuses every online payment. */
 export class DisabledPaymentProvider implements PaymentProvider {
   readonly name = 'payway' as const;
+  readonly methods: readonly PaymentMethod[] = [];
   private refuse(): never {
     throw new AppError('payments_unavailable', 503, 'Online payment is not available right now. Choose cash on pickup.');
   }

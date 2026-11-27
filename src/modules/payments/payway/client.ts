@@ -1,4 +1,5 @@
 import { AppError } from '../../../lib/errors.js';
+import type { PaymentMethod } from '../../../db/schema/index.js';
 import { pickFields, TRAN_ID_PATTERN, type CreateTransactionInput, type PaymentInstructions, type PaymentProvider, type TransactionCheck, type WebhookVerification } from '../provider.js';
 import { paywayHash, safeEqualB64 } from './hash.js';
 import { CHECK_FIELDS, CHECK_NOT_FOUND_CODES, CHECK_SUCCESS_CODES, PAYWAY_PATHS, PUSHBACK_FIELDS, PURCHASE_FIELDS, PUSHBACK_HASH_FIELDS, PUSHBACK_SUCCESS, QR_FIELDS, QR_IMAGE_TEMPLATE, STATUS_MAP } from './mapping.js';
@@ -27,6 +28,7 @@ function sign(fields: readonly string[], body: Record<string, string>, apiKey: s
 /** ABA PayWay: KHQR and hosted card checkout, signed server-to-server with the merchant API key. */
 export class PayWayProvider implements PaymentProvider {
   readonly name = 'payway' as const;
+  readonly methods: readonly PaymentMethod[] = ['aba_khqr', 'card'];
 
   constructor(
     private readonly cfg: PayWayConfig,

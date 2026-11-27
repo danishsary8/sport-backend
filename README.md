@@ -9,11 +9,11 @@ The commerce backend for Sport Castle, a Phnom Penh football / futsal / F1 store
 **Status:** phases 1–7 done.
 
 - Foundation; auth & accounts; catalog with per-branch stock; server-priced carts.
-- Checkout with ABA PayWay (KHQR/card), stock held while paying, and a per-minute sweeper.
+- Checkout with Bakong KHQR (any Cambodian banking app) or ABA PayWay (KHQR/card), stock held while paying, and a per-minute sweeper.
 - Post-purchase: tracking, member history, staff order desk, returns and exchanges, loyalty, Q&A, admin overview, logs and system health.
 - Hardening: per-route rate limits, a lint gate, a security pass, a load-tested order path, an OpenAPI contract and a test sign-in for end-to-end tests.
 
-Deploying: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). Before taking real payments: [`docs/PAYWAY-SANDBOX-CHECKLIST.md`](docs/PAYWAY-SANDBOX-CHECKLIST.md). API contract: [`docs/api/openapi.json`](docs/api/openapi.json). Security review: [`docs/superpowers/SECURITY-PASS.md`](docs/superpowers/SECURITY-PASS.md). Where the old pre-split code went: [`docs/superpowers/LEGACY-PORT.md`](docs/superpowers/LEGACY-PORT.md).
+Deploying: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). Before taking real payments: [`docs/BAKONG-SETUP.md`](docs/BAKONG-SETUP.md) (Bakong) or [`docs/PAYWAY-SANDBOX-CHECKLIST.md`](docs/PAYWAY-SANDBOX-CHECKLIST.md) (PayWay). API contract: [`docs/api/openapi.json`](docs/api/openapi.json). Security review: [`docs/superpowers/SECURITY-PASS.md`](docs/superpowers/SECURITY-PASS.md). Where the old pre-split code went: [`docs/superpowers/LEGACY-PORT.md`](docs/superpowers/LEGACY-PORT.md).
 
 ## Requirements
 
@@ -118,6 +118,7 @@ Stock rules: customers only ever see `ok`, `low` (with 1–3 left) or `out`. The
    - Two shoppers buying the last unit at the same moment: exactly one order succeeds; the other gets `409 stock_changed`.
    - `payment.instructions` is `{kind:'qr', qrString, deeplink}` (render the KHQR from `qrString`), `{kind:'redirect', url, method, fields}` (card: submit a form to PayWay) or `{kind:'none'}` (cash on pickup).
 3. While the QR is shown the page polls `GET /v1/orders/:number/payment-status` every 3 s; the server asks PayWay at most once every 5 s per order.
+   Which payment service is used: PayWay when `PAYWAY_MERCHANT_ID`/`PAYWAY_API_KEY` are set, else Bakong when `BAKONG_TOKEN`/`BAKONG_ACCOUNT_ID`/`BAKONG_MERCHANT_NAME` are set (KHQR only: the shop builds the QR itself and finds the payment by the QR's md5, so there is no webhook), else the local fake outside production.
 4. Payment is confirmed by any of: PayWay's webhook (`POST /v1/webhooks/payway`), the poll, or the per-minute sweeper. Each one re-checks the transaction with PayWay's signed check API before trusting it, and confirming twice changes nothing. On payment the stock leaves the shelf, members with a verified phone earn 10 points per $1 (excluding delivery), the promo use is recorded and ops/customers are notified.
 5. Unpaid orders expire when their hold ends: the stock and the promo use are released. A payment that arrives after expiry re-holds the stock if it can; otherwise the order is flagged `needs_refund` and ops get an urgent Telegram message. A second payment for the same order, or a wrong amount, is flagged the same way.
 

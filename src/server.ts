@@ -38,7 +38,8 @@ export async function start(env: NodeJS.ProcessEnv = process.env, hooks: { onDat
     logger.warn('FIREBASE_PROJECT_ID is not set: sign-in endpoints will answer 503 auth_unavailable');
   }
   const payments = createPaymentProvider(config);
-  if (payments.name === 'fake') logger.warn('PayWay is not configured: using the fake payment provider (test payments only)');
+  if (payments.name === 'fake') logger.warn('No payment service is configured (PayWay or Bakong): using the fake payment provider (test payments only)');
+  else logger.info({ provider: payments.name, methods: payments.methods }, 'Online payments');
   const notifiers = {
     telegram: telegramNotifier({ botToken: config.telegramBotToken, chatId: config.telegramChatId }),
     email: resendNotifier({ apiKey: config.resendApiKey, from: config.notificationFromEmail }),

@@ -78,6 +78,19 @@ describe('loadConfig', () => {
       expect(loadConfig({ ...prod, PAYMENT_METHODS_CASH_ONLY: 'true' }).paymentsCashOnly).toBe(true);
     });
 
+    it('lets production take payments through Bakong instead of PayWay', () => {
+      const cfg = loadConfig({ ...prod, BAKONG_TOKEN: 'tok', BAKONG_ACCOUNT_ID: 'sportcastle@aba', BAKONG_MERCHANT_NAME: 'Sport Castle' });
+      expect(cfg.bakong).toEqual({ token: 'tok', accountId: 'sportcastle@aba', merchantName: 'Sport Castle', merchantCity: 'Phnom Penh', apiUrl: 'https://api-bakong.nbc.gov.kh' });
+      expect(cfg.paywayMerchantId).toBeUndefined();
+    });
+
+    it('needs the Bakong settings together and checks their format', () => {
+      expect(issuesFor({ ...base, BAKONG_TOKEN: 'tok' }).join('\n')).toMatch(/BAKONG_ACCOUNT_ID[\s\S]*BAKONG_MERCHANT_NAME/);
+      expect(issuesFor({ ...base, BAKONG_TOKEN: 't', BAKONG_ACCOUNT_ID: 'not-an-account', BAKONG_MERCHANT_NAME: 'Shop' }).join('\n')).toContain('name@bank');
+      expect(issuesFor({ ...base, BAKONG_TOKEN: 't', BAKONG_ACCOUNT_ID: 'shop@aba', BAKONG_MERCHANT_NAME: 'ហាងកីឡា' }).join('\n')).toContain('BAKONG_MERCHANT_NAME');
+      expect(loadConfig(base).bakong).toBeUndefined();
+    });
+
     it('needs the merchant id and key together', () => {
       expect(issuesFor({ ...base, PAYWAY_MERCHANT_ID: 'm' }).join('\n')).toContain('PAYWAY_API_KEY');
     });

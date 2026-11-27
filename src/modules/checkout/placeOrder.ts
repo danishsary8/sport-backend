@@ -147,7 +147,7 @@ async function assertOpenOrderSlot(tx: Tx, phone: string, userId: string | null,
 /** Bag → order, in one serializable transaction: price, claim promo, reserve stock, snapshot, clear bag. */
 export async function placeOrder(deps: CheckoutDeps, owner: CartOwner, user: UserRow | undefined, input: PlaceOrderInput): Promise<PlacedOrder> {
   const { db, config } = deps;
-  const enabled = await paymentMethodsEnabled(db, config.paymentsCashOnly);
+  const enabled = await paymentMethodsEnabled(db, config.paymentsCashOnly, deps.payments.methods);
   if (!availablePaymentMethods(enabled, input.fulfillment).includes(input.paymentMethod)) {
     throw new AppError('payment_method_unavailable', 400, 'That payment method is not available for this order');
   }

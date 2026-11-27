@@ -1,3 +1,4 @@
+import type { PaymentMethod } from '../../db/schema/index.js';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { AppError } from '../../lib/errors.js';
 import { pickFields, TRAN_ID_PATTERN, type CreateTransactionInput, type PaymentInstructions, type PaymentProvider, type ProviderStatus, type TransactionCheck, type WebhookVerification } from './provider.js';
@@ -7,6 +8,7 @@ const FAKE_SECRET = 'fake-payment-provider-dev-secret';
 /** In-memory stand-in for PayWay: tests and local development without merchant credentials. */
 export class FakePaymentProvider implements PaymentProvider {
   readonly name = 'fake' as const;
+  readonly methods: readonly PaymentMethod[] = ['aba_khqr', 'card', 'acleda', 'wing'];
   readonly created: CreateTransactionInput[] = [];
   readonly cancelled: string[] = [];
   checkCalls = 0;

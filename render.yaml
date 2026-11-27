@@ -24,9 +24,16 @@ services:
         sync: false
       - key: BOOTSTRAP_ADMIN_PHONES
         sync: false
-      # Until ABA PayWay is set up: customers order online and pay at a store.
+      # Until Bakong (or ABA PayWay) is set up: customers order online and pay at a store.
+      # With Bakong: set the three BAKONG_* values below and change this to "false" (docs/BAKONG-SETUP.md).
       - key: PAYMENT_METHODS_CASH_ONLY
         value: "true"
+      - key: BAKONG_TOKEN
+        sync: false
+      - key: BAKONG_ACCOUNT_ID
+        sync: false
+      - key: BAKONG_MERCHANT_NAME
+        sync: false
       # Shoppers reach the API through the shop's host (Vercel), then Render's load balancer.
       - key: TRUST_PROXY_HOPS
         value: "2"

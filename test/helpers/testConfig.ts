@@ -23,6 +23,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     paywayBaseUrl: 'https://checkout-sandbox.payway.com.kh',
     paywayReturnUrl: undefined,
     paywayContinueUrl: 'https://shop.example/checkout/return',
+    bakong: undefined,
     paymentsCashOnly: false,
     publicApiUrl: 'http://localhost:3000',
     telegramBotToken: undefined,

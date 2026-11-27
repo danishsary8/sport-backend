@@ -142,7 +142,7 @@ export async function applyProviderResult(deps: { db: Db; now: () => Date }, tra
     if (payment.status === 'approved') return 'already';
     await tx
       .update(payments)
-      .set({ status: 'approved', lastCheckedAt: now, raw: { source, check: check.raw ?? null }, updatedAt: sql`now()` })
+      .set({ status: 'approved', lastCheckedAt: now, raw: { source, check: check.raw ?? null, created: payment.raw ?? null }, updatedAt: sql`now()` })
       .where(eq(payments.id, payment.id));
     await recordEvent(tx, { orderId: order.id, kind: 'payment', actor: 'system', note: `Payment ${payment.providerTranId} approved (${source})` });
 

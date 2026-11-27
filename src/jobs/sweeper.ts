@@ -46,7 +46,7 @@ export async function expireOrder(deps: Omit<SweepDeps, 'notifiers' | 'logger'>,
   let unverified = false;
   for (const p of open) {
     try {
-      const check = await deps.payments.checkTransaction(p.providerTranId);
+      const check = await deps.payments.checkTransaction(p.providerTranId, { raw: p.raw });
       if (check.status !== 'pending') await applyProviderResult({ db, now: deps.now }, p.providerTranId, check, 'sweeper');
     } catch (error) {
       if (!(error instanceof AppError)) throw error;
@@ -112,6 +112,7 @@ function breakerFor(provider: PaymentProvider): PaymentProvider {
   };
   return {
     name: provider.name,
+    methods: provider.methods,
     createTransaction: guard(provider.createTransaction.bind(provider)),
     checkTransaction: guard(provider.checkTransaction.bind(provider)),
     cancelTransaction: guard(provider.cancelTransaction.bind(provider)),

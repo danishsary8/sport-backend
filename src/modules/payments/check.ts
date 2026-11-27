@@ -30,7 +30,7 @@ export async function refreshPayment(
     .returning({ id: payments.id });
   if (claimed.length > 0) {
     try {
-      const check = await deps.payments.checkTransaction(payment.providerTranId);
+      const check = await deps.payments.checkTransaction(payment.providerTranId, { raw: payment.raw });
       await applyProviderResult(deps, payment.providerTranId, check, opts.source ?? 'poll');
     } catch (error) {
       if (!(error instanceof AppError)) throw error;

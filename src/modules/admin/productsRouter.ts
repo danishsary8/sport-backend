@@ -16,6 +16,7 @@ import {
 } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
 import { exportProductsCsv, importProductsCsv } from './productsCsv.js';
+import { assetUrl } from '../catalog/view.js';
 import { requireRole } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { escapeLike } from '../catalog/listing.js';
@@ -97,6 +98,7 @@ const variantPatchSchema = z
 const listSchema = z.object({
   q: z.string().trim().max(100).optional(),
   status: z.enum(PRODUCT_STATUSES).optional(),
+  category: z.string().trim().max(80).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -164,7 +166,7 @@ function mapUnique(error: unknown): never {
   throw error;
 }
 
-async function adminView(db: Db, id: string) {
+async function adminView(db: Db, id: string, base: string) {
   const [product] = await db.select().from(products).where(eq(products.id, id));
   if (!product) throw new AppError('not_found', 404, 'Product not found');
   const [colorRows, variantRows, imageRows] = await Promise.all([
@@ -172,7 +174,7 @@ async function adminView(db: Db, id: string) {
     db.select().from(variants).where(eq(variants.productId, id)).orderBy(variants.sizeSort),
     db.select().from(productImages).where(eq(productImages.productId, id)).orderBy(productImages.sort),
   ]);
-  return { ...product, colors: colorRows, variants: variantRows, images: imageRows };
+  return { ...product, colors: colorRows, variants: variantRows, images: imageRows.map((i) => ({ ...i, url: assetUrl(base, i.path) })) };
 }
 
 export function adminProductsRouter(ctx: AppContext): Router {
@@ -186,19 +188,47 @@ export function adminProductsRouter(ctx: AppContext): Router {
   });
 
   router.get('/admin/products', ...admin, validate({ query: listSchema }), async (req, res) => {
-    const { q, status, page, pageSize } = req.query as unknown as z.infer<typeof listSchema>;
+    const { q, status, category, page, pageSize } = req.query as unknown as z.infer<typeof listSchema>;
     const conditions: SQL[] = [];
     if (status) conditions.push(eq(products.status, status));
+    if (category) conditions.push(eq(categories.slug, category));
     if (q) {
       const pattern = `%${escapeLike(q)}%`;
       conditions.push(or(ilike(products.slug, pattern), ilike(products.searchText, pattern))!);
     }
     const where = conditions.length ? and(...conditions) : undefined;
+    // What a manager needs to see at a glance: photos, price range, how many sizes and how much stock.
+    const firstImage = (n: number) => sql<string | null>`(select i.path from product_images i where i.product_id = ${products.id} order by i.sort, i.id offset ${n} limit 1)`;
     const [rows, [total]] = await Promise.all([
-      db.select().from(products).where(where).orderBy(desc(products.updatedAt), products.slug).limit(pageSize).offset((page - 1) * pageSize),
-      db.select({ n: count() }).from(products).where(where),
+      db
+        .select({
+          product: products,
+          brandName: brands.name,
+          categorySlug: categories.slug,
+          image: firstImage(0),
+          hoverImage: firstImage(1),
+          imageCount: sql<number>`(select count(*) from product_images i where i.product_id = ${products.id})::int`,
+          priceMinCents: sql<number | null>`(select min(v.price_cents) from variants v where v.product_id = ${products.id})::int`,
+          priceMaxCents: sql<number | null>`(select max(v.price_cents) from variants v where v.product_id = ${products.id})::int`,
+          variantCount: sql<number>`(select count(*) from variants v where v.product_id = ${products.id})::int`,
+          onHand: sql<number>`(select coalesce(sum(s.on_hand), 0) from stock s join variants v on v.id = s.variant_id where v.product_id = ${products.id})::int`,
+        })
+        .from(products)
+        .innerJoin(brands, eq(brands.id, products.brandId))
+        .innerJoin(categories, eq(categories.id, products.categoryId))
+        .where(where)
+        .orderBy(desc(products.updatedAt), products.slug)
+        .limit(pageSize)
+        .offset((page - 1) * pageSize),
+      db.select({ n: count() }).from(products).innerJoin(categories, eq(categories.id, products.categoryId)).where(where),
     ]);
-    res.json({ products: rows, total: total?.n ?? 0, page, pageSize });
+    const base = ctx.config.assetBaseUrl;
+    res.json({
+      products: rows.map(({ product, image, hoverImage, ...r }) => ({ ...product, ...r, imageUrl: assetUrl(base, image), hoverImageUrl: assetUrl(base, hoverImage) })),
+      total: total?.n ?? 0,
+      page,
+      pageSize,
+    });
   });
 
   router.get('/admin/products/export.csv', ...admin, async (_req, res) => {
@@ -223,7 +253,7 @@ export function adminProductsRouter(ctx: AppContext): Router {
   router.get('/admin/products/:id', ...admin, async (req, res) => {
     const id = String(req.params.id);
     if (!UUID.test(id)) throw new AppError('not_found', 404, 'Product not found');
-    res.json({ product: await adminView(db, id) });
+    res.json({ product: await adminView(db, id, ctx.config.assetBaseUrl) });
   });
 
   router.post('/admin/products', ...admin, validate({ body: createSchema }), async (req, res) => {
@@ -271,7 +301,7 @@ export function adminProductsRouter(ctx: AppContext): Router {
       })
       .catch(mapUnique);
     ctx.logger.info({ productId: id, actorId: req.user!.id }, 'Product created');
-    res.status(201).json({ product: await adminView(db, id) });
+    res.status(201).json({ product: await adminView(db, id, ctx.config.assetBaseUrl) });
   });
 
   router.patch('/admin/products/:id', ...admin, validate({ body: patchSchema }), async (req, res) => {
@@ -293,7 +323,7 @@ export function adminProductsRouter(ctx: AppContext): Router {
       })
       .catch(mapUnique);
     ctx.logger.info({ productId: id, actorId: req.user!.id, change: patch }, 'Product updated');
-    res.json({ product: await adminView(db, id) });
+    res.json({ product: await adminView(db, id, ctx.config.assetBaseUrl) });
   });
 
   router.post('/admin/products/:id/variants', ...admin, validate({ body: variantInput }), async (req, res) => {
@@ -311,7 +341,7 @@ export function adminProductsRouter(ctx: AppContext): Router {
       })
       .catch(mapUnique);
     ctx.logger.info({ productId: id, actorId: req.user!.id, variant: req.body }, 'Variant added');
-    res.status(201).json({ product: await adminView(db, id) });
+    res.status(201).json({ product: await adminView(db, id, ctx.config.assetBaseUrl) });
   });
 
   router.put('/admin/products/:id/variants/:variantId', ...admin, validate({ body: variantPatchSchema }), async (req, res) => {
@@ -329,7 +359,7 @@ export function adminProductsRouter(ctx: AppContext): Router {
       await tx.update(products).set({ updatedAt: sql`now()` }).where(eq(products.id, id));
     });
     ctx.logger.info({ productId: id, variantId, actorId: req.user!.id, change: req.body }, 'Variant updated');
-    res.json({ product: await adminView(db, id) });
+    res.json({ product: await adminView(db, id, ctx.config.assetBaseUrl) });
   });
 
   // ---- Colours and photos after creation -------------------------------------------------------------
@@ -362,7 +392,7 @@ export function adminProductsRouter(ctx: AppContext): Router {
       await refreshSearchText(tx, id);
     });
     ctx.logger.info({ productId: id, actorId: req.user!.id, color: input.name }, 'Colour added');
-    res.status(201).json({ product: await adminView(db, id) });
+    res.status(201).json({ product: await adminView(db, id, ctx.config.assetBaseUrl) });
   });
 
   router.patch(
@@ -387,7 +417,7 @@ export function adminProductsRouter(ctx: AppContext): Router {
         await refreshSearchText(tx, id);
       });
       ctx.logger.info({ productId: id, colorId, actorId: req.user!.id, change: input }, 'Colour updated');
-      res.json({ product: await adminView(db, id) });
+      res.json({ product: await adminView(db, id, ctx.config.assetBaseUrl) });
     },
   );
 
@@ -405,7 +435,7 @@ export function adminProductsRouter(ctx: AppContext): Router {
       await refreshSearchText(tx, id);
     });
     ctx.logger.info({ productId: id, colorId, actorId: req.user!.id }, 'Colour deleted');
-    res.json({ product: await adminView(db, id) });
+    res.json({ product: await adminView(db, id, ctx.config.assetBaseUrl) });
   });
 
   const imagesInput = z.object({
@@ -428,7 +458,7 @@ export function adminProductsRouter(ctx: AppContext): Router {
       await tx.update(products).set({ updatedAt: sql`now()` }).where(eq(products.id, id));
     });
     ctx.logger.info({ productId: id, actorId: req.user!.id, images: images.length }, 'Product photos replaced');
-    res.json({ product: await adminView(db, id) });
+    res.json({ product: await adminView(db, id, ctx.config.assetBaseUrl) });
   });
 
   // ---- Brands and categories ------------------------------------------------------------------------------

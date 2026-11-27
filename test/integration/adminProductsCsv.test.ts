@@ -62,6 +62,14 @@ describe('CSV export', () => {
     expect(searched.text.replace(/^\uFEFF/, '').trim().split('\r\n')).toHaveLength(1);
   });
 
+  it('exports just the ticked products', async () => {
+    const picked = (await q("select id, slug from products order by slug limit 2")).rows as { id: string; slug: string }[];
+    const res = await request(ctx.app).get('/v1/admin/products/export.csv').query({ format: 'products', ids: picked.map((p) => p.id).join(',') }).set(bearer(admin)).expect(200);
+    const slugs = res.text.replace(/^\uFEFF/, '').trim().split('\r\n').slice(1).map((l) => l.split(',').at(-2));
+    expect([...new Set(slugs)].sort()).toEqual(picked.map((p) => p.slug).sort());
+    await request(ctx.app).get('/v1/admin/products/export.csv').query({ ids: 'not-an-id' }).set(bearer(admin)).expect(400);
+  });
+
   it('exports whole products in the new-product import columns', async () => {
     const res = await request(ctx.app).get('/v1/admin/products/export.csv').query({ format: 'products', category: 'boots' }).set(bearer(admin)).expect(200);
     const lines = res.text.replace(/^\uFEFF/, '').trim().split('\r\n');

@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
 import express, { Router, type Request } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../../context.js';
@@ -104,8 +104,9 @@ const listSchema = z.object({
 });
 
 /** The product list's filters as SQL over `products` and `categories`; shared by the list and the CSV export. */
-export function productFilter({ q, status, category }: { q?: string; status?: (typeof PRODUCT_STATUSES)[number]; category?: string }): SQL | undefined {
+export function productFilter({ q, status, category, ids }: { q?: string; status?: (typeof PRODUCT_STATUSES)[number]; category?: string; ids?: string[] }): SQL | undefined {
   const conditions: SQL[] = [];
+  if (ids) conditions.push(inArray(products.id, ids));
   if (status) conditions.push(eq(products.status, status));
   if (category) conditions.push(eq(categories.slug, category));
   if (q) {
@@ -115,7 +116,15 @@ export function productFilter({ q, status, category }: { q?: string; status?: (t
   return conditions.length ? and(...conditions) : undefined;
 }
 
-const exportSchema = listSchema.omit({ page: true, pageSize: true }).extend({ format: z.enum(['prices', 'products']).default('prices') });
+const exportSchema = listSchema.omit({ page: true, pageSize: true }).extend({
+  format: z.enum(['prices', 'products']).default('prices'),
+  /** Comma-separated product ids: export just these (the ticked rows). */
+  ids: z
+    .string()
+    .transform((v) => v.split(',').map((x) => x.trim()).filter(Boolean))
+    .pipe(z.array(z.string().uuid('Not a product id')).min(1).max(200))
+    .optional(),
+});
 
 const allPricesSchema = z.object({ priceCents, compareAtCents: priceCents.nullable().optional() });
 

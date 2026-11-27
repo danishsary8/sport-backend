@@ -15,7 +15,7 @@ import {
   variants,
 } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
-import { exportProductsCsv, importProductsCsv } from './productsCsv.js';
+import { exportCatalogCsv, exportProductsCsv, importProductsCsv } from './productsCsv.js';
 import { assetUrl } from '../catalog/view.js';
 import { requireRole } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
@@ -103,6 +103,22 @@ const listSchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
+/** The product list's filters as SQL over `products` and `categories`; shared by the list and the CSV export. */
+export function productFilter({ q, status, category }: { q?: string; status?: (typeof PRODUCT_STATUSES)[number]; category?: string }): SQL | undefined {
+  const conditions: SQL[] = [];
+  if (status) conditions.push(eq(products.status, status));
+  if (category) conditions.push(eq(categories.slug, category));
+  if (q) {
+    const pattern = `%${escapeLike(q)}%`;
+    conditions.push(or(ilike(products.slug, pattern), ilike(products.searchText, pattern))!);
+  }
+  return conditions.length ? and(...conditions) : undefined;
+}
+
+const exportSchema = listSchema.omit({ page: true, pageSize: true }).extend({ format: z.enum(['prices', 'products']).default('prices') });
+
+const allPricesSchema = z.object({ priceCents, compareAtCents: priceCents.nullable().optional() });
+
 function invalid(path: string, message: string) {
   return new AppError('validation_failed', 400, 'Validation failed', [{ path, message }]);
 }
@@ -189,14 +205,7 @@ export function adminProductsRouter(ctx: AppContext): Router {
 
   router.get('/admin/products', ...admin, validate({ query: listSchema }), async (req, res) => {
     const { q, status, category, page, pageSize } = req.query as unknown as z.infer<typeof listSchema>;
-    const conditions: SQL[] = [];
-    if (status) conditions.push(eq(products.status, status));
-    if (category) conditions.push(eq(categories.slug, category));
-    if (q) {
-      const pattern = `%${escapeLike(q)}%`;
-      conditions.push(or(ilike(products.slug, pattern), ilike(products.searchText, pattern))!);
-    }
-    const where = conditions.length ? and(...conditions) : undefined;
+    const where = productFilter({ q, status, category });
     // What a manager needs to see at a glance: photos, price range, how many sizes and how much stock.
     const firstImage = (n: number) => sql<string | null>`(select i.path from product_images i where i.product_id = ${products.id} order by i.sort, i.id offset ${n} limit 1)`;
     const [rows, [total]] = await Promise.all([
@@ -231,10 +240,14 @@ export function adminProductsRouter(ctx: AppContext): Router {
     });
   });
 
-  router.get('/admin/products/export.csv', ...admin, async (_req, res) => {
+  // Follows the list's filters. "prices": one row per size (the price-update file); "products": one row per
+  // product colour in the new-product import columns, plus slug and status.
+  router.get('/admin/products/export.csv', ...admin, validate({ query: exportSchema }), async (req, res) => {
+    const { format, ...filters } = req.query as unknown as z.infer<typeof exportSchema>;
+    const where = productFilter(filters) ?? sql`true`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="sport-castle-products-${new Date().toISOString().slice(0, 10)}.csv"`);
-    res.send(await exportProductsCsv(db));
+    res.setHeader('Content-Disposition', `attachment; filename="sport-heaven-${format}-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(format === 'products' ? await exportCatalogCsv(db, where) : await exportProductsCsv(db, where));
   });
 
   router.post(
@@ -342,6 +355,24 @@ export function adminProductsRouter(ctx: AppContext): Router {
       .catch(mapUnique);
     ctx.logger.info({ productId: id, actorId: req.user!.id, variant: req.body }, 'Variant added');
     res.status(201).json({ product: await adminView(db, id, ctx.config.assetBaseUrl) });
+  });
+
+  // One price (and optional "was" price) for every size of the product, in one transaction.
+  router.put('/admin/products/:id/prices', ...admin, validate({ body: allPricesSchema }), async (req, res) => {
+    const id = String(req.params.id);
+    if (!UUID.test(id)) throw new AppError('not_found', 404, 'Product not found');
+    const body = req.body as z.infer<typeof allPricesSchema>;
+    const compareAtCents = body.compareAtCents ?? null;
+    if (compareAtCents !== null && compareAtCents <= body.priceCents) throw invalid('compareAtCents', 'Compare-at price must be higher than the price');
+    const changed = await db.transaction(async (tx) => {
+      const [p] = await tx.select({ id: products.id }).from(products).where(eq(products.id, id)).for('update');
+      if (!p) throw new AppError('not_found', 404, 'Product not found');
+      const rows = await tx.update(variants).set({ priceCents: body.priceCents, compareAtCents }).where(eq(variants.productId, id)).returning({ id: variants.id });
+      await tx.update(products).set({ updatedAt: sql`now()` }).where(eq(products.id, id));
+      return rows.length;
+    });
+    ctx.logger.info({ productId: id, actorId: req.user!.id, priceCents: body.priceCents, compareAtCents, sizes: changed }, 'Price set for all sizes');
+    res.json({ product: await adminView(db, id, ctx.config.assetBaseUrl) });
   });
 
   router.put('/admin/products/:id/variants/:variantId', ...admin, validate({ body: variantPatchSchema }), async (req, res) => {

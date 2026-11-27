@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, type SQL } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import { variants } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
@@ -15,20 +15,56 @@ function cell(value: string, text = true): string {
 const dollars = (cents: number | null) => (cents === null ? '' : (cents / 100).toFixed(2));
 
 /** One row per variant: everything staff need to review prices in a spreadsheet. */
-export async function exportProductsCsv(db: Db): Promise<string> {
+export async function exportProductsCsv(db: Db, where: SQL = sql`true`): Promise<string> {
   const rows = await db.execute<{
     sku: string; slug: string; name: string; brand: string; category: string; product_status: string;
     color: string; size: string; price_cents: number; compare_at_cents: number | null; variant_status: string;
   }>(sql`
-    select v.sku, p.slug, p.name_i18n->>'en' as name, b.name as brand, c.slug as category, p.status as product_status,
+    select v.sku, products.slug, products.name_i18n->>'en' as name, b.name as brand, categories.slug as category, products.status as product_status,
       pc.name as color, v.size_label as size, v.price_cents, v.compare_at_cents, v.status as variant_status
-    from variants v join products p on p.id = v.product_id join brands b on b.id = p.brand_id
-    join categories c on c.id = p.category_id join product_colors pc on pc.id = v.color_id
-    order by p.slug, pc.sort, v.size_sort, v.sku`);
+    from variants v join products on products.id = v.product_id join brands b on b.id = products.brand_id
+    join categories on categories.id = products.category_id join product_colors pc on pc.id = v.color_id
+    where ${where}
+    order by products.slug, pc.sort, v.size_sort, v.sku`);
   const lines = [CSV_COLUMNS.join(',')];
   for (const r of rows.rows) {
     lines.push(
       [cell(r.sku), cell(r.slug), cell(r.name), cell(r.brand), cell(r.category), cell(r.product_status), cell(r.color), cell(r.size), dollars(r.price_cents), dollars(r.compare_at_cents), cell(r.variant_status)].join(','),
+    );
+  }
+  return `\uFEFF${lines.join('\r\n')}\r\n`;
+}
+
+export const CATALOG_COLUMNS = ['name', 'brand', 'category', 'colour', 'colour_hex', 'sizes', 'price', 'compare_at', 'description', 'main_photo', 'hover_photo', 'slug', 'status'] as const;
+
+/**
+ * One row per product colour, in the new-product import columns (sizes joined with "|"), plus slug and status.
+ * Price is the lowest size price for that colour; photos are that colour's first two (or the product's).
+ */
+export async function exportCatalogCsv(db: Db, where: SQL = sql`true`): Promise<string> {
+  const rows = await db.execute<{
+    name: string; brand: string; category: string; colour: string; hex: string | null; sizes: string[]; price: number; compare_at: number | null;
+    description: string | null; photos: string[] | null; slug: string; status: string;
+  }>(sql`
+    select products.name_i18n->>'en' as name, b.name as brand, categories.slug as category, pc.name as colour, pc.swatch_hex as hex,
+      array_agg(v.size_label order by v.size_sort, v.size_label) as sizes,
+      min(v.price_cents)::int as price, min(v.compare_at_cents)::int as compare_at,
+      products.description_i18n->>'en' as description,
+      (select array_agg(i.path order by (i.color_id = pc.id) desc nulls last, i.sort, i.id) from product_images i
+        where i.product_id = products.id and (i.color_id is null or i.color_id = pc.id)) as photos,
+      products.slug, products.status
+    from product_colors pc join products on products.id = pc.product_id join brands b on b.id = products.brand_id
+    join categories on categories.id = products.category_id join variants v on v.color_id = pc.id
+    where ${where}
+    group by products.id, b.name, categories.slug, pc.id
+    order by products.slug, pc.sort, pc.name`);
+  const lines = [CATALOG_COLUMNS.join(',')];
+  for (const r of rows.rows) {
+    lines.push(
+      [
+        cell(r.name), cell(r.brand), cell(r.category), cell(r.colour), cell(r.hex ?? ''), cell(r.sizes.join('|')), dollars(r.price), dollars(r.compare_at),
+        cell(r.description ?? ''), cell(r.photos?.[0] ?? ''), cell(r.photos?.[1] ?? ''), cell(r.slug), cell(r.status),
+      ].join(','),
     );
   }
   return `\uFEFF${lines.join('\r\n')}\r\n`;

@@ -49,6 +49,33 @@ describe('CSV export', () => {
     }
   });
 
+  it('exports only the products matching the list filters', async () => {
+    const res = await request(ctx.app).get('/v1/admin/products/export.csv').query({ category: 'balls', status: 'active' }).set(bearer(admin)).expect(200);
+    const lines = res.text.replace(/^\uFEFF/, '').trim().split('\r\n').slice(1);
+    const expected = Number(
+      (await q("select count(*)::int as n from variants v join products p on p.id = v.product_id join categories c on c.id = p.category_id where c.slug = 'balls' and p.status = 'active'")).rows[0].n,
+    );
+    expect(expected).toBeGreaterThan(0);
+    expect(lines).toHaveLength(expected);
+    expect(lines.every((l) => l.split(',')[4] === 'balls')).toBe(true);
+    const searched = await request(ctx.app).get('/v1/admin/products/export.csv').query({ q: 'zzz-no-such-product' }).set(bearer(admin)).expect(200);
+    expect(searched.text.replace(/^\uFEFF/, '').trim().split('\r\n')).toHaveLength(1);
+  });
+
+  it('exports whole products in the new-product import columns', async () => {
+    const res = await request(ctx.app).get('/v1/admin/products/export.csv').query({ format: 'products', category: 'boots' }).set(bearer(admin)).expect(200);
+    const lines = res.text.replace(/^\uFEFF/, '').trim().split('\r\n');
+    expect(lines[0]).toBe('name,brand,category,colour,colour_hex,sizes,price,compare_at,description,main_photo,hover_photo,slug,status');
+    const colours = Number(
+      (await q("select count(*)::int as n from product_colors pc join products p on p.id = pc.product_id join categories c on c.id = p.category_id where c.slug = 'boots' and exists (select 1 from variants v where v.color_id = pc.id)")).rows[0].n,
+    );
+    expect(lines.length - 1).toBe(colours);
+    const slug = (await q("select p.slug from products p join categories c on c.id = p.category_id where c.slug = 'boots' order by p.slug limit 1")).rows[0].slug as string;
+    const line = lines.find((l) => l.includes(`,${slug},`))!;
+    expect(line).toMatch(/EU \d+(\.\d)?\|EU/);
+    expect(line).toMatch(/,catalog\/[^,]+\.jpg,/);
+  });
+
   it('is for admins only', async () => {
     const staff = await staffToken(ctx.app, database, ctx.fake, 'csv-staff', 'staff');
     await request(ctx.app).get('/v1/admin/products/export.csv').set(bearer(staff)).expect(403);

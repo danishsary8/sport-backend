@@ -26,7 +26,7 @@ describe('GET /v1/catalog/products', () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ total: 80, page: 1, pageSize: 24 });
     expect(cards(res)).toHaveLength(24);
-    expect(res.headers['cache-control']).toBe('public, max-age=60, stale-while-revalidate=300');
+    expect(res.headers['cache-control']).toBe('public, no-cache');
     expect(cards(res)[0]!.imageUrl).toMatch(/^\/assets\/catalog\/.+\.jpg$/);
   });
 

@@ -31,7 +31,7 @@ describe('product questions', () => {
     expect((await q("select template, recipient from notification_outbox")).rows).toEqual([{ template: 'question_received', recipient: 'ops' }]);
     const empty = await request(ctx.app).get(`/v1/catalog/products/${JERSEY}/questions`).expect(200);
     expect(empty.body.questions).toEqual([]);
-    expect(empty.headers['cache-control']).toContain('public, max-age=60');
+    expect(empty.headers['cache-control']).toBe('public, no-cache');
 
     const list = await request(ctx.app).get('/v1/admin/questions?status=pending').set(bearer(admin)).expect(200);
     expect(list.body.total).toBe(1);

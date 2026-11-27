@@ -133,6 +133,25 @@ describe('menu, collections and home', () => {
     expect(rail.payload.products.length).toBeLessThanOrEqual(12);
   });
 
+  it('has browsers check back each time, so a new photo shows on the next home page view', async () => {
+    const first = await request(app).get('/v1/catalog/home');
+    expect(first.headers['cache-control']).toBe('public, no-cache');
+    const etag = first.headers.etag as string;
+    // Nothing changed: a cheap 304 with no body.
+    await request(app).get('/v1/catalog/home').set('If-None-Match', etag).expect(304);
+
+    const rail = first.body.sections.find((s: { type: string }) => s.type === 'product_rail');
+    const card = rail.payload.products[0] as { slug: string; imageUrl: string };
+    await database.pool.query(
+      `update product_images set path = 'media/00000000-0000-4000-8000-000000000001.jpg'
+       where id = (select pi.id from product_images pi join products p on p.id = pi.product_id where p.slug = $1 order by pi.sort, pi.id limit 1)`,
+      [card.slug],
+    );
+    const after = await request(app).get('/v1/catalog/home').set('If-None-Match', etag).expect(200);
+    const updated = after.body.sections.find((s: { type: string }) => s.type === 'product_rail').payload.products.find((p: { slug: string }) => p.slug === card.slug);
+    expect(updated.imageUrl).toContain('00000000-0000-4000-8000-000000000001');
+  });
+
   it('keeps the home page up when a rail points at a retired or broken collection', async () => {
     await database.pool.query(`insert into collections (slug, name_i18n, rule, active) values
       ('retired', '{"en":"Retired"}', '{"category":"boots"}', false),

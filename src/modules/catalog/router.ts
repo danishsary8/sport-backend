@@ -22,7 +22,11 @@ const PATCH_LABELS: Record<PatchId, string> = {
 };
 const FONT_LABELS: Record<FontId, string> = { 'pro-condensed': 'Pro condensed', 'classic-block': 'Classic block', 'motorsport-aero': 'Motorsport aero' };
 
-export const PUBLIC_CACHE = 'public, max-age=60, stale-while-revalidate=300';
+/**
+ * Browsers keep catalog responses but check back every time (a cheap 304 via the ETag when nothing
+ * changed), so an admin's edit — a new photo, price or name — shows on the very next page view.
+ */
+export const PUBLIC_CACHE = 'public, no-cache';
 
 export function catalogRouter(ctx: AppContext): Router {
   const router = Router();
@@ -78,7 +82,7 @@ export function catalogRouter(ctx: AppContext): Router {
     async (req, res) => {
       const { q } = req.query as unknown as { q: string };
       const result = await suggest(db, q, lang(req.query), ctx.config.assetBaseUrl, await safetyBuffer(db));
-      res.setHeader('Cache-Control', 'public, max-age=60');
+      res.setHeader('Cache-Control', PUBLIC_CACHE);
       res.json(result);
     },
   );
@@ -98,13 +102,13 @@ export function catalogRouter(ctx: AppContext): Router {
 
   router.get('/catalog/menu', validate({ query: langQuery }), async (req, res) => {
     const result = await menu(db, lang(req.query), await safetyBuffer(db));
-    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.setHeader('Cache-Control', PUBLIC_CACHE);
     res.json(result);
   });
 
   router.get('/catalog/collections/:slug', validate({ query: langQuery }), async (req, res) => {
     const collection = await collectionInfo(db, String(req.params.slug), lang(req.query));
-    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.setHeader('Cache-Control', PUBLIC_CACHE);
     res.json({ collection });
   });
 

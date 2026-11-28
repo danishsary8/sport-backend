@@ -38,7 +38,7 @@ describe('importCatalog', () => {
     );
     expect(p).toMatchObject({ brand: 'Varaman', category: 'jerseys', is_customizable: true, status: 'active' });
     expect(p.attributes.league).toBe('International');
-    expect(p.name_i18n).toEqual({ en: 'Cambodia National Team Home Jersey (Varaman Official)' });
+    expect(p.name_i18n).toEqual({ en: 'Cambodia National Team Home Jersey (Varaman)' });
     expect(p.search_text.toLowerCase()).toContain('cambodia');
 
     const v = await q('select size_label, price_cents from variants where product_id = $1 order by size_sort', [p.id]);

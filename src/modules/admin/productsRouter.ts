@@ -103,6 +103,8 @@ const listSchema = z.object({
   q: z.string().trim().max(100).optional(),
   status: z.enum(PRODUCT_STATUSES).optional(),
   category: z.string().trim().max(80).optional(),
+  /** A brand slug: e.g. to find (and hide) one brand's products quickly. */
+  brand: z.string().trim().max(80).optional(),
   // Sub-types (one value each): stored attributes, and the season/continent the shop works out.
   league: z.string().trim().max(80).optional(),
   kitType: z.string().trim().max(80).optional(),
@@ -119,11 +121,14 @@ type ProductFilterInput = {
   q?: string;
   status?: (typeof PRODUCT_STATUSES)[number];
   category?: string;
+  brand?: string;
   ids?: string[];
 } & Partial<Record<(typeof SUBTYPE_KEYS)[number], string>>;
 
-export function productFilter({ q, status, category, ids, ...subtypes }: ProductFilterInput): SQL | undefined {
+export function productFilter({ q, status, category, brand, ids, ...subtypes }: ProductFilterInput): SQL | undefined {
   const conditions: SQL[] = [];
+  // By the product's own brand id, so it works however the query joins brands (list, exports).
+  if (brand) conditions.push(sql`${products.brandId} in (select b2.id from brands b2 where b2.slug = ${brand})`);
   for (const key of ['league', 'kitType', 'surface', 'garmentType'] as const) {
     if (subtypes[key]) conditions.push(sql`${products.attributes}->>${key} = ${subtypes[key]}`);
   }

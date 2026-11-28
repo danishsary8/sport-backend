@@ -45,7 +45,7 @@
    "studConfig": "Sprintframe 360 Messi agility stud geometry",
    "fitProfile": "Snug adaptive speed fit — true to EU size",
    "careGuide": "Wipe metallic gold upper with damp microfiber cloth; air dry.",
-   "origin": "Authentic Messi Signature Retail Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -98,7 +98,7 @@
    "studConfig": "Controlframe 2.0 triangular & bladed traction",
    "fitProfile": "True to size with structured midfoot lockdown",
    "careGuide": "Clean Strikeskin fins gently with soft brush after grass matches.",
-   "origin": "Authentic Retail Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -147,7 +147,7 @@
    "studConfig": "Cyclone 360 circular forefoot + bladed heel",
    "fitProfile": "Anatomical snug ankle wrap — true to size",
    "careGuide": "Wipe Gripknit upper with lukewarm damp cloth; never machine wash.",
-   "origin": "Authentic Retail Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -197,7 +197,7 @@
    "studConfig": "Carbon SPEEDSYSTEM + FastTrax studs",
    "fitProfile": "Race-tuned narrow-to-medium speed fit",
    "careGuide": "Rinse carbon plate after mud; store away from high heat.",
-   "origin": "Authentic Retail Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -245,7 +245,7 @@
    "studConfig": "Lightweight nylon plate with directional chevrons",
    "fitProfile": "Accommodating standard-to-wide forefoot friendly",
    "careGuide": "Air dry naturally with paper inserts to retain knit structure.",
-   "origin": "Authentic Retail Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -345,7 +345,7 @@
    "studConfig": "Hollow conical AG-Pro molded soccer studs",
    "fitProfile": "Snug low-cut speed fit — true to EU size",
    "careGuide": "Brush artificial turf crumb off soleplate after matches; air dry in shade.",
-   "origin": "Authentic Retail Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -396,7 +396,7 @@
    "studConfig": "Bladed chevron + Air Zoom forefoot pods",
    "fitProfile": "Snug speed last — true to size",
    "careGuide": "Wipe with damp microfiber cloth after wet grass sessions; air dry away from direct sun.",
-   "origin": "Authentic Retail Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -444,7 +444,7 @@
    "studConfig": "Conical AG-Pro hollow studs + Cyclone 360 forefoot",
    "fitProfile": "Anatomical playmaker fit",
    "careGuide": "Brush rubber crumb off soleplate after artificial turf play.",
-   "origin": "Authentic Retail Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -492,7 +492,7 @@
    "studConfig": "Hybrid bladed and semi-conical Sprintframe 360",
    "fitProfile": "Streamlined narrow-to-standard",
    "careGuide": "Clean white upper immediately with mild soap; store with boot trees.",
-   "origin": "Authentic Retail Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -539,7 +539,7 @@
    "studConfig": "Conical rotational studs with Torsionframe ribs",
    "fitProfile": "Accommodating medium-to-wide leather mold",
    "careGuide": "Condition calf leather monthly with leather balm to retain suppleness.",
-   "origin": "Authentic Retail Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -586,7 +586,7 @@
    "studConfig": "Low-profile conical molded artificial-turf soccer studs",
    "fitProfile": "Comfortable true-to-size all-foot profile",
    "careGuide": "Rinse turf dust and air dry; zero leather-conditioning required.",
-   "origin": "Authentic Retail Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -681,7 +681,7 @@
    "studConfig": "Chrome lightweight plate with conical rotational soccer studs",
    "fitProfile": "Classic medium-to-wide forgiving football last",
    "careGuide": "Wipe chrome soleplate and upper with damp microfiber cloth after matches.",
-   "origin": "Authentic Retail Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -728,7 +728,7 @@
    "studConfig": "Multi-ground high-density conical studs",
    "fitProfile": "Wide-foot friendly adaptive stretch",
    "careGuide": "Gentle cold wipe and air dry.",
-   "origin": "Authentic Retail Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -739,7 +739,7 @@
  {
   "id": "jersey-cambodia-home",
   "slug": "cambodia-national-team-home-jersey-varaman",
-  "name": "Cambodia National Team Home Jersey (Varaman Official)",
+  "name": "Cambodia National Team Home Jersey (Varaman)",
   "shortName": "Cambodia Home Kit",
   "brand": "Varaman",
   "category": "jerseys",
@@ -764,9 +764,9 @@
    "XXL"
   ],
   "image": "/src/assets/images/jersey_cambodia_blue_1795112605589.jpg",
-  "summary": "Official Football Federation of Cambodia match jersey by Varaman featuring subtle tonal Khmer temple geometry, Angkor red collar trim, and breathable micro-mesh built for tropical heat.",
+  "summary": "Football Federation of Cambodia match jersey by Varaman featuring subtle tonal Khmer temple geometry, Angkor red collar trim, and breathable micro-mesh built for tropical heat.",
   "techHighlights": [
-   "Official FFC licensed Varaman Match Edition",
+   "Varaman Match Edition",
    "Tonal Khmer temple jacquard weave",
    "Moisture-wicking tropical micro-mesh",
    "Ready for same-day Sport Heaven heat-press printing"
@@ -775,7 +775,7 @@
    "upperMaterial": "100% Pro-Aero Micro-Mesh Polyester (145 GSM)",
    "fitProfile": "Athletic Southeast Asian fit (size up for relaxed)",
    "careGuide": "Wash cold inside-out; never iron directly over custom heat-press numbers.",
-   "origin": "Official Varaman Cambodia Release"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -794,7 +794,7 @@
  {
   "id": "jersey-cambodia-away",
   "slug": "cambodia-national-team-away-jersey-varaman",
-  "name": "Cambodia National Team Away Jersey (Varaman Official)",
+  "name": "Cambodia National Team Away Jersey (Varaman)",
   "shortName": "Cambodia Away Kit",
   "brand": "Varaman",
   "category": "jerseys",
@@ -818,16 +818,16 @@
   "image": "/src/assets/images/jersey_club_white_gold_1795112606139.jpg",
   "summary": "Crisp away strip for Kouprey supporters featuring metallic championship gold cuff trim, royal blue inner collar tape, and ultralight ventilated side panels.",
   "techHighlights": [
-   "Official FFC Away Match Edition",
+   "FFC Away Match Edition",
    "Championship gold woven cuff & V-neck trim",
    "Quick-dry perforated underarm gussets",
-   "Compatible with official AFF & FFC sleeve patches"
+   "Compatible with AFF & FFC sleeve patches"
   ],
   "specs": {
    "upperMaterial": "100% Pro-Aero Micro-Mesh Polyester",
    "fitProfile": "Athletic fit",
    "careGuide": "Wash cold inside-out; hang dry.",
-   "origin": "Official Varaman Cambodia Release"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -866,9 +866,9 @@
    "XXL"
   ],
   "image": "/src/assets/images/jersey_cambodia_blue_1795112605589.jpg",
-  "summary": "Official Cambodian Premier League home shirt of Phnom Penh Crown FC in signature crimson red and crisp white trims — ready for Smart RSN Stadium matchdays.",
+  "summary": "Cambodian Premier League home shirt of Phnom Penh Crown FC in signature crimson red and crisp white trims — ready for Smart RSN Stadium matchdays.",
   "techHighlights": [
-   "Official Cambodian Premier League club shirt",
+   "Cambodian Premier League club shirt",
    "Lightweight interlock cooling knit",
    "Woven club crest & CPL sleeve compatibility",
    "Same-day custom squad name & number available"
@@ -877,7 +877,7 @@
    "upperMaterial": "100% Breathable Interlock Polyester",
    "fitProfile": "Regular supporter fit",
    "careGuide": "Machine wash cold inside-out; line dry.",
-   "origin": "Official Cambodian Premier League"
+   "origin": "Cambodian Premier League"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -915,9 +915,9 @@
    "XXL"
   ],
   "image": "/src/assets/images/jersey_cambodia_blue_1795112605589.jpg",
-  "summary": "Official Cambodian Premier League home jersey for Preah Khan Reach Svay Rieng FC in unmistakable sky blue with deep navy architectural collar accents.",
+  "summary": "Cambodian Premier League home jersey for Preah Khan Reach Svay Rieng FC in unmistakable sky blue with deep navy architectural collar accents.",
   "techHighlights": [
-   "Official CPL Champions club merchandise",
+   "CPL Champions club merchandise",
    "Laser-perforated side ventilation zones",
    "Contrast navy rib-knit cuffs",
    "Eligible for Sport Heaven CPL sleeve patch & custom print"
@@ -926,7 +926,7 @@
    "upperMaterial": "100% Micro-Pique Performance Polyester",
    "fitProfile": "Regular supporter fit",
    "careGuide": "Wash cold inside-out; do not tumble dry.",
-   "origin": "Official Cambodian Premier League"
+   "origin": "Cambodian Premier League"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -945,7 +945,7 @@
  {
   "id": "jersey-barca-2627-home",
   "slug": "fc-barcelona-2026-27-home-authentic-jersey",
-  "name": "FC Barcelona 2026/27 Home Authentic Jersey",
+  "name": "FC Barcelona 2026/27 Home Jersey",
   "shortName": "Barça 26/27 Home",
   "brand": "Nike",
   "category": "jerseys",
@@ -970,7 +970,7 @@
    "XXL"
   ],
   "image": "/assets/aistudio/image_b515d6b6.png",
-  "summary": "Official 2026/27 Blaugrana home match shirt inspired by the newly renovated Spotify Camp Nou façade. Features tonal color-gradient stripes across Deep Garnet and Blue Void with a semi-hexagonal collar and Mineral Yellow trim.",
+  "summary": "2026/27 Blaugrana home match shirt inspired by the newly renovated Spotify Camp Nou façade. Features tonal color-gradient stripes across Deep Garnet and Blue Void with a semi-hexagonal collar and Mineral Yellow trim.",
   "techHighlights": [
    "Nike Dri-FIT ADV body-mapped breathable match knit",
    "Spotify Camp Nou façade-inspired tonal Blaugrana stripe gradient",
@@ -979,9 +979,9 @@
   ],
   "specs": {
    "upperMaterial": "100% Recycled Dri-FIT ADV Engineered Polyester",
-   "fitProfile": "Slim Player-Issue Authentic Fit",
+   "fitProfile": "Slim Player Fit",
    "careGuide": "Cold gentle cycle inside-out; do not iron over Spotify or custom vinyl.",
-   "origin": "2026/27 Authentic Match Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1087,7 +1087,7 @@
    "upperMaterial": "100% Recycled Dri-FIT Performance Knit",
    "fitProfile": "Modern Retro Athletic Fit",
    "careGuide": "Machine wash cold gentle cycle inside-out.",
-   "origin": "2026/27 Authentic Retail Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1106,7 +1106,7 @@
  {
   "id": "jersey-madrid-2627-home",
   "slug": "real-madrid-2026-27-home-authentic-jersey",
-  "name": "Real Madrid 2026/27 Home Authentic Jersey",
+  "name": "Real Madrid 2026/27 Home Jersey",
   "shortName": "Real Madrid 26/27 Home",
   "brand": "Adidas",
   "category": "jerseys",
@@ -1131,7 +1131,7 @@
    "XXL"
   ],
   "image": "/src/assets/images/jersey_madrid_2627_home_1795132050973.jpg",
-  "summary": "A historic first for Los Blancos: the 2026/27 Home Authentic kit pairs a crisp white diamond-and-pearl jacquard body with deep Forest Dark Green round collar & logos and striking Pink Adidas 3-Stripes across the shoulders.",
+  "summary": "A historic first for Los Blancos: the 2026/27 Home kit pairs a crisp white diamond-and-pearl jacquard body with deep Forest Dark Green round collar & logos and striking Pink Adidas 3-Stripes across the shoulders.",
   "techHighlights": [
    "First Real Madrid home kit pairing Dark Green trim & Pink 3-Stripes",
    "Tonal royal crown diamond & pearl jacquard weave",
@@ -1140,9 +1140,9 @@
   ],
   "specs": {
    "upperMaterial": "100% HEAT.RDY Pro Jacquard Polyester",
-   "fitProfile": "Slim Authentic Player Fit",
+   "fitProfile": "Slim Player Fit",
    "careGuide": "Wash cold inside-out; hang dry immediately.",
-   "origin": "2026/27 Authentic Player-Issue Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1161,7 +1161,7 @@
  {
   "id": "jersey-madrid-2627-away",
   "slug": "real-madrid-2026-27-away-jersey",
-  "name": "Real Madrid 2026/27 Away Authentic Jersey",
+  "name": "Real Madrid 2026/27 Away Jersey",
   "shortName": "Real Madrid 26/27 Away",
   "brand": "Adidas",
   "category": "jerseys",
@@ -1193,7 +1193,7 @@
    "upperMaterial": "100% Recycled HEAT.RDY Performance Mesh",
    "fitProfile": "Athletic Match Fit",
    "careGuide": "Wash cold inside-out; do not tumble dry.",
-   "origin": "2026/27 Authentic Retail Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1244,7 +1244,7 @@
    "upperMaterial": "100% Recycled AEROREADY Jacquard Polyester",
    "fitProfile": "Athletic Match Fit",
    "careGuide": "Wash cold inside-out; line dry.",
-   "origin": "2026/27 Authentic Retail Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1349,7 +1349,7 @@
    "upperMaterial": "100% Recycled Nike Dri-FIT Polyester",
    "fitProfile": "Athletic Regular Fit",
    "careGuide": "Wash cold inside-out; air dry.",
-   "origin": "2026/27 Authentic Retail Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1368,7 +1368,7 @@
  {
   "id": "jersey-arsenal-2627-home",
   "slug": "arsenal-2026-27-home-authentic-jersey",
-  "name": "Arsenal 2026/27 Home Authentic Jersey",
+  "name": "Arsenal 2026/27 Home Jersey",
   "shortName": "Arsenal 26/27 Home",
   "brand": "Adidas",
   "category": "jerseys",
@@ -1390,7 +1390,7 @@
    "XXL"
   ],
   "image": "/src/assets/images/jersey_arsenal_2627_home_1795132051318.jpg",
-  "summary": "Celebrating 20 years at Emirates Stadium, Arsenal’s 2026/27 Home authentic jersey pairs a vivid red lightning-jacquard torso with crisp white raglan sleeves, deep Highbury maroon V-neck collar, and modern monochromatic cannon crest.",
+  "summary": "Celebrating 20 years at Emirates Stadium, Arsenal’s 2026/27 Home jersey pairs a vivid red lightning-jacquard torso with crisp white raglan sleeves, deep Highbury maroon V-neck collar, and modern monochromatic cannon crest.",
   "techHighlights": [
    "20th Anniversary Emirates Stadium tribute with Highbury maroon trim",
    "Subtle tonal lightning-bolt jacquard woven across red torso",
@@ -1399,9 +1399,9 @@
   ],
   "specs": {
    "upperMaterial": "100% HEAT.RDY Engineered Jacquard",
-   "fitProfile": "Slim Authentic Match Fit",
+   "fitProfile": "Slim Match Fit",
    "careGuide": "Wash cold inside-out; do not tumble dry.",
-   "origin": "2026/27 Authentic Match Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1452,7 +1452,7 @@
    "upperMaterial": "100% Recycled AEROREADY Knit",
    "fitProfile": "Regular Athletic Fit",
    "careGuide": "Wash cold inside-out; line dry.",
-   "origin": "2026/27 Authentic Retail Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1471,7 +1471,7 @@
  {
   "id": "jersey-liverpool-2627-home",
   "slug": "liverpool-2026-27-home-adidas-authentic-jersey",
-  "name": "Liverpool 2026/27 Home Authentic Jersey (Adidas Reunion)",
+  "name": "Liverpool 2026/27 Home Jersey (Adidas Reunion)",
   "shortName": "Liverpool 26/27 Home",
   "brand": "Adidas",
   "category": "jerseys",
@@ -1502,9 +1502,9 @@
   ],
   "specs": {
    "upperMaterial": "100% HEAT.RDY Engineered Jacquard Polyester",
-   "fitProfile": "Slim Authentic Match Fit",
+   "fitProfile": "Slim Match Fit",
    "careGuide": "Machine wash cold inside-out; hang dry.",
-   "origin": "2026/27 Authentic Adidas Release"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1555,7 +1555,7 @@
    "upperMaterial": "100% Recycled AEROREADY Interlock",
    "fitProfile": "Regular Athletic Fit",
    "careGuide": "Wash cold with similar whites; hang dry.",
-   "origin": "2026/27 Authentic Adidas Release"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1574,7 +1574,7 @@
  {
   "id": "jersey-mancity-2627-home",
   "slug": "manchester-city-2026-27-home-jersey",
-  "name": "Manchester City 2026/27 Home Authentic Jersey",
+  "name": "Manchester City 2026/27 Home Jersey",
   "shortName": "Man City 26/27 Home",
   "brand": "Puma",
   "category": "jerseys",
@@ -1607,7 +1607,7 @@
    "upperMaterial": "100% Puma ULTRAWEAVE Recycled Polyester",
    "fitProfile": "Athletic Match Silhouette",
    "careGuide": "Wash cold inside-out; do not tumble dry.",
-   "origin": "2026/27 Authentic Puma Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1658,7 +1658,7 @@
    "upperMaterial": "100% Recycled AEROREADY Doubleknit",
    "fitProfile": "Classic Athletic Cut",
    "careGuide": "Wash cold inside-out; reshape collar flat to dry.",
-   "origin": "2026/27 Authentic Adidas Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1677,7 +1677,7 @@
  {
   "id": "jersey-chelsea-2627-home",
   "slug": "chelsea-2026-27-home-authentic-jersey",
-  "name": "Chelsea 2026/27 Home Authentic Jersey",
+  "name": "Chelsea 2026/27 Home Jersey",
   "shortName": "Chelsea 26/27 Home",
   "brand": "Nike",
   "category": "jerseys",
@@ -1698,7 +1698,7 @@
    "XXL"
   ],
   "image": "/src/assets/images/jersey_chelsea_2627_home_1795132051282.jpg",
-  "summary": "Inspired by 1990s Stamford Bridge regal elegance, Chelsea’s 2026/27 Home authentic shirt pairs deep Chelsea Royal Blue with gleaming Championship Gold collar piping, gold cuff trims, and golden lion emblem detailing.",
+  "summary": "Inspired by 1990s Stamford Bridge regal elegance, Chelsea’s 2026/27 Home shirt pairs deep Chelsea Royal Blue with gleaming Championship Gold collar piping, gold cuff trims, and golden lion emblem detailing.",
   "techHighlights": [
    "Rich Chelsea Royal Blue with regal Championship Gold trims",
    "Nike Dri-FIT ADV body-mapped breathable mesh",
@@ -1707,9 +1707,9 @@
   ],
   "specs": {
    "upperMaterial": "100% Recycled Dri-FIT ADV Polyester",
-   "fitProfile": "Slim Authentic Match Fit",
+   "fitProfile": "Slim Match Fit",
    "careGuide": "Wash cold inside-out; line dry.",
-   "origin": "2026/27 Authentic Nike Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1728,7 +1728,7 @@
  {
   "id": "jersey-milan-2627-home",
   "slug": "ac-milan-2026-27-home-authentic-jersey",
-  "name": "AC Milan 2026/27 Home Authentic Jersey",
+  "name": "AC Milan 2026/27 Home Jersey",
   "shortName": "AC Milan 26/27 Home",
   "brand": "Puma",
   "category": "jerseys",
@@ -1750,7 +1750,7 @@
    "XXL"
   ],
   "image": "/src/assets/images/jersey_milan_2627_home_1795132051353.jpg",
-  "summary": "Returning to commanding thick Rossoneri vertical stripes from collar to hem, AC Milan’s 2026/27 Home authentic shirt pairs bold crimson and pitch-black bands with crisp white crewneck collar, white cuffs, and \"From Milan to the World\" detail.",
+  "summary": "Returning to commanding thick Rossoneri vertical stripes from collar to hem, AC Milan’s 2026/27 Home shirt pairs bold crimson and pitch-black bands with crisp white crewneck collar, white cuffs, and \"From Milan to the World\" detail.",
   "techHighlights": [
    "Bold thick classic Rossoneri vertical stripes",
    "Crisp white crewneck collar & sleeve cuff contrast",
@@ -1761,7 +1761,7 @@
    "upperMaterial": "100% Puma ULTRAWEAVE Recycled Polyester",
    "fitProfile": "Athletic Italian Match Cut",
    "careGuide": "Wash cold inside-out; do not iron prints.",
-   "origin": "2026/27 Authentic Puma Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1780,7 +1780,7 @@
  {
   "id": "jersey-inter-2627-home",
   "slug": "inter-milan-2026-27-home-authentic-jersey",
-  "name": "Inter Milan 2026/27 Home Authentic Jersey",
+  "name": "Inter Milan 2026/27 Home Jersey",
   "shortName": "Inter Milan 26/27 Home",
   "brand": "Nike",
   "category": "jerseys",
@@ -1812,7 +1812,7 @@
    "upperMaterial": "100% Recycled Dri-FIT ADV Polyester",
    "fitProfile": "Slim Player-Issue Fit",
    "careGuide": "Wash cold inside-out; line dry.",
-   "origin": "2026/27 Authentic Nike Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1831,7 +1831,7 @@
  {
   "id": "jersey-juventus-2627-home",
   "slug": "juventus-2026-27-home-authentic-jersey",
-  "name": "Juventus 2026/27 Home Authentic Jersey",
+  "name": "Juventus 2026/27 Home Jersey",
   "shortName": "Juventus 26/27 Home",
   "brand": "Adidas",
   "category": "jerseys",
@@ -1852,7 +1852,7 @@
    "XXL"
   ],
   "image": "/src/assets/images/jersey_juventus_2627_home_1795132054005.jpg",
-  "summary": "Bianconeri tradition pushed forward: Juventus’s 2026/27 Home authentic shirt blends sharp high-contrast vertical stripes with futuristic directional knit jacquard textures and a clean black V-neck collar.",
+  "summary": "Bianconeri tradition pushed forward: Juventus’s 2026/27 Home shirt blends sharp high-contrast vertical stripes with futuristic directional knit jacquard textures and a clean black V-neck collar.",
   "techHighlights": [
    "Stylized Bianconeri striping with futuristic jacquard knit",
    "Crisp monochrome V-neck collar & sleeve cuffs",
@@ -1861,9 +1861,9 @@
   ],
   "specs": {
    "upperMaterial": "100% HEAT.RDY Engineered Polyester",
-   "fitProfile": "Slim Authentic Fit",
+   "fitProfile": "Slim Fit",
    "careGuide": "Wash cold inside-out; air dry.",
-   "origin": "2026/27 Authentic Adidas Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1882,7 +1882,7 @@
  {
   "id": "jersey-bayern-2627-home",
   "slug": "bayern-munich-2026-27-home-authentic-jersey",
-  "name": "Bayern Munich 2026/27 Home Authentic Jersey",
+  "name": "Bayern Munich 2026/27 Home Jersey",
   "shortName": "Bayern 26/27 Home",
   "brand": "Adidas",
   "category": "jerseys",
@@ -1915,7 +1915,7 @@
    "upperMaterial": "100% Recycled HEAT.RDY Polyester",
    "fitProfile": "Athletic Pro Fit",
    "careGuide": "Wash cold inside-out; hang dry.",
-   "origin": "2026/27 Authentic Adidas Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1966,7 +1966,7 @@
    "upperMaterial": "100% Recycled dryCELL Performance Polyester",
    "fitProfile": "Regular Athletic Fit",
    "careGuide": "Wash cold inside-out; air dry.",
-   "origin": "2026/27 Authentic Puma Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -1985,7 +1985,7 @@
  {
   "id": "jersey-psg-2627-home",
   "slug": "paris-saint-germain-2026-27-home-authentic-jersey",
-  "name": "Paris Saint-Germain 2026/27 Home Authentic Jersey",
+  "name": "Paris Saint-Germain 2026/27 Home Jersey",
   "shortName": "PSG 26/27 Home",
   "brand": "Nike",
   "category": "jerseys",
@@ -2007,7 +2007,7 @@
    "XXL"
   ],
   "image": "/src/assets/images/jersey_psg_2627_home_1795132052376.jpg",
-  "summary": "The unmistakable Parisian icon returns in pristine form: PSG’s 2026/27 Home authentic shirt sets the bold central crimson Hechter stripe bordered in crisp white pinstripes over a deep Midnight Navy Dri-FIT ADV canvas.",
+  "summary": "The unmistakable Parisian icon returns in pristine form: PSG’s 2026/27 Home shirt sets the bold central crimson Hechter stripe bordered in crisp white pinstripes over a deep Midnight Navy Dri-FIT ADV canvas.",
   "techHighlights": [
    "Classic central Hechter crimson stripe with crisp white borders",
    "Tri-color Parisian ribbed V-neck & sleeve cuff detail",
@@ -2016,9 +2016,9 @@
   ],
   "specs": {
    "upperMaterial": "100% Recycled Dri-FIT ADV Polyester",
-   "fitProfile": "Slim Authentic Player Fit",
+   "fitProfile": "Slim Player Fit",
    "careGuide": "Wash cold inside-out; do not tumble dry.",
-   "origin": "2026/27 Authentic Nike Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2070,7 +2070,7 @@
   ],
   "specs": {
    "upperMaterial": "100% Dri-FIT ADV Special Edition Knit",
-   "fitProfile": "Slim Authentic European Match Fit",
+   "fitProfile": "Slim European Match Fit",
    "careGuide": "Wash cold inside-out; hang dry.",
    "origin": "2026/27 UCL Special Edition Import"
   },
@@ -2124,7 +2124,7 @@
    "upperMaterial": "100% Recycled AEROREADY Polyester",
    "fitProfile": "Regular athletic fit",
    "careGuide": "Wash cold inside-out; do not bleach or iron prints.",
-   "origin": "Authentic Retail Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2168,7 +2168,7 @@
    "XXL"
   ],
   "image": "/src/assets/images/jersey_f1_motorsport_1795112605294.jpg",
-  "summary": "Official Motorsport paddock teamwear jersey in Rosso Corsa scarlet with carbon-mesh side panels, contrast white race zip collar, and custom driver number printing.",
+  "summary": "Motorsport paddock teamwear jersey in Rosso Corsa scarlet with carbon-mesh side panels, contrast white race zip collar, and custom driver number printing.",
   "techHighlights": [
    "DryCELL motorsport paddock breathable pique knit",
    "Contrast quarter-zip race collar & carbon side gussets",
@@ -2179,7 +2179,7 @@
    "upperMaterial": "100% DryCELL Technical Motorsport Polyester",
    "fitProfile": "Structured athletic paddock cut",
    "careGuide": "Wash cold inside-out; do not iron over motorsport graphics.",
-   "origin": "Official Motorsport Paddock Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2232,7 +2232,7 @@
    "upperMaterial": "88% Technical Polyester / 12% Elastane",
    "fitProfile": "Tailored athletic motorsport fit",
    "careGuide": "Wash cold gentle cycle; air dry flat.",
-   "origin": "Official Motorsport Paddock Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2283,7 +2283,7 @@
    "upperMaterial": "100% Recycled Motorsport AEROREADY Knit",
    "fitProfile": "Modern regular paddock fit",
    "careGuide": "Wash cold inside-out; do not dry clean.",
-   "origin": "Official Motorsport Paddock Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2363,7 +2363,7 @@
    "weight": "428g (Official Size 5)",
    "fitProfile": "Official Size 5",
    "careGuide": "Moisten pump needle before inflating to 0.8–1.0 bar.",
-   "origin": "Authentic Retail Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2399,7 +2399,7 @@
    "weight": "435g (Official Size 5)",
    "fitProfile": "Official Size 5",
    "careGuide": "Store indoors away from extreme heat; inflate to 0.85 bar.",
-   "origin": "Official Molten Asia Distribution"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2420,7 +2420,7 @@
    "Size 4"
   ],
   "image": "/src/assets/images/ball_fifa_pro_1795112607243.jpg",
-  "summary": "Official low-bounce Size 4 futsal ball with hand-stitched grained PU casing for effortless sole-roll control on fast indoor courts.",
+  "summary": "Low-bounce Size 4 futsal ball with hand-stitched grained PU casing for effortless sole-roll control on fast indoor courts.",
   "techHighlights": [
    "Specially engineered low-bounce butyl bladder",
    "Hand-stitched 32-panel grained PU surface",
@@ -2431,9 +2431,9 @@
    "surface": "Indoor Futsal Courts & Hard Courts",
    "upperMaterial": "FPUS 1500 Grained PU",
    "weight": "420g (Size 4 Low Bounce)",
-   "fitProfile": "Official Futsal Size 4 (62–64 cm)",
+   "fitProfile": "Futsal Size 4 (62–64 cm)",
    "careGuide": "Inflate to 0.6–0.8 bar for optimal futsal bounce.",
-   "origin": "Authentic Select Sport Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2507,7 +2507,7 @@
    "weight": "95g pair (Size M)",
    "fitProfile": "Anatomical Left/Right contour",
    "careGuide": "Hand wash sleeves and wipe shells with mild soap.",
-   "origin": "Authentic Retail Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2544,7 +2544,7 @@
    "weight": "72g pair",
    "fitProfile": "Compression mid-calf athletic fit",
    "careGuide": "Wash cold inside-out; air dry to maximize grip pad longevity.",
-   "origin": "Authentic TruSox Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2555,7 +2555,7 @@
  {
   "id": "jersey-france-2627-home",
   "slug": "france-national-team-2026-27-home-authentic-jersey",
-  "name": "France National Team 2026/27 Home Authentic Jersey",
+  "name": "France National Team 2026/27 Home Jersey",
   "shortName": "France 26/27 Home",
   "brand": "Nike",
   "category": "jerseys",
@@ -2590,7 +2590,7 @@
    "upperMaterial": "100% Recycled Nike Dri-FIT ADV Knit",
    "fitProfile": "European Athletic Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold inside-out; hang dry.",
-   "origin": "2026/27 Official International Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2642,7 +2642,7 @@
    "upperMaterial": "100% Recycled Nike Dri-FIT Polyester",
    "fitProfile": "European Athletic Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Machine wash cold gentle cycle inside-out.",
-   "origin": "2026/27 Official International Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2661,7 +2661,7 @@
  {
   "id": "jersey-spain-2627-home",
   "slug": "spain-national-team-2026-27-home-la-roja-jersey",
-  "name": "Spain National Team 2026/27 Home Authentic Jersey",
+  "name": "Spain National Team 2026/27 Home Jersey",
   "shortName": "Spain 26/27 Home",
   "brand": "Adidas",
   "category": "jerseys",
@@ -2690,13 +2690,13 @@
    "Tonal Spanish carnation & coastal wave jacquard body",
    "Metallic championship gold Adidas shoulder stripes",
    "Adidas HEAT.RDY pro cooling panel architecture",
-   "Official RFEF crest with World Champion star above"
+   "RFEF crest with World Champion star above"
   ],
   "specs": {
    "upperMaterial": "100% Recycled Adidas HEAT.RDY Knit",
    "fitProfile": "European Slim Match Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold inside-out; line dry.",
-   "origin": "2026/27 Official International Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2715,7 +2715,7 @@
  {
   "id": "jersey-spain-2627-away",
   "slug": "spain-national-team-2026-27-away-jersey",
-  "name": "Spain National Team 2026/27 Away Authentic Jersey",
+  "name": "Spain National Team 2026/27 Away Jersey",
   "shortName": "Spain 26/27 Away",
   "brand": "Adidas",
   "category": "jerseys",
@@ -2748,7 +2748,7 @@
    "upperMaterial": "100% Recycled Adidas AEROREADY Knit",
    "fitProfile": "European Athletic Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold inside-out; air dry.",
-   "origin": "2026/27 Official International Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2767,7 +2767,7 @@
  {
   "id": "jersey-germany-2627-home",
   "slug": "germany-national-team-2026-27-home-authentic-jersey",
-  "name": "Germany National Team 2026/27 Home Authentic Jersey",
+  "name": "Germany National Team 2026/27 Home Jersey",
   "shortName": "Germany 26/27 Home",
   "brand": "Adidas",
   "category": "jerseys",
@@ -2802,7 +2802,7 @@
    "upperMaterial": "100% Recycled Adidas HEAT.RDY Polyester",
    "fitProfile": "European Athletic Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold inside-out; do not tumble dry.",
-   "origin": "2026/27 Official International Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2821,7 +2821,7 @@
  {
   "id": "jersey-germany-2627-away",
   "slug": "germany-national-team-2026-27-away-jersey",
-  "name": "Germany National Team 2026/27 Away Authentic Jersey",
+  "name": "Germany National Team 2026/27 Away Jersey",
   "shortName": "Germany 26/27 Away",
   "brand": "Adidas",
   "category": "jerseys",
@@ -2854,7 +2854,7 @@
    "upperMaterial": "100% Recycled Adidas AEROREADY Knit",
    "fitProfile": "European Athletic Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Machine wash cold inside-out; line dry.",
-   "origin": "2026/27 Official International Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2897,7 +2897,7 @@
   "image": "/src/assets/images/jersey_italy_2627_home_1795193991230.jpg",
   "summary": "Timeless Azzurri blue tailored with tonal \"I\" geometric knit texture, Italian Tricolore shoulder stripes, and the four-star FIGC crest over the left chest.",
   "techHighlights": [
-   "Authentic Azzurri royal blue with tonal woven pattern",
+   "Azzurri royal blue with tonal woven pattern",
    "Green-White-Red Italian Tricolore 3-Stripes across shoulders",
    "Four-star FIGC woven national shield",
    "HEAT.RDY breathable athletic match construction"
@@ -2906,7 +2906,7 @@
    "upperMaterial": "100% Recycled Adidas HEAT.RDY Polyester",
    "fitProfile": "European Tailored Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold inside-out; air dry.",
-   "origin": "2026/27 Official International Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -2958,7 +2958,7 @@
    "upperMaterial": "100% Recycled Adidas AEROREADY Polyester",
    "fitProfile": "European Tailored Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold gentle cycle inside-out.",
-   "origin": "2026/27 Official International Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3003,7 +3003,7 @@
   "image": "/src/assets/images/jersey_argentina_2627_away_1795193989696.jpg",
   "summary": "Deep royal cobalt navy accented by Albiceleste sky-blue side flashes and metallic three-star World Champion AFA crest — built for Messi #10 printing.",
   "techHighlights": [
-   "Official 3-Star gold World Champions AFA badge",
+   "3-Star gold World Champions AFA badge",
    "Albiceleste sky-blue & white dynamic side gussets",
    "Adidas HEAT.RDY pro airflow construction",
    "Instant MESSI #10 customization in Phnom Penh"
@@ -3012,7 +3012,7 @@
    "upperMaterial": "100% Recycled Adidas HEAT.RDY Knit",
    "fitProfile": "European Athletic Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold inside-out; hang dry.",
-   "origin": "2026/27 Official International Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3066,7 +3066,7 @@
    "upperMaterial": "100% Recycled Nike Dri-FIT ADV Polyester",
    "fitProfile": "European Athletic Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold inside-out; air dry.",
-   "origin": "2026/27 Official International Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3118,7 +3118,7 @@
    "upperMaterial": "100% Recycled Nike Dri-FIT Polyester",
    "fitProfile": "European Athletic Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold inside-out; hang dry.",
-   "origin": "2026/27 Official International Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3164,7 +3164,7 @@
   "summary": "Japan’s acclaimed Samurai Blue 2026/27 Home shirt showcases intricate tonal origami flame and sakura embossing paired with crisp white shoulder stripes and the Yatagarasu JFA crest.",
   "techHighlights": [
    "Tonal Japanese origami flame & sakura embossed jacquard",
-   "Official JFA Yatagarasu three-legged crow crest",
+   "JFA Yatagarasu three-legged crow crest",
    "Adidas HEAT.RDY cooling construction for humid Asian evenings",
    "Custom KUBO #20, MITOMA #7, or personal squad printing"
   ],
@@ -3172,7 +3172,7 @@
    "upperMaterial": "100% Recycled Adidas HEAT.RDY Knit",
    "fitProfile": "Athletic Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold inside-out; line dry.",
-   "origin": "2026/27 Official Asian Confederation Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3225,7 +3225,7 @@
    "upperMaterial": "100% Recycled Adidas AEROREADY Polyester",
    "fitProfile": "Athletic Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold inside-out; hang dry.",
-   "origin": "2026/27 Official Asian Confederation Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3272,14 +3272,14 @@
   "techHighlights": [
    "Dancheong brushwork tonal texture across crimson torso",
    "Contrast turquoise-teal collar and ribbed cuff trim",
-   "Official KFA white tiger national emblem",
+   "KFA white tiger national emblem",
    "Same-day SON #7 or LEE #18 custom printing available"
   ],
   "specs": {
    "upperMaterial": "100% Recycled Nike Dri-FIT ADV Knit",
    "fitProfile": "Athletic Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold inside-out; line dry.",
-   "origin": "2026/27 Official Asian Confederation Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3331,7 +3331,7 @@
    "upperMaterial": "100% Recycled Nike Dri-FIT Polyester",
    "fitProfile": "Athletic Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold inside-out; do not tumble dry.",
-   "origin": "2026/27 Official Asian Confederation Import"
+   "origin": "2026/27 Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3376,7 +3376,7 @@
   "image": "/src/assets/images/jersey_retro_barca_1999_1795193989766.jpg",
   "summary": "Faithful Centenary Archive reissue celebrating 100 years of FC Barcelona (1899–1999): half-and-half royal navy & deep garnet torso, classic fold-over polo collar, and \"1899–1999\" embroidered center crest.",
   "techHighlights": [
-   "Authentic 1899–1999 Centenary half-and-half split design",
+   "1899–1999 Centenary half-and-half split design",
    "Embroidered 100th Anniversary center crest & heritage collar",
    "Heavyweight vintage jacquard mesh with relaxed 90s drape",
    "Custom RIVALDO #11 or GUARDIOLA #4 retro block font ready"
@@ -3429,10 +3429,10 @@
    "XXL"
   ],
   "image": "/src/assets/images/jersey_retro_brazil_2002_1795193991108.jpg",
-  "summary": "Relive Yokohama 2002 and the Penta triumph: authentic double-layer mesh cut with signature curved emerald-green front piping, classic ribbed collar, and retro CBF crest.",
+  "summary": "Relive Yokohama 2002 and the Penta triumph: double-layer mesh cut with signature curved emerald-green front piping, classic ribbed collar, and retro CBF crest.",
   "techHighlights": [
    "Iconic 2002 Korea–Japan tournament curved emerald piping",
-   "Authentic vintage breathable mesh & loose retro silhouette",
+   "Vintage breathable mesh & loose retro silhouette",
    "Embroidered CBF shield & heritage gold-tone finish",
    "Ideal with RONALDO #9 or RONALDINHO #11 retro print"
   ],
@@ -3476,9 +3476,9 @@
    "Size 5"
   ],
   "image": "/src/assets/images/ball_ucl_pro_2627_1795193989350.jpg",
-  "summary": "The official match ball of the 2026/27 UEFA Champions League knockout nights — thermally bonded star panels certified FIFA Quality Pro with precision micro-textured flight control.",
+  "summary": "The match ball of the 2026/27 UEFA Champions League knockout nights — thermally bonded star panels certified FIFA Quality Pro with precision micro-textured flight control.",
   "techHighlights": [
-   "Official 2026/27 UEFA Champions League Pro Match Ball",
+   "2026/27 UEFA Champions League Pro Match Ball",
    "Thermally bonded seamless star-panel geometry",
    "FIFA Quality Pro top certification for flight & rebound accuracy",
    "High-grade butyl bladder holds match pressure through 90 minutes"
@@ -3489,7 +3489,7 @@
    "weight": "430g (Official Size 5)",
    "fitProfile": "Official Size 5 (68–70 cm)",
    "careGuide": "Moisten needle and inflate to 0.8–1.0 bar; wipe clean after turf use.",
-   "origin": "Official UEFA Licensed FIFA Quality Pro Ball"
+   "origin": "UEFA match ball design"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3515,9 +3515,9 @@
    "Size 5"
   ],
   "image": "/src/assets/images/ball_puma_orbita_laliga_1795193990356.jpg",
-  "summary": "Official match ball of Spain’s top division: 12 large star-shaped high-frequency molded panels reduce seam count for cleaner striking and razor-true spin.",
+  "summary": "Match ball of Spain’s top division: 12 large star-shaped high-frequency molded panels reduce seam count for cleaner striking and razor-true spin.",
   "techHighlights": [
-   "Official La Liga 2026/27 FIFA Quality Pro Match Ball",
+   "La Liga 2026/27 FIFA Quality Pro Match Ball",
    "12-panel high-frequency molded shell for pure aerodynamics",
    "1.2mm 3D textured PU surface improves wet-weather grip",
    "POE foam inner layer provides firm, responsive shot rebound"
@@ -3528,7 +3528,7 @@
    "weight": "432g (Official Size 5)",
    "fitProfile": "Official Size 5",
    "careGuide": "Inflate to 0.8–1.0 bar; store away from direct sun.",
-   "origin": "Official La Liga Licensed FIFA Quality Pro Ball"
+   "origin": "La Liga match ball design"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3562,7 +3562,7 @@
    "XXL"
   ],
   "image": "/src/assets/images/jersey_f1_ferrari_white_1795193990486.jpg",
-  "summary": "Special Italian Grand Prix colorway in crisp Monza white accented by Rosso Corsa racing shoulders, Modena yellow piping, and authentic DryCELL motorsport ventilation.",
+  "summary": "Special Italian Grand Prix colorway in crisp Monza white accented by Rosso Corsa racing shoulders, Modena yellow piping, and DryCELL motorsport ventilation.",
   "techHighlights": [
    "Limited Monza White special edition Scuderia Ferrari polo",
    "Rosso Corsa shoulder paneling with Modena yellow trim",
@@ -3573,7 +3573,7 @@
    "upperMaterial": "100% DryCELL Technical Motorsport Polyester",
    "fitProfile": "European Paddock Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold inside-out; do not iron motorsport decals.",
-   "origin": "Official 2026 Formula 1 Paddock Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3592,7 +3592,7 @@
  {
   "id": "f1-ferrari-paddock-jacket",
   "slug": "scuderia-ferrari-2026-official-paddock-team-jacket",
-  "name": "Scuderia Ferrari 2026 Official F1 Paddock Team Jacket",
+  "name": "Scuderia Ferrari 2026 F1 Paddock Team Jacket",
   "shortName": "Ferrari F1 Jacket",
   "brand": "Puma F1",
   "category": "f1",
@@ -3616,18 +3616,18 @@
    "XXL"
   ],
   "image": "/src/assets/images/jacket_f1_ferrari_2026_1795193992181.jpg",
-  "summary": "Water-repellent Formula 1 pit-wall softshell jacket in iconic Rosso Corsa scarlet with matte carbon sleeves, sealed full-zip front, and official Scuderia racing team badges.",
+  "summary": "Water-repellent Formula 1 pit-wall softshell jacket in iconic Rosso Corsa scarlet with matte carbon sleeves, sealed full-zip front, and Scuderia racing team badges.",
   "techHighlights": [
    "Windproof & water-repellent 3-layer pit-wall softshell",
    "Sealed full-length zipper with high motorsport storm collar",
    "Zippered side handwarmer pockets & articulated race sleeves",
-   "Official 2026 Scuderia Ferrari paddock team livery"
+   "2026 Scuderia Ferrari paddock team livery"
   ],
   "specs": {
    "upperMaterial": "92% Bonded Technical Polyester / 8% Elastane Softshell",
    "fitProfile": "Structured Outerwear Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wipe clean or machine wash cold gentle; hang dry.",
-   "origin": "Official 2026 Formula 1 Paddock Outerwear"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3680,7 +3680,7 @@
    "upperMaterial": "88% Technical Polyester / 12% Elastane",
    "fitProfile": "European Paddock Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold gentle cycle inside-out.",
-   "origin": "Official 2026 Formula 1 Paddock Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3699,7 +3699,7 @@
  {
   "id": "f1-redbull-paddock-jacket",
   "slug": "oracle-red-bull-racing-2026-paddock-team-jacket",
-  "name": "Oracle Red Bull Racing 2026 Official Paddock Team Jacket",
+  "name": "Oracle Red Bull Racing 2026 Paddock Team Jacket",
   "shortName": "Red Bull F1 Jacket",
   "brand": "Castore",
   "category": "f1",
@@ -3723,18 +3723,18 @@
    "XXL"
   ],
   "image": "/src/assets/images/jacket_f1_redbull_2026_1795193990569.jpg",
-  "summary": "Engineered for wet Grand Prix weekends and cool Phnom Penh monsoon rides: weather-sealed Nightsky Navy softshell featuring crimson piping and official Oracle Red Bull Racing graphics.",
+  "summary": "Engineered for wet Grand Prix weekends and cool Phnom Penh monsoon rides: weather-sealed Nightsky Navy softshell featuring crimson piping and Oracle Red Bull Racing graphics.",
   "techHighlights": [
    "Water-resistant DWR bonded softshell pit-wall jacket",
    "Crimson contrast shoulder taping & waterproof front zip",
    "Fleece-lined stand collar with micro-vent back yoke",
-   "Official 2026 Oracle Red Bull Racing teamwear outerwear"
+   "2026 Oracle Red Bull Racing teamwear outerwear"
   ],
   "specs": {
    "upperMaterial": "90% Weather-Sealed Polyester / 10% Elastane",
    "fitProfile": "Structured Outerwear Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold gentle; line dry.",
-   "origin": "Official 2026 Formula 1 Paddock Outerwear"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3786,7 +3786,7 @@
    "upperMaterial": "100% Recycled Adidas AEROREADY Paddock Knit",
    "fitProfile": "European Paddock Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold inside-out; air dry.",
-   "origin": "Official 2026 Formula 1 Paddock Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3805,7 +3805,7 @@
  {
   "id": "f1-mercedes-paddock-jacket",
   "slug": "mercedes-amg-petronas-2026-paddock-team-jacket",
-  "name": "Mercedes-AMG Petronas 2026 Official Paddock Team Jacket",
+  "name": "Mercedes-AMG Petronas 2026 Paddock Team Jacket",
   "shortName": "Mercedes F1 Jacket",
   "brand": "Adidas",
   "category": "f1",
@@ -3832,13 +3832,13 @@
    "Carbon-matte weatherproof pit-wall softshell construction",
    "Signature Petronas teal storm-zip and cuff piping",
    "Breathable mesh interior lining for tropical evenings",
-   "Official 2026 Mercedes-AMG Petronas team outerwear"
+   "2026 Mercedes-AMG Petronas team outerwear"
   ],
   "specs": {
    "upperMaterial": "94% Recycled Weather-Block Polyester / 6% Elastane",
    "fitProfile": "Structured Outerwear Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold gentle inside-out; hang dry.",
-   "origin": "Official 2026 Formula 1 Paddock Outerwear"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3857,7 +3857,7 @@
  {
   "id": "f1-mclaren-papaya-jersey",
   "slug": "mclaren-f1-team-2026-papaya-team-jersey",
-  "name": "McLaren F1 Team 2026 Papaya Official Team Jersey",
+  "name": "McLaren F1 Team 2026 Papaya Team Jersey",
   "shortName": "McLaren F1 Papaya Kit",
   "brand": "Castore",
   "category": "f1",
@@ -3885,14 +3885,14 @@
   "techHighlights": [
    "Iconic Papaya Orange & anthracite carbon motorsport split",
    "Ultra-breathable laser-perforated back ventilation",
-   "Official 2026 McLaren Formula 1 Team polo jersey",
+   "2026 McLaren Formula 1 Team polo jersey",
    "Ready for NORRIS #4 or PIASTRI #81 driver back printing"
   ],
   "specs": {
    "upperMaterial": "88% Technical Polyester / 12% Elastane Aero Mesh",
    "fitProfile": "European Paddock Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold inside-out; air dry.",
-   "origin": "Official 2026 Formula 1 Paddock Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3945,7 +3945,7 @@
    "upperMaterial": "88% Technical Polyester / 12% Elastane",
    "fitProfile": "European Paddock Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold gentle inside-out.",
-   "origin": "Official 2026 Formula 1 Paddock Import"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",
@@ -3964,7 +3964,7 @@
  {
   "id": "f1-mclaren-paddock-jacket",
   "slug": "mclaren-f1-team-2026-official-paddock-team-jacket",
-  "name": "McLaren F1 Team 2026 Official Paddock Team Jacket",
+  "name": "McLaren F1 Team 2026 Paddock Team Jacket",
   "shortName": "McLaren F1 Jacket",
   "brand": "Castore",
   "category": "f1",
@@ -3993,13 +3993,13 @@
    "Signature Papaya Orange & matte carbon bonded softshell",
    "Waterproof full zip with storm collar and velcro race cuffs",
    "Papaya-trimmed zippered pockets for daily matchday carry",
-   "Official 2026 McLaren Formula 1 Team paddock outerwear"
+   "2026 McLaren Formula 1 Team paddock outerwear"
   ],
   "specs": {
    "upperMaterial": "92% Bonded Weather-Block Polyester / 8% Elastane",
    "fitProfile": "Structured Outerwear Fit (S · EU 46 to XXL · EU 58)",
    "careGuide": "Wash cold gentle; hang dry.",
-   "origin": "Official 2026 Formula 1 Paddock Outerwear"
+   "origin": "Grade A Replica"
   },
   "branchStock": {
    "sonthormuk": "In Stock",

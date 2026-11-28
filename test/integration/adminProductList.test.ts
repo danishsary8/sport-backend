@@ -76,3 +76,14 @@ describe('sub-type filters', () => {
     expect(boots.body.groups.map((g: { key: string }) => g.key)).toEqual(['surface']);
   });
 });
+
+describe('brand filter (to hide one brand quickly)', () => {
+  it('lists and exports only that brand, every status', async () => {
+    const n = Number((await q("select count(*)::int as n from products p join brands b on b.id = p.brand_id where b.slug = 'nike'")).rows[0].n);
+    const res = await request(ctx.app).get('/v1/admin/products').query({ brand: 'nike', pageSize: 100 }).set(bearer(admin)).expect(200);
+    expect(res.body.total).toBe(n);
+    expect(res.body.products.every((p: { brandName: string }) => p.brandName === 'Nike')).toBe(true);
+    const csv = await request(ctx.app).get('/v1/admin/products/export.csv').query({ brand: 'nike', format: 'products' }).set(bearer(admin)).expect(200);
+    expect(csv.text.replace(/^\uFEFF/, '').trim().split('\r\n').slice(1).every((l) => l.includes(',Nike,'))).toBe(true);
+  });
+});

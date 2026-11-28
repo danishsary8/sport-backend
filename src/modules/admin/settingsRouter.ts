@@ -5,6 +5,7 @@ import type { AppContext } from '../../context.js';
 import { PAYMENT_METHODS, settings } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
 import { requireRole } from '../../middleware/auth.js';
+import { BakongProvider } from '../payments/bakong/client.js';
 
 const i18nText = z.strictObject({ en: z.string().trim().min(1).max(200), km: z.string().trim().max(200).optional() });
 
@@ -46,6 +47,23 @@ export function adminSettingsRouter(ctx: AppContext): Router {
     res.setHeader('Cache-Control', 'no-store');
     next();
   };
+
+  // "Test Bakong connection": says in plain words why KHQR payments would not confirm.
+  router.post('/admin/settings/bakong-test', noStore, ...admin, async (_req, res) => {
+    const p = ctx.payments;
+    if (p instanceof BakongProvider) {
+      const result = await p.testConnection();
+      ctx.logger.info({ status: result.status }, 'Bakong connection test');
+      return res.json(result);
+    }
+    res.json({
+      status: 'not_configured',
+      detail:
+        p.name === 'payway' && p.methods.length > 0
+          ? 'This shop uses PayWay, not Bakong. Remove the PAYWAY_* settings to use Bakong.'
+          : 'Bakong is not set up. On the server, set BAKONG_TOKEN, BAKONG_ACCOUNT_ID and BAKONG_MERCHANT_NAME, set PAYMENT_METHODS_CASH_ONLY to false, and redeploy.',
+    });
+  });
 
   router.get('/admin/settings', noStore, ...admin, async (_req, res) => {
     const rows = await db.select().from(settings).where(inArray(settings.key, Object.keys(OPERATIONAL_SETTINGS)));

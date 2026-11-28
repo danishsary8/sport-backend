@@ -109,4 +109,27 @@ describe('createPaymentProvider with Bakong', () => {
   it('prefers PayWay when both are configured', () => {
     expect(createPaymentProvider(testConfig({ bakong: cfg, paywayMerchantId: 'm', paywayApiKey: 'k' })).name).toBe('payway');
   });
+
+  it('never reads a refused token as "not paid yet": it fails loudly so the log says why', async () => {
+    const { fetchImpl } = api({ responseCode: 1, errorCode: 6, responseMessage: 'Unauthorized, not yet requested for token or code invalid' });
+    await expect(new BakongProvider(cfg, fetchImpl, () => now).checkTransaction('x', { raw: { md5: 'a'.repeat(32) } })).rejects.toMatchObject({ details: { reason: expect.stringMatching(/refused the token/) } });
+  });
+
+  describe('connection test (admin button)', () => {
+    const run = async (answer: unknown, status = 200) => new BakongProvider(cfg, api(answer, status).fetchImpl, () => now).testConnection();
+    it('says connected when Bakong answers "not found" for a QR never made', async () => {
+      const { calls, fetchImpl } = api({ responseCode: 1, responseMessage: 'Transaction could not be found' });
+      expect((await new BakongProvider(cfg, fetchImpl, () => now).testConnection()).status).toBe('ok');
+      expect(calls[0]).toMatchObject({ url: `https://api-bakong.example${BAKONG_CHECK_PATH}`, auth: 'Bearer test-token' });
+    });
+    it('names each failure in plain words', async () => {
+      expect((await run({}, 401)).status).toBe('token_invalid');
+      expect((await run({}, 403)).status).toBe('blocked');
+      expect((await run({}, 429)).status).toBe('rate_limited');
+      expect((await run({ responseCode: 1, errorCode: 6, responseMessage: 'Unauthorized, not yet requested for token or code invalid' })).status).toBe('token_invalid');
+      expect((await run({ responseCode: 9, errorCode: 6, responseMessage: 'Unauthorized' })).status).toBe('token_invalid');
+      const down = await new BakongProvider(cfg, (async () => { throw new TypeError('fetch failed'); }) as unknown as typeof fetch, () => now).testConnection();
+      expect(down.status).toBe('unreachable');
+    });
+  });
 });

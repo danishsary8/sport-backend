@@ -22,6 +22,11 @@ export interface BakongConfig {
   apiUrl: string;
 }
 
+export interface BakongTestResult {
+  status: 'ok' | 'token_invalid' | 'blocked' | 'rate_limited' | 'unreachable' | 'error';
+  detail: string;
+}
+
 export const BAKONG_CHECK_PATH = '/v1/check_transaction_by_md5';
 /** responseCode 0: found (paid). 1: no such transaction yet (not paid). Anything else: an error. */
 const FOUND = 0;
@@ -35,6 +40,11 @@ interface CheckAnswer {
   responseMessage?: unknown;
   errorCode?: unknown;
   data?: { hash?: unknown; toAccountId?: unknown; currency?: unknown; amount?: unknown } | null;
+}
+
+/** Bakong answers a bad or replaced token with responseCode 1 ("not found") and errorCode 6: never read that as "not paid". */
+function tokenRefused(body: CheckAnswer): boolean {
+  return Number(body.errorCode) === 6 || (typeof body.responseMessage === 'string' && /unauthori[sz]ed|token/i.test(body.responseMessage));
 }
 
 function md5Of(ref: PaymentRef | undefined): string | null {
@@ -104,6 +114,7 @@ export class BakongProvider implements PaymentProvider {
     }
 
     const code = Number(body.responseCode);
+    if (tokenRefused(body)) throw providerError(`Bakong refused the token (errorCode ${String(body.errorCode)}): renew BAKONG_TOKEN`);
     if (code === NOT_FOUND) return { status: 'pending', amountCents: null, raw: { responseCode: code } };
     if (code !== FOUND || !body.data) throw providerError(`Bakong answered responseCode ${String(body.responseCode)}${typeof body.responseMessage === 'string' && body.responseMessage ? `: ${body.responseMessage}` : ''}`);
 
@@ -119,6 +130,40 @@ export class BakongProvider implements PaymentProvider {
     // Only a USD amount can be compared with the order total; anything else is confirmed as "amount unknown",
     // which flags the order for a staff check instead of confirming it.
     return { status: 'approved', amountCents: usd && Number.isFinite(dollars) ? Math.round(dollars * 100) : null, raw };
+  }
+
+  /**
+   * Asks Bakong about a QR that was never made: a working token answers "not found". Used by the admin's
+   * "Test Bakong connection" button, so the owner sees why payments do not confirm without reading logs.
+   */
+  async testConnection(): Promise<BakongTestResult> {
+    let res: Response;
+    try {
+      res = await this.fetchImpl(`${this.cfg.apiUrl}${BAKONG_CHECK_PATH}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', accept: 'application/json', authorization: `Bearer ${this.cfg.token}` },
+        body: JSON.stringify({ md5: '0'.repeat(32) }),
+        signal: AbortSignal.timeout(15_000),
+      });
+    } catch (error) {
+      const timedOut = error instanceof Error && /timeout|abort/i.test(`${error.name} ${error.message}`);
+      return timedOut ? { status: 'blocked', detail: 'Bakong did not answer in 15 seconds. It may only answer servers in Cambodia.' } : { status: 'unreachable', detail: `Could not reach Bakong: ${error instanceof Error ? error.message : 'network error'}` };
+    }
+    if (res.status === 401) return { status: 'token_invalid', detail: 'Bakong refused the token (HTTP 401). It has expired or was replaced by a newer one.' };
+    if (res.status === 403) return { status: 'blocked', detail: 'Bakong refused this server (HTTP 403). It may only answer servers in Cambodia.' };
+    if (res.status === 429) return { status: 'rate_limited', detail: 'Too many checks with this token (HTTP 429). Another project may be using the same token.' };
+    if (!res.ok) return { status: 'error', detail: `Bakong answered HTTP ${res.status}.` };
+    let body: CheckAnswer;
+    try {
+      body = (await res.json()) as CheckAnswer;
+    } catch {
+      return { status: 'error', detail: 'Bakong answered something that is not JSON.' };
+    }
+    const code = Number(body.responseCode);
+    const msg = typeof body.responseMessage === 'string' ? body.responseMessage : '';
+    if (tokenRefused(body)) return { status: 'token_invalid', detail: `Bakong refused the token: ${msg || 'unauthorized'}. Renew it at api-bakong.nbc.gov.kh (getting a new token cancels the old one, in every project that uses it).` };
+    if (code === NOT_FOUND || code === FOUND) return { status: 'ok', detail: `Connected. Payments to ${this.cfg.accountId} can be confirmed.` };
+    return { status: 'error', detail: `Bakong answered responseCode ${String(body.responseCode)}${msg ? `: ${msg}` : ''}.` };
   }
 
   /** A KHQR cannot be withdrawn; it stops working at its expiry time, and a late payment is flagged by confirmation. */

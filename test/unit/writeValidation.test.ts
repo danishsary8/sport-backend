@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 /** Write routes that take no body (or verify their own, like the payment webhook). */
 const BODYLESS = new Set([
   "delete '/me'",
+  "post '/admin/settings/bakong-test'",
   "delete '/me/addresses/:id'",
   "post '/me/addresses/:id/default'",
   "put '/me/wishlist/:product'",

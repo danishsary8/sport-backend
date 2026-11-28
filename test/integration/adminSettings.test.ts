@@ -36,6 +36,14 @@ const api = (method: 'get' | 'put', path: string, token: string, body?: object) 
 };
 
 describe('admin operational settings', () => {
+  it('tests the Bakong connection for admins only, and says when Bakong is not set up', async () => {
+    expect((await request(ctx.app).post('/v1/admin/settings/bakong-test').set(bearer(staff))).status).toBe(403);
+    const r = await request(ctx.app).post('/v1/admin/settings/bakong-test').set(bearer(admin));
+    expect(r.status).toBe(200);
+    expect(r.body.status).toBe('not_configured');
+    expect(r.body.detail).toMatch(/BAKONG_TOKEN/);
+  });
+
   it('lists every operational setting for admins only', async () => {
     expect((await api('get', '/settings', staff)).status).toBe(403);
     const res = await api('get', '/settings', admin).expect(200);

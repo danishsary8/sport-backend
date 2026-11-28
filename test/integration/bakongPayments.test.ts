@@ -85,13 +85,17 @@ describe('paying with Bakong KHQR', () => {
     expect(o.needs_refund).toBe(false);
   });
 
-  it('allows the 100-riel rounding, but sends any other riel amount to staff', async () => {
+  it('allows up to 1% difference in riel (bank exchange rates), and sends anything further off to staff', async () => {
     const near = await placeKhqrOrder();
-    paid = { md5: near.md5, amount: near.khr - 100, currency: 'KHR' };
+    paid = { md5: near.md5, amount: near.khr - Math.floor(near.khr * 0.01), currency: 'KHR' };
     expect(await poll(near.number)).toMatchObject({ status: 'confirmed', paymentStatus: 'paid' });
 
+    const over = await placeKhqrOrder();
+    paid = { md5: over.md5, amount: over.khr + Math.floor(over.khr * 0.01), currency: 'KHR' };
+    expect(await poll(over.number)).toMatchObject({ status: 'confirmed', paymentStatus: 'paid' });
+
     const off = await placeKhqrOrder();
-    paid = { md5: off.md5, amount: off.khr - 5000, currency: 'KHR' };
+    paid = { md5: off.md5, amount: off.khr - Math.ceil(off.khr * 0.02), currency: 'KHR' };
     const body = await poll(off.number);
     expect(body).toMatchObject({ status: 'pending_payment', paymentStatus: 'unpaid', latestPayment: { status: 'approved' } });
     const [o] = (await database.pool.query(`select needs_refund from orders where number = $1`, [off.number])).rows;

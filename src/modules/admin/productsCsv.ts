@@ -1,4 +1,5 @@
 import { eq, sql, type SQL } from 'drizzle-orm';
+import { toNinety } from '../catalog/price.js';
 import type { Db } from '../../db/client.js';
 import { variants } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
@@ -149,9 +150,10 @@ export async function importProductsCsv(db: Db, text: string, apply: boolean): P
       fail(`variant_status must be one of ${VARIANT_STATUSES.join(', ')}`);
       continue;
     }
-    const priceCents = toCents(price);
+    const typed = toCents(price);
+    const priceCents = toNinety(typed);
     const compareAtCents = compare ? toCents(compare) : null;
-    if (priceCents <= 0) {
+    if (typed <= 0) {
       fail('price_usd must be more than 0');
       continue;
     }

@@ -167,7 +167,7 @@ describe('member cart', () => {
     await q("insert into loyalty_accounts (user_id, tier) select id, 'silver' from users where firebase_uid = 'silver-member'");
     const res = await request(ctx.app).post('/v1/cart/items').set(bearer(token)).send({ variantId: v.boot, qty: 1 });
     expect(res.headers['set-cookie']).toBeUndefined();
-    expect(res.body.cart.pricing.discounts).toEqual([{ kind: 'member', label: 'Silver member discount', amountCents: 2500 }]);
+    expect(res.body.cart.pricing.discounts).toEqual([{ kind: 'member', label: 'Silver member discount', amountCents: 2499 }]);
     expect((await request(ctx.app).get('/v1/cart')).body.cart.lines).toEqual([]);
   });
 });

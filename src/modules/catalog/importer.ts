@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { toNinety } from './price.js';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import {
@@ -165,7 +166,7 @@ export async function importCatalog(
         await tx.insert(productImages).values({ productId, colorId: color!.id, path: imagePath, alt: p.name });
       }
 
-      const priceCents = toCents(p.price);
+      const priceCents = toNinety(toCents(p.price));
       const compareAtCents = p.originalPrice && p.originalPrice > p.price ? toCents(p.originalPrice) : null;
 
       for (const [position, size] of p.sizes.entries()) {

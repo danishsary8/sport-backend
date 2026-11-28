@@ -415,8 +415,8 @@
     "label": "Price",
     "type": "range",
     "range": {
-     "min": 2800,
-     "max": 27500,
+     "min": 2790,
+     "max": 27490,
      "selectedMin": null,
      "selectedMax": null,
      "buckets": [
@@ -436,13 +436,13 @@
        "label": "$50–$100",
        "min": 5000,
        "max": 10000,
-       "count": 43
+       "count": 44
       },
       {
        "label": "$100–$200",
        "min": 10000,
        "max": 20000,
-       "count": 16
+       "count": 15
       },
       {
        "label": "$200+",
@@ -698,8 +698,8 @@
     "label": "Price",
     "type": "range",
     "range": {
-     "min": 2800,
-     "max": 11500,
+     "min": 2790,
+     "max": 11490,
      "selectedMin": null,
      "selectedMax": null,
      "buckets": [
@@ -926,8 +926,8 @@
     "label": "Price",
     "type": "range",
     "range": {
-     "min": 14500,
-     "max": 26500,
+     "min": 14490,
+     "max": 26490,
      "selectedMin": null,
      "selectedMax": null,
      "buckets": [
@@ -1378,8 +1378,8 @@
     "label": "Price",
     "type": "range",
     "range": {
-     "min": 2800,
-     "max": 27500,
+     "min": 2790,
+     "max": 27490,
      "selectedMin": 3000,
      "selectedMax": 20000,
      "buckets": [
@@ -1399,13 +1399,13 @@
        "label": "$50–$100",
        "min": 5000,
        "max": 10000,
-       "count": 43
+       "count": 44
       },
       {
        "label": "$100–$200",
        "min": 10000,
        "max": 20000,
-       "count": 16
+       "count": 15
       },
       {
        "label": "$200+",
@@ -1802,8 +1802,8 @@
     "label": "Price",
     "type": "range",
     "range": {
-     "min": 2800,
-     "max": 26500,
+     "min": 2790,
+     "max": 26490,
      "selectedMin": null,
      "selectedMax": null,
      "buckets": [
@@ -2123,8 +2123,8 @@
     "label": "Price",
     "type": "range",
     "range": {
-     "min": 9400,
-     "max": 9800,
+     "min": 9390,
+     "max": 9790,
      "selectedMin": null,
      "selectedMax": null,
      "buckets": [

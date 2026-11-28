@@ -42,7 +42,7 @@ describe('importCatalog', () => {
     expect(p.search_text.toLowerCase()).toContain('cambodia');
 
     const v = await q('select size_label, price_cents from variants where product_id = $1 order by size_sort', [p.id]);
-    expect(v.rows).toEqual(['S', 'M', 'L', 'XL', 'XXL'].map((size_label) => ({ size_label, price_cents: 3500 })));
+    expect(v.rows).toEqual(['S', 'M', 'L', 'XL', 'XXL'].map((size_label) => ({ size_label, price_cents: 3490 })));
 
     const img = await one('select path from product_images where product_id = $1', [p.id]);
     expect(img.path).toBe('catalog/jersey_cambodia_blue_1795112605589.jpg');
@@ -73,7 +73,7 @@ describe('importCatalog', () => {
     const sale = await one(
       "select v.price_cents, v.compare_at_cents from variants v join products p on p.id = v.product_id where p.slug = 'puma-ultra-5-carbon-speed-fg' limit 1",
     );
-    expect(sale).toEqual({ price_cents: 25000, compare_at_cents: 27500 });
+    expect(sale).toEqual({ price_cents: 24990, compare_at_cents: 27500 });
   });
 
   it('does not import fabricated ratings', async () => {

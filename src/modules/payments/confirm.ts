@@ -115,8 +115,12 @@ async function fulfil(tx: Tx, order: OrderRow, payment: PaymentRow, now: Date): 
  * The single place a provider's answer changes an order. Idempotent: payment row first, then order,
  * both locked, so the webhook, the poll and the sweeper can all call it at once.
  */
-/** Riel totals are rounded to the nearest 100 riel, so a riel payment may differ by that much. */
-const KHR_ROUNDING = 100;
+/**
+ * A riel payment for a dollar QR depends on the bank's exchange rate, so it may differ a little from the shop's
+ * riel total: up to 1% of the total (and never less than the 100-riel rounding) counts as paid in full.
+ */
+export const KHR_TOLERANCE_PCT = 1;
+const khrTolerance = (totalKhr: number) => Math.max(100, Math.round((totalKhr * KHR_TOLERANCE_PCT) / 100));
 
 export async function applyProviderResult(deps: { db: Db; now: () => Date }, tranId: string, check: TransactionCheck, source: ConfirmSource): Promise<ConfirmResult> {
   return deps.db.transaction(async (tx) => {
@@ -149,8 +153,8 @@ export async function applyProviderResult(deps: { db: Db; now: () => Date }, tra
       .where(eq(payments.id, payment.id));
     await recordEvent(tx, { orderId: order.id, kind: 'payment', actor: 'system', note: `Payment ${payment.providerTranId} approved (${source})` });
 
-    // A payment in riel counts as the full amount when it matches the order's riel total (which is rounded to 100 riel).
-    const paidInRiel = check.amountCents === null && check.amountKhr != null && Math.abs(check.amountKhr - order.totalKhr) <= KHR_ROUNDING;
+    // A payment in riel counts as the full amount when it is within the tolerance of the order's riel total.
+    const paidInRiel = check.amountCents === null && check.amountKhr != null && Math.abs(check.amountKhr - order.totalKhr) <= khrTolerance(order.totalKhr);
     if (check.amountCents === null && !paidInRiel) {
       return flagRefund(
         tx,

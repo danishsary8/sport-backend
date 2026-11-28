@@ -150,10 +150,10 @@ describe('admin product management', () => {
     expect(live.body.product.availability).toBe('out');
 
     const variant = live.body.product.variants[0];
-    const priced = await api('put', `/products/${id}/variants/${variant.id}`, t.admin, { priceCents: 700, compareAtCents: 900 });
+    const priced = await api('put', `/products/${id}/variants/${variant.id}`, t.admin, { priceCents: 690, compareAtCents: 900 });
     expect(priced.status).toBe(200);
     const after = await request(ctx.app).get('/v1/catalog/products/test-training-bib');
-    expect(after.body.product.priceCents).toBe(700);
+    expect(after.body.product.priceCents).toBe(690);
   });
 
   it('sets one price for every size at once, and keeps per-size prices working', async () => {
@@ -167,23 +167,23 @@ describe('admin product management', () => {
       ],
     });
     const id = made.body.product.id as string;
-    const res = await api('put', `/products/${id}/prices`, t.admin, { priceCents: 1500, compareAtCents: 2000 });
+    const res = await api('put', `/products/${id}/prices`, t.admin, { priceCents: 1490, compareAtCents: 2000 });
     expect(res.status).toBe(200);
     expect(res.body.product.variants.map((v: { priceCents: number; compareAtCents: number | null }) => [v.priceCents, v.compareAtCents])).toEqual([
-      [1500, 2000],
-      [1500, 2000],
-      [1500, 2000],
+      [1490, 2000],
+      [1490, 2000],
+      [1490, 2000],
     ]);
     // Clearing the "was" price for all sizes.
-    const cleared = await api('put', `/products/${id}/prices`, t.admin, { priceCents: 1400, compareAtCents: null });
-    expect(cleared.body.product.variants.every((v: { priceCents: number; compareAtCents: number | null }) => v.priceCents === 1400 && v.compareAtCents === null)).toBe(true);
+    const cleared = await api('put', `/products/${id}/prices`, t.admin, { priceCents: 1390, compareAtCents: null });
+    expect(cleared.body.product.variants.every((v: { priceCents: number; compareAtCents: number | null }) => v.priceCents === 1390 && v.compareAtCents === null)).toBe(true);
     // A "was" price that is not above the price is refused and nothing changes.
-    const bad = await api('put', `/products/${id}/prices`, t.admin, { priceCents: 1400, compareAtCents: 1400 });
+    const bad = await api('put', `/products/${id}/prices`, t.admin, { priceCents: 1390, compareAtCents: 1390 });
     expect(bad.status).toBe(400);
     // One size can still differ afterwards.
     const one = cleared.body.product.variants[0];
-    const single = await api('put', `/products/${id}/variants/${one.id}`, t.admin, { priceCents: 999 });
-    expect(single.body.product.variants.find((v: { id: string }) => v.id === one.id).priceCents).toBe(999);
+    const single = await api('put', `/products/${id}/variants/${one.id}`, t.admin, { priceCents: 990 });
+    expect(single.body.product.variants.find((v: { id: string }) => v.id === one.id).priceCents).toBe(990);
     // Staff cannot change prices.
     expect((await api('put', `/products/${id}/prices`, t.staffAll, { priceCents: 1 })).status).toBe(403);
   });
@@ -209,11 +209,25 @@ describe('admin product management', () => {
     await q("delete from orders where number = 'SC-2611-DEL01'");
   });
 
+  it('keeps every price ending in .90, however it is entered', async () => {
+    const made = await api('post', '/products', t.admin, { ...newProduct, slug: 'ninety-bib', variants: [{ color: 'Volt', size: 'M', priceCents: 1200 }, { color: 'Volt', size: 'L', priceCents: 1250 }] });
+    expect(made.body.product.variants.map((v: { priceCents: number }) => v.priceCents)).toEqual([1190, 1190]);
+    const id = made.body.product.id as string;
+    const all = await api('put', `/products/${id}/prices`, t.admin, { priceCents: 1500, compareAtCents: 2000 });
+    expect(all.body.product.variants.map((v: { priceCents: number; compareAtCents: number }) => [v.priceCents, v.compareAtCents])).toEqual([
+      [1490, 2000],
+      [1490, 2000],
+    ]);
+    const one = all.body.product.variants[0];
+    const single = await api('put', `/products/${id}/variants/${one.id}`, t.admin, { priceCents: 999 });
+    expect(single.body.product.variants.find((v: { id: string }) => v.id === one.id).priceCents).toBe(990);
+  });
+
   it('rejects a compare-at price that is not above the price', async () => {
     const res = await api('post', '/products', t.admin, {
       ...newProduct,
       slug: 'bad-compare',
-      variants: [{ color: 'Volt', size: 'M', priceCents: 900, compareAtCents: 900 }],
+      variants: [{ color: 'Volt', size: 'M', priceCents: 890, compareAtCents: 890 }],
     });
     expect(res.status).toBe(400);
   });

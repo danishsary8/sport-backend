@@ -94,11 +94,11 @@ describe('CSV import', () => {
   const row = (price: string, compare = '', status = 'active', s = sku) => `${s},x,x,x,x,active,x,x,${price},${compare},${status}`;
 
   it('previews price changes without applying them', async () => {
-    const res = await importCsv(`${HEADER}\n${row('45.00', '50.00')}\n`).expect(200);
+    const res = await importCsv(`${HEADER}\n${row('44.90', '50.00')}\n`).expect(200);
     expect(res.body).toMatchObject({ applied: false, errors: [] });
     expect(res.body.changes).toEqual(
       expect.arrayContaining([
-        { sku, field: 'price_usd', from: '50.00', to: '45.00' },
+        { sku, field: 'price_usd', from: '50.00', to: '44.90' },
         { sku, field: 'compare_at_usd', from: '', to: '50.00' },
       ]),
     );
@@ -106,9 +106,9 @@ describe('CSV import', () => {
   });
 
   it('applies a clean file', async () => {
-    const res = await importCsv(`${HEADER}\r\n${row('45.00', '50.00')}\r\n`, true).expect(200);
+    const res = await importCsv(`${HEADER}\r\n${row('44.90', '50.00')}\r\n`, true).expect(200);
     expect(res.body.applied).toBe(true);
-    expect((await q('select price_cents, compare_at_cents from variants where sku = $1', [sku])).rows[0]).toEqual({ price_cents: 4500, compare_at_cents: 5000 });
+    expect((await q('select price_cents, compare_at_cents from variants where sku = $1', [sku])).rows[0]).toEqual({ price_cents: 4490, compare_at_cents: 5000 });
   });
 
   it('applies nothing when any row is wrong, and says why', async () => {
@@ -116,6 +116,11 @@ describe('CSV import', () => {
     expect(res.body.applied).toBe(false);
     expect(res.body.errors.map((e: { line: number }) => e.line)).toEqual([3, 4, 5, 6]);
     expect((await q('select price_cents from variants where sku = $1', [sku])).rows[0].price_cents).toBe(5000);
+  });
+
+  it('moves a price that does not end in .90 down to the .90 below it, and says so in the preview', async () => {
+    const res = await importCsv(`${HEADER}\n${row('45.00')}\n`).expect(200);
+    expect(res.body.changes).toContainEqual({ sku, field: 'price_usd', from: '50.00', to: '44.90' });
   });
 
   it('refuses a file with the wrong columns', async () => {

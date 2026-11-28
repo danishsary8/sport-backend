@@ -120,6 +120,13 @@
       "when": 1795835028187,
       "tag": "0016_flat_delivery_print_fee",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795842268805,
+      "tag": "0017_prices_end_in_90",
+      "breakpoints": true
     }
   ]
 }

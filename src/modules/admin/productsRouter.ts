@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
+import { toNinety } from '../catalog/price.js';
 import express, { Router, type Request } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../../context.js';
@@ -37,7 +38,10 @@ export const imagePath = z
 
 const i18n = z.object({ en: z.string().trim().min(1).max(500), km: z.string().trim().max(500).optional() });
 const slug = z.string().trim().min(2).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Use lowercase letters, numbers and dashes');
-const priceCents = z.number().int().min(0).max(10_000_000);
+/** Every selling price ends in .90 ($12 → $11.90); see toNinety. */
+const priceCents = z.number().int().min(0).max(10_000_000).transform(toNinety);
+/** A "was" price is kept exactly as entered. */
+const wasCents = z.number().int().min(0).max(10_000_000);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const comparePriceOk = (v: { priceCents?: number; compareAtCents?: number | null }) =>
@@ -50,7 +54,7 @@ const variantInput = z
     size: z.string().trim().min(1).max(40),
     sku: z.string().trim().min(2).max(40).regex(/^[A-Z0-9-]+$/, 'Use A-Z, 0-9 and dashes').optional(),
     priceCents,
-    compareAtCents: priceCents.nullable().optional(),
+    compareAtCents: wasCents.nullable().optional(),
   })
   .refine(comparePriceOk, compareMessage);
 
@@ -92,7 +96,7 @@ const patchSchema = z
   .refine((v) => Object.keys(v).length > 0, { message: 'Nothing to update' });
 
 const variantPatchSchema = z
-  .object({ priceCents, compareAtCents: priceCents.nullable(), status: z.enum(['active', 'inactive']) })
+  .object({ priceCents, compareAtCents: wasCents.nullable(), status: z.enum(['active', 'inactive']) })
   .partial()
   .refine((v) => Object.keys(v).length > 0, { message: 'Nothing to update' });
 
@@ -159,7 +163,7 @@ const exportSchema = listSchema.omit({ page: true, pageSize: true }).extend({
     .optional(),
 });
 
-const allPricesSchema = z.object({ priceCents, compareAtCents: priceCents.nullable().optional() });
+const allPricesSchema = z.object({ priceCents, compareAtCents: wasCents.nullable().optional() });
 
 function invalid(path: string, message: string) {
   return new AppError('validation_failed', 400, 'Validation failed', [{ path, message }]);

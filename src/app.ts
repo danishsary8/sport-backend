@@ -6,7 +6,7 @@ import { createContext } from './context.js';
 import type { Database } from './db/client.js';
 import type { IdentityProvider } from './lib/identity.js';
 import { isTestIdentity } from './lib/testIdentity.js';
-import { errorHandler, notFoundHandler } from './lib/errors.js';
+import { errorHandler, notFoundHandler, safeError } from './lib/errors.js';
 import type { Logger } from './lib/logger.js';
 import {
   createRateLimitMiddleware,
@@ -38,6 +38,9 @@ import { adminLogsRouter } from './modules/admin/logsRouter.js';
 import { systemHealthRouter } from './modules/health/system/router.js';
 import { adminMediaRouter, MEDIA_MAX_BYTES, publicMediaRouter } from './modules/admin/mediaRouter.js';
 import { createImageFetcher, type ImageFetcher } from './modules/admin/remoteImage.js';
+import Anthropic from '@anthropic-ai/sdk';
+import { claudeAsk, createSmartSearch, type SmartSearch } from './modules/search/smartSearch.js';
+import { smartSearchRouter } from './modules/search/router.js';
 import { setMediaBase } from './modules/catalog/view.js';
 import { devPaymentsRouter } from './modules/payments/devRouter.js';
 import { geoRouter } from './modules/geo/router.js';
@@ -65,6 +68,8 @@ export interface AppDeps {
   notifiers?: { telegram: Notifier; email: Notifier };
   /** Defaults to the real https downloader (public addresses only). */
   imageFetcher?: ImageFetcher;
+  /** Defaults to Claude when ANTHROPIC_API_KEY is set, otherwise off (null). */
+  smartSearch?: SmartSearch | null;
 }
 
 export function createApp(deps: AppDeps): express.Express {
@@ -134,6 +139,14 @@ export function createApp(deps: AppDeps): express.Express {
     bootstrapAdmins: deps.bootstrapAdmins ?? { phones: config.bootstrapAdminPhones, emails: config.bootstrapAdminEmails },
     payments: deps.payments ?? createPaymentProvider(config),
     imageFetcher: deps.imageFetcher ?? createImageFetcher({ maxBytes: MEDIA_MAX_BYTES }),
+    smartSearch:
+      deps.smartSearch !== undefined
+        ? deps.smartSearch
+        : config.anthropicApiKey
+          ? createSmartSearch(claudeAsk(new Anthropic({ apiKey: config.anthropicApiKey })), {
+              onError: (error) => logger.warn({ err: safeError(error) }, 'Smart search failed; plain search used'),
+            })
+          : null,
     notifiers: deps.notifiers ?? {
       telegram: telegramNotifier({ botToken: config.telegramBotToken, chatId: config.telegramChatId }),
       email: resendNotifier({ apiKey: config.resendApiKey, from: config.notificationFromEmail }),
@@ -146,6 +159,7 @@ export function createApp(deps: AppDeps): express.Express {
   v1.use(geoRouter(ctx));
   v1.use(branchesRouter(ctx));
   v1.use(catalogRouter(ctx));
+  v1.use(smartSearchRouter(ctx));
   v1.use(questionsRouter(ctx));
   v1.use(wishlistRouter(ctx));
   v1.use(cartRouter(ctx));

@@ -5,6 +5,7 @@ import type { IdentityProvider } from './lib/identity.js';
 import type { Logger } from './lib/logger.js';
 import type { PaymentProvider } from './modules/payments/provider.js';
 import type { ImageFetcher } from './modules/admin/remoteImage.js';
+import type { SmartSearch } from './modules/search/smartSearch.js';
 import type { Notifier } from './modules/notifications/notifier.js';
 import { optionalAuth, optionalUser, requireAuth, requireUser } from './middleware/auth.js';
 import { createRateLimitMiddleware, DEFAULT_RATE_LIMIT_WINDOW_MS, InMemoryRateLimitStore, type RateLimitStore } from './middleware/rateLimit.js';
@@ -21,6 +22,8 @@ export interface AppContext {
   notifiers: { telegram: Notifier; email: Notifier };
   /** Downloads photos from web links (CSV import). */
   imageFetcher: ImageFetcher;
+  /** Reads a shopper's search words into filters; null when no ANTHROPIC_API_KEY is set. */
+  smartSearch: SmartSearch | null;
   /** requireAuth + requireUser: the route needs a signed-in, non-deleted user. */
   member: RequestHandler[];
   /** Guests allowed; with a valid token, req.auth and req.user are set (deleted accounts rejected). */

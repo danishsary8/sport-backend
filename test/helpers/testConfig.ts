@@ -29,6 +29,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     telegramBotToken: undefined,
     telegramChatId: undefined,
     resendApiKey: undefined,
+    anthropicApiKey: undefined,
     notificationFromEmail: undefined,
     jobsEnabled: false,
     authTestMode: false,

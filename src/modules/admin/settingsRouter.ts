@@ -30,6 +30,8 @@ export const OPERATIONAL_SETTINGS = {
       nonReturnable: z.array(z.string().trim().min(1).max(60)).max(50),
     })
     .refine((r) => r.refundDays <= r.exchangeDays, { message: 'The refund window cannot be longer than the exchange window', path: ['refundDays'] }),
+  /** Prices end in .90 ($12 → $11.90) when on; off saves prices exactly as typed. */
+  price_rounding: z.strictObject({ endInNinety: z.boolean() }),
   size_guides: z.record(z.string().regex(/^[a-z0-9-]{1,40}$/), sizeGuide),
 } as const;
 

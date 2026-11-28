@@ -1,5 +1,5 @@
 import { eq, sql, type SQL } from 'drizzle-orm';
-import { toNinety } from '../catalog/price.js';
+import { priceRounder } from '../catalog/price.js';
 import type { Db } from '../../db/client.js';
 import { variants } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
@@ -118,6 +118,7 @@ export interface ImportResult {
  */
 export async function importProductsCsv(db: Db, text: string, apply: boolean): Promise<ImportResult> {
   const rows = parseCsv(text);
+  const round = await priceRounder(db);
   const header = rows[0]?.map((h) => h.trim());
   if (!header || CSV_COLUMNS.some((c, i) => header[i] !== c)) {
     throw new AppError('invalid_csv', 400, `The first row must be: ${CSV_COLUMNS.join(',')}`);
@@ -151,7 +152,7 @@ export async function importProductsCsv(db: Db, text: string, apply: boolean): P
       continue;
     }
     const typed = toCents(price);
-    const priceCents = toNinety(typed);
+    const priceCents = round(typed);
     const compareAtCents = compare ? toCents(compare) : null;
     if (typed <= 0) {
       fail('price_usd must be more than 0');

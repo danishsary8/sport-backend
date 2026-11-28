@@ -123,6 +123,16 @@ describe('CSV import', () => {
     expect(res.body.changes).toContainEqual({ sku, field: 'price_usd', from: '50.00', to: '44.90' });
   });
 
+  it('keeps the exact price when the .90 rule is turned off', async () => {
+    await q(`insert into settings (key, value) values ('price_rounding', '{"endInNinety": false}') on conflict (key) do update set value = excluded.value`);
+    try {
+      const res = await importCsv(`${HEADER}\n${row('0.01')}\n`).expect(200);
+      expect(res.body.changes).toContainEqual({ sku, field: 'price_usd', from: '50.00', to: '0.01' });
+    } finally {
+      await q(`update settings set value = '{"endInNinety": true}' where key = 'price_rounding'`);
+    }
+  });
+
   it('refuses a file with the wrong columns', async () => {
     const res = await importCsv('sku,price\nX,1\n').expect(400);
     expect(res.body.error.code).toBe('invalid_csv');

@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
-import { toNinety } from '../catalog/price.js';
-import express, { Router, type Request } from 'express';
+import { priceRounder } from '../catalog/price.js';
+import express, { Router, type Request, type RequestHandler } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../../context.js';
 import type { Db } from '../../db/client.js';
@@ -38,8 +38,7 @@ export const imagePath = z
 
 const i18n = z.object({ en: z.string().trim().min(1).max(500), km: z.string().trim().max(500).optional() });
 const slug = z.string().trim().min(2).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Use lowercase letters, numbers and dashes');
-/** Every selling price ends in .90 ($12 → $11.90); see toNinety. */
-const priceCents = z.number().int().min(0).max(10_000_000).transform(toNinety);
+const priceCents = z.number().int().min(0).max(10_000_000);
 /** A "was" price is kept exactly as entered. */
 const wasCents = z.number().int().min(0).max(10_000_000);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -243,6 +242,14 @@ export function adminProductsRouter(ctx: AppContext): Router {
   const router = Router();
   const { db } = ctx.database;
   const admin = [...ctx.member, requireRole('admin')];
+  // After validation: prices move to .90 when the shop's price_rounding setting is on (see priceRounder).
+  const roundPrices: RequestHandler = async (req, _res, next) => {
+    const round = await priceRounder(db);
+    const body = req.body as { priceCents?: unknown; variants?: { priceCents?: unknown }[] };
+    if (typeof body.priceCents === 'number') body.priceCents = round(body.priceCents);
+    for (const v of Array.isArray(body.variants) ? body.variants : []) if (typeof v.priceCents === 'number') v.priceCents = round(v.priceCents);
+    next();
+  };
 
   router.use('/admin/products', (_req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -335,7 +342,7 @@ export function adminProductsRouter(ctx: AppContext): Router {
     res.json({ product: await adminView(db, id, ctx.config.assetBaseUrl) });
   });
 
-  router.post('/admin/products', ...admin, validate({ body: createSchema }), async (req, res) => {
+  router.post('/admin/products', ...admin, validate({ body: createSchema }), roundPrices, async (req, res) => {
     const input = req.body as z.infer<typeof createSchema>;
     const id = await db
       .transaction(async (tx) => {
@@ -405,7 +412,7 @@ export function adminProductsRouter(ctx: AppContext): Router {
     res.json({ product: await adminView(db, id, ctx.config.assetBaseUrl) });
   });
 
-  router.post('/admin/products/:id/variants', ...admin, validate({ body: variantInput }), async (req, res) => {
+  router.post('/admin/products/:id/variants', ...admin, validate({ body: variantInput }), roundPrices, async (req, res) => {
     const id = String(req.params.id);
     if (!UUID.test(id)) throw new AppError('not_found', 404, 'Product not found');
     await db
@@ -443,7 +450,7 @@ export function adminProductsRouter(ctx: AppContext): Router {
   });
 
   // One price (and optional "was" price) for every size of the product, in one transaction.
-  router.put('/admin/products/:id/prices', ...admin, validate({ body: allPricesSchema }), async (req, res) => {
+  router.put('/admin/products/:id/prices', ...admin, validate({ body: allPricesSchema }), roundPrices, async (req, res) => {
     const id = String(req.params.id);
     if (!UUID.test(id)) throw new AppError('not_found', 404, 'Product not found');
     const body = req.body as z.infer<typeof allPricesSchema>;
@@ -460,7 +467,7 @@ export function adminProductsRouter(ctx: AppContext): Router {
     res.json({ product: await adminView(db, id, ctx.config.assetBaseUrl) });
   });
 
-  router.put('/admin/products/:id/variants/:variantId', ...admin, validate({ body: variantPatchSchema }), async (req, res) => {
+  router.put('/admin/products/:id/variants/:variantId', ...admin, validate({ body: variantPatchSchema }), roundPrices, async (req, res) => {
     const id = String(req.params.id);
     const variantId = String(req.params.variantId);
     if (!UUID.test(id) || !UUID.test(variantId)) throw new AppError('not_found', 404, 'Variant not found');

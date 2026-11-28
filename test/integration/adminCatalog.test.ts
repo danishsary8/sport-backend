@@ -223,6 +223,24 @@ describe('admin product management', () => {
     expect(single.body.product.variants.find((v: { id: string }) => v.id === one.id).priceCents).toBe(990);
   });
 
+  it('saves prices exactly as typed when the .90 rule is turned off (e.g. $0.01 to test a payment)', async () => {
+    const off = await api('put', '/settings/price_rounding', t.admin, { endInNinety: false });
+    expect(off.status).toBe(200);
+    try {
+      const made = await api('post', '/products', t.admin, { ...newProduct, slug: 'exact-price-bib', variants: [{ color: 'Volt', size: 'M', priceCents: 1 }] });
+      expect(made.body.product.variants[0].priceCents).toBe(1);
+      const id = made.body.product.id as string;
+      const all = await api('put', `/products/${id}/prices`, t.admin, { priceCents: 1250, compareAtCents: null });
+      expect(all.body.product.variants[0].priceCents).toBe(1250);
+      const v = all.body.product.variants[0];
+      expect((await api('put', `/products/${id}/variants/${v.id}`, t.admin, { priceCents: 1 })).body.product.variants[0].priceCents).toBe(1);
+      expect((await api('get', '/settings', t.admin)).body.settings.price_rounding).toEqual({ endInNinety: false });
+    } finally {
+      await api('put', '/settings/price_rounding', t.admin, { endInNinety: true });
+    }
+    expect((await api('put', '/settings/price_rounding', t.admin, { endInNinety: 'yes' })).status).toBe(400);
+  });
+
   it('rejects a compare-at price that is not above the price', async () => {
     const res = await api('post', '/products', t.admin, {
       ...newProduct,

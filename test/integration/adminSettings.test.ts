@@ -11,7 +11,7 @@ let ctx: ReturnType<typeof memberApp>;
 let admin: string;
 let staff: string;
 const q = (text: string, values: unknown[] = []) => database.pool.query(text, values);
-const KEYS = ['payment_methods_enabled', 'reservation_minutes', 'cash_on_pickup_hours', 'online_safety_buffer', 'return_rules', 'size_guides'];
+const KEYS = ['payment_methods_enabled', 'reservation_minutes', 'cash_on_pickup_hours', 'online_safety_buffer', 'return_rules', 'size_guides', 'price_rounding'];
 
 beforeAll(async () => {
   database = await testDb();

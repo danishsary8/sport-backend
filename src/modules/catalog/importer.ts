@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { toNinety } from './price.js';
+import { priceRounder } from './price.js';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import {
@@ -104,6 +104,7 @@ export async function importCatalog(
   let skipped = 0;
   let variantCount = 0;
 
+  const round = await priceRounder(db);
   await db.transaction(async (tx) => {
     const branchIds = (await tx.select({ id: branches.id }).from(branches)).map((b) => b.id);
     const categoryIds = new Map((await tx.select().from(categories)).map((c) => [c.slug, c.id]));
@@ -166,7 +167,7 @@ export async function importCatalog(
         await tx.insert(productImages).values({ productId, colorId: color!.id, path: imagePath, alt: p.name });
       }
 
-      const priceCents = toNinety(toCents(p.price));
+      const priceCents = round(toCents(p.price));
       const compareAtCents = p.originalPrice && p.originalPrice > p.price ? toCents(p.originalPrice) : null;
 
       for (const [position, size] of p.sizes.entries()) {

@@ -43,7 +43,7 @@ export function orderPaymentsRouter(ctx: AppContext): Router {
     let order: OrderRow = await access(req);
     let payment = await latestPayment(ctx, order.id);
     if (payment?.status === 'pending' && order.status === 'pending_payment') {
-      payment = await refreshPayment({ db, payments: ctx.payments, now }, payment);
+      payment = await refreshPayment({ db, payments: ctx.payments, now, logger: ctx.logger }, payment);
       order = await access(req);
     }
     res.json({

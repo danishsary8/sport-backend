@@ -179,7 +179,7 @@ export async function sweepOnce(input: SweepDeps & { shouldStop?: () => boolean 
           .limit(50);
         for (const { payment } of due) {
           if (stopping()) break;
-          await refreshPayment({ db, payments: deps.payments, now: deps.now }, payment, { minIntervalMs: 30_000, source: 'sweeper' });
+          await refreshPayment({ db, payments: deps.payments, now: deps.now, logger: deps.logger }, payment, { minIntervalMs: 30_000, source: 'sweeper' });
           result.checked += 1;
         }
         // Safety net for late payments: attempts of orders that expired in the last day, every 10 minutes.
@@ -192,7 +192,7 @@ export async function sweepOnce(input: SweepDeps & { shouldStop?: () => boolean 
           .limit(50);
         for (const { payment } of late) {
           if (stopping()) break;
-          await refreshPayment({ db, payments: deps.payments, now: deps.now }, payment, { minIntervalMs: 10 * 60_000, source: 'sweeper' });
+          await refreshPayment({ db, payments: deps.payments, now: deps.now, logger: deps.logger }, payment, { minIntervalMs: 10 * 60_000, source: 'sweeper' });
           result.checked += 1;
         }
       } catch (error) {

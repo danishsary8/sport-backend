@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNull, lt, or } from 'drizzle-orm';
+import type { Logger } from '../../lib/logger.js';
 import type { Db } from '../../db/client.js';
 import { payments, type PaymentRow } from '../../db/schema/index.js';
 import { AppError } from '../../lib/errors.js';
@@ -10,7 +11,7 @@ import type { PaymentProvider } from './provider.js';
  * (the last_checked_at claim is atomic). Provider outages are swallowed: the caller just sees "pending".
  */
 export async function refreshPayment(
-  deps: { db: Db; payments: PaymentProvider; now: () => Date },
+  deps: { db: Db; payments: PaymentProvider; now: () => Date; logger?: Logger },
   payment: PaymentRow,
   opts: { minIntervalMs?: number; source?: ConfirmSource } = {},
 ): Promise<PaymentRow> {
@@ -34,6 +35,12 @@ export async function refreshPayment(
       await applyProviderResult(deps, payment.providerTranId, check, opts.source ?? 'poll');
     } catch (error) {
       if (!(error instanceof AppError)) throw error;
+      // The customer just keeps seeing "not paid yet"; the reason goes to the server log so it can be fixed.
+      const reason = (error.details as { reason?: unknown } | undefined)?.reason;
+      deps.logger?.warn(
+        { tranId: payment.providerTranId, orderId: payment.orderId, source: opts.source ?? 'poll', code: error.code, reason: typeof reason === 'string' ? reason : error.message },
+        'Payment check failed',
+      );
     }
   }
   const [fresh] = await deps.db.select().from(payments).where(eq(payments.id, payment.id));

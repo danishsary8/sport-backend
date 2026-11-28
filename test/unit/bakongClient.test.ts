@@ -73,6 +73,22 @@ describe('BakongProvider', () => {
     await expect(new BakongProvider(cfg, api({ responseCode: 9 }).fetchImpl, () => now).checkTransaction('SC1-1', md5)).rejects.toMatchObject({ code: 'payment_provider_error' });
   });
 
+  it('says why a check failed (for the server log), without telling the customer', async () => {
+    const md5 = { raw: { md5: 'f'.repeat(32) } };
+    const reason = (p: Promise<unknown>) => p.then(() => null, (e: { details?: { reason?: string }; message: string }) => ({ reason: e.details?.reason, message: e.message }));
+    expect(await reason(new BakongProvider(cfg, api({}, 403).fetchImpl, () => now).checkTransaction('SC1-1', md5))).toEqual({
+      reason: 'Bakong answered HTTP 403 (expired token, or the API refused this server)',
+      message: 'The payment service is not responding; please try again',
+    });
+    expect((await reason(new BakongProvider(cfg, api({ responseCode: 9, responseMessage: 'Bad md5' }).fetchImpl, () => now).checkTransaction('SC1-1', md5)))!.reason).toBe('Bakong answered responseCode 9: Bad md5');
+    const offline = (async () => {
+      throw new TypeError('fetch failed');
+    }) as unknown as typeof fetch;
+    expect((await reason(new BakongProvider(cfg, offline, () => now).checkTransaction('SC1-1', md5)))!.reason).toBe('Could not reach Bakong: fetch failed');
+    const other = api({ responseCode: 0, data: { toAccountId: 'someone@aba', currency: 'USD', amount: 95 } }).fetchImpl;
+    expect((await reason(new BakongProvider(cfg, other, () => now).checkTransaction('SC1-1', md5)))!.reason).toBe('Paid to someone@aba, not the shop account');
+  });
+
   it('does not call Bakong for an attempt that never got a QR', async () => {
     const { calls, fetchImpl } = api({});
     await expect(new BakongProvider(cfg, fetchImpl, () => now).checkTransaction('SC1-1', { raw: null })).resolves.toMatchObject({ status: 'pending' });

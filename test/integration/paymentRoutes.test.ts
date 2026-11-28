@@ -1,3 +1,4 @@
+import { createLogger } from '../../src/lib/logger.js';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Database } from '../../src/db/client.js';
@@ -140,5 +141,24 @@ describe('dev payment routes', () => {
   it('do not exist in production', async () => {
     const prod = memberApp(database, undefined, { config: { nodeEnv: 'production' } });
     await request(prod.app).post('/v1/dev/payments/SC2611AAAAA-1/approve').expect(404);
+  });
+});
+
+describe('when a payment check fails', () => {
+  it('logs the reason with the payment, and the customer still just sees "not paid yet"', async () => {
+    const lines: Record<string, unknown>[] = [];
+    const sink = { write: (s: string) => void lines.push(JSON.parse(s) as Record<string, unknown>) };
+    const logged = memberApp(database, undefined, { logger: createLogger({ logLevel: 'warn', nodeEnv: 'test' }, sink) });
+    const { body } = await placeGuestOrder(logged.app, address, { variantId: jerseyM, qty: 1 });
+    logged.payments.failAllChecks(true);
+    try {
+      const res = await request(logged.app).get(`/v1/orders/${body.order.number}/payment-status`).set('x-order-token', body.orderAccessToken!).expect(200);
+      expect(res.body.paymentStatus).toBe('unpaid');
+      const warn = lines.find((l) => l.msg === 'Payment check failed');
+      expect(warn).toMatchObject({ tranId: res.body.latestPayment.tranId, source: 'poll', code: 'payment_provider_error' });
+      expect(typeof warn!.reason).toBe('string');
+    } finally {
+      logged.payments.failAllChecks(false);
+    }
   });
 });

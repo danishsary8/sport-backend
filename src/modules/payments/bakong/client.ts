@@ -27,7 +27,8 @@ export const BAKONG_CHECK_PATH = '/v1/check_transaction_by_md5';
 const FOUND = 0;
 const NOT_FOUND = 1;
 
-const providerError = () => new AppError('payment_provider_error', 502, 'The payment service is not responding; please try again');
+/** The customer sees a generic message; `reason` (in details) says what went wrong, for the server log. */
+const providerError = (reason: string) => new AppError('payment_provider_error', 502, 'The payment service is not responding; please try again', { reason });
 
 interface CheckAnswer {
   responseCode?: unknown;
@@ -90,27 +91,27 @@ export class BakongProvider implements PaymentProvider {
         body: JSON.stringify({ md5 }),
         signal: AbortSignal.timeout(15_000),
       });
-    } catch {
-      throw providerError();
+    } catch (error) {
+      throw providerError(`Could not reach Bakong: ${error instanceof Error ? error.message : 'network error'}`);
     }
     // 401/403: the token expired or the API refused this server (it may only answer from Cambodia).
-    if (!res.ok) throw providerError();
+    if (!res.ok) throw providerError(`Bakong answered HTTP ${res.status}${res.status === 401 || res.status === 403 ? ' (expired token, or the API refused this server)' : ''}`);
     let body: CheckAnswer;
     try {
       body = (await res.json()) as CheckAnswer;
     } catch {
-      throw providerError();
+      throw providerError('Bakong answered something that is not JSON');
     }
 
     const code = Number(body.responseCode);
     if (code === NOT_FOUND) return { status: 'pending', amountCents: null, raw: { responseCode: code } };
-    if (code !== FOUND || !body.data) throw providerError();
+    if (code !== FOUND || !body.data) throw providerError(`Bakong answered responseCode ${String(body.responseCode)}${typeof body.responseMessage === 'string' && body.responseMessage ? `: ${body.responseMessage}` : ''}`);
 
     const { toAccountId, currency, amount, hash } = body.data;
     const raw = { responseCode: code, hash: typeof hash === 'string' ? hash : null, toAccountId, currency, amount };
     // The md5 belongs to a QR this shop made, so a different receiving account means something is badly wrong:
     // never confirm it; the order gets the "payment unverified" alert instead.
-    if (typeof toAccountId === 'string' && toAccountId.toLowerCase() !== this.cfg.accountId.toLowerCase()) throw providerError();
+    if (typeof toAccountId === 'string' && toAccountId.toLowerCase() !== this.cfg.accountId.toLowerCase()) throw providerError(`Paid to ${toAccountId}, not the shop account`);
     const dollars = Number(amount);
     const usd = currency === undefined || currency === null || String(currency).toUpperCase() === 'USD';
     // Only a USD amount can be compared with the order total; anything else is confirmed as "amount unknown",

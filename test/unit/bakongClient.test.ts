@@ -64,7 +64,7 @@ describe('BakongProvider', () => {
 
   it('reports an amount it cannot compare (not USD) as unknown, so staff check the order', async () => {
     const { fetchImpl } = api({ responseCode: 0, data: { toAccountId: 'sportcastle@aba', currency: 'KHR', amount: 389500 } });
-    await expect(new BakongProvider(cfg, fetchImpl, () => now).checkTransaction('SC1-1', { raw: { md5: 'd'.repeat(32) } })).resolves.toMatchObject({ status: 'approved', amountCents: null });
+    await expect(new BakongProvider(cfg, fetchImpl, () => now).checkTransaction('SC1-1', { raw: { md5: 'd'.repeat(32) } })).resolves.toMatchObject({ status: 'approved', amountCents: null, amountKhr: 389500 });
   });
 
   it('treats an expired token, a refusal or an unknown answer as a payment-service error', async () => {

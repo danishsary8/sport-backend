@@ -114,6 +114,8 @@ export class BakongProvider implements PaymentProvider {
     if (typeof toAccountId === 'string' && toAccountId.toLowerCase() !== this.cfg.accountId.toLowerCase()) throw providerError(`Paid to ${toAccountId}, not the shop account`);
     const dollars = Number(amount);
     const usd = currency === undefined || currency === null || String(currency).toUpperCase() === 'USD';
+    // Paid in riel: report the riel amount so it can be compared with the order's riel total.
+    if (String(currency).toUpperCase() === 'KHR' && Number.isFinite(dollars)) return { status: 'approved', amountCents: null, amountKhr: Math.round(dollars), raw };
     // Only a USD amount can be compared with the order total; anything else is confirmed as "amount unknown",
     // which flags the order for a staff check instead of confirming it.
     return { status: 'approved', amountCents: usd && Number.isFinite(dollars) ? Math.round(dollars * 100) : null, raw };

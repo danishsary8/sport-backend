@@ -25,6 +25,8 @@ export interface TransactionCheck {
   status: ProviderStatus;
   /** What the provider says was paid; null when it doesn't say. */
   amountCents: number | null;
+  /** When the provider reports the amount in riel instead: compared with the order's riel total. */
+  amountKhr?: number | null;
   raw: unknown;
 }
 

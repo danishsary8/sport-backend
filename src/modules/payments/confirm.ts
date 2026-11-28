@@ -115,6 +115,9 @@ async function fulfil(tx: Tx, order: OrderRow, payment: PaymentRow, now: Date): 
  * The single place a provider's answer changes an order. Idempotent: payment row first, then order,
  * both locked, so the webhook, the poll and the sweeper can all call it at once.
  */
+/** Riel totals are rounded to the nearest 100 riel, so a riel payment may differ by that much. */
+const KHR_ROUNDING = 100;
+
 export async function applyProviderResult(deps: { db: Db; now: () => Date }, tranId: string, check: TransactionCheck, source: ConfirmSource): Promise<ConfirmResult> {
   return deps.db.transaction(async (tx) => {
     const [found] = await tx.select({ id: payments.id, orderId: payments.orderId }).from(payments).where(eq(payments.providerTranId, tranId));
@@ -146,10 +149,19 @@ export async function applyProviderResult(deps: { db: Db; now: () => Date }, tra
       .where(eq(payments.id, payment.id));
     await recordEvent(tx, { orderId: order.id, kind: 'payment', actor: 'system', note: `Payment ${payment.providerTranId} approved (${source})` });
 
-    if (check.amountCents === null) {
-      return flagRefund(tx, order, 'approved, but the payment service did not report the amount: check it in the PayWay portal', false);
+    // A payment in riel counts as the full amount when it matches the order's riel total (which is rounded to 100 riel).
+    const paidInRiel = check.amountCents === null && check.amountKhr != null && Math.abs(check.amountKhr - order.totalKhr) <= KHR_ROUNDING;
+    if (check.amountCents === null && !paidInRiel) {
+      return flagRefund(
+        tx,
+        order,
+        check.amountKhr != null
+          ? `paid ${check.amountKhr} riel but the order total is ${order.totalKhr} riel`
+          : 'approved, but the payment service did not report the amount: check it in the payment portal',
+        false,
+      );
     }
-    if (check.amountCents !== payment.amountCents) {
+    if (!paidInRiel && check.amountCents !== null && check.amountCents !== payment.amountCents) {
       return flagRefund(tx, order, `paid ${(check.amountCents / 100).toFixed(2)} but the order total is ${(payment.amountCents / 100).toFixed(2)}`, false, check.amountCents);
     }
     if (order.paymentStatus === 'paid') return flagRefund(tx, order, `paid twice (attempt ${payment.attempt})`, false);

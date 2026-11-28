@@ -33,6 +33,8 @@ export interface CartView {
   pricing: Breakdown;
   promoCode: string | null;
   checkoutReady: boolean;
+  /** The lowest delivery fee, to show before a method is chosen (null when no delivery is set up). */
+  deliveryFromCents: number | null;
   notices: string[];
 }
 

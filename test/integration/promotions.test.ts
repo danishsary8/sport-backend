@@ -42,14 +42,14 @@ describe('deliveryRate', () => {
     expect(await deliveryRate(database.db, { fulfillment: 'delivery', methodId: 'pp_rider', provinceCode: '12' })).toEqual({
       fulfillment: 'delivery',
       methodId: 'pp_rider',
-      rate: { feeCents: 250, freeOverCents: 5000 },
+      rate: { feeCents: 200, freeOverCents: 5000 },
     });
     expect((await deliveryRate(database.db, { fulfillment: 'delivery', methodId: 'pp_rider', provinceCode: '17' })).rate).toBeNull();
   });
 
   it('prices the courier outside Phnom Penh only', async () => {
     expect((await deliveryRate(database.db, { fulfillment: 'delivery', methodId: 'province_courier', provinceCode: '17' })).rate).toEqual({
-      feeCents: 300,
+      feeCents: 200,
       freeOverCents: null,
     });
     expect((await deliveryRate(database.db, { fulfillment: 'delivery', methodId: 'province_courier', provinceCode: '12' })).rate).toBeNull();
@@ -81,7 +81,7 @@ describe('loadRules and tierFor', () => {
     const rules = await loadRules(database.db);
     expect(rules.khrRate).toBe(4100);
     expect(rules.team).toEqual({ minItems: 5, percent: 10, categories: ['jerseys', 'f1'] });
-    expect(rules.printFees.baseCents).toBe(800);
+    expect(rules.printFees.baseCents).toBe(400);
   });
 
   it('gives perks only to members with a verified phone', async () => {

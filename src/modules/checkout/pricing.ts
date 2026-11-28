@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { Exec } from '../../db/exec.js';
 import { cartItems, type CartItemRow, type CartRow, type UserRow } from '../../db/schema/index.js';
 import { CART_LIMITS, type CartLineView, type CartView } from '../cart/types.js';
@@ -44,6 +44,8 @@ export async function pricedCheckout(db: Exec, cart: CartRow | undefined, opts: 
   const rules = await loadRules(db);
   const tier = await tierFor(db, opts.user);
   const delivery = await deliveryRate(db, opts.delivery);
+  // What delivery costs before a province or method is chosen: the lowest delivery fee (pickup is free).
+  const from = await db.execute<{ fee: number | null }>(sql`select min(fee_cents)::int as fee from shipping_rates where method_id <> 'pickup'`);
   const items = cart ? await db.select().from(cartItems).where(eq(cartItems.cartId, cart.id)).orderBy(cartItems.createdAt, cartItems.id) : [];
   const infos = await variantInfo(db, [...new Set(items.map((i) => i.variantId))], buffer);
   const promoCode = opts.promoOverride !== undefined ? opts.promoOverride : (cart?.promoCode ?? null);
@@ -110,6 +112,7 @@ export async function pricedCheckout(db: Exec, cart: CartRow | undefined, opts: 
     pricing,
     promoCode: cart?.promoCode ?? null,
     checkoutReady: lines.length > 0 && lines.every((l) => l.problem === null) && pricing.shippingCents !== null,
+    deliveryFromCents: from.rows[0]?.fee ?? null,
     notices: ["Items in your bag aren't reserved until you check out"],
   };
   return {

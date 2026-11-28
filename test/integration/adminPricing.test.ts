@@ -16,7 +16,7 @@ const q = (text: string, values: unknown[] = []) => database.pool.query(text, va
 async function restoreSharedPricing() {
   await q("delete from settings where key in ('khr_rate', 'custom_print_fees', 'team_discount_rule', 'loyalty_rules')");
   await seed(database.db);
-  await q(`update shipping_rates set fee_cents = 300, needs_review = true where method_id = 'province_courier' and province_code is null`);
+  await q(`update shipping_rates set fee_cents = 200, needs_review = false where method_id = 'province_courier' and province_code is null`);
   await q(`delete from promotions where code not in ('CASTLE10', 'PPFREE')`);
 }
 
@@ -63,6 +63,7 @@ describe('admin pricing', () => {
   });
 
   it('updates delivery rates and clears the review flag', async () => {
+    await q(`update shipping_rates set needs_review = true where method_id = 'province_courier' and province_code is null`);
     const rates = (await api('get', '/shipping-rates', admin)).body.rates;
     const courier = rates.find((r: { methodId: string }) => r.methodId === 'province_courier');
     expect(courier.needsReview).toBe(true);

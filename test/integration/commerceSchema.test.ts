@@ -18,9 +18,9 @@ describe('commerce reference data', () => {
   it('seeds delivery methods and rates', async () => {
     expect((await q('select id from shipping_methods order by sort')).rows.map((r) => r.id)).toEqual(['pp_rider', 'province_courier', 'pickup']);
     const pp = (await q("select fee_cents, free_over_cents from shipping_rates where method_id = 'pp_rider' and province_code = '12'")).rows[0];
-    expect(pp).toEqual({ fee_cents: 250, free_over_cents: 5000 });
+    expect(pp).toEqual({ fee_cents: 200, free_over_cents: 5000 });
     const courier = (await q("select fee_cents, needs_review from shipping_rates where method_id = 'province_courier' and province_code is null")).rows[0];
-    expect(courier).toEqual({ fee_cents: 300, needs_review: true });
+    expect(courier).toEqual({ fee_cents: 200, needs_review: false });
   });
 
   it('seeds the storefront promo codes', async () => {
@@ -34,7 +34,7 @@ describe('commerce reference data', () => {
   it('seeds the pricing rules with today’s storefront values', async () => {
     expect(await setting('khr_rate')).toEqual({ rate: 4100 });
     expect(await setting('custom_print_fees')).toEqual({
-      baseCents: 800,
+      baseCents: 400,
       patches: { none: 0, ucl: 500, cpl: 400, aff: 400, champions: 500, 'f1-paddock': 500 },
     });
     expect(await setting('team_discount_rule')).toEqual({ minItems: 5, percent: 10, categories: ['jerseys', 'f1'] });

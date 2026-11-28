@@ -61,7 +61,7 @@ const DEFAULT_SETTINGS: { key: string; value: Record<string, unknown> }[] = [
   { key: 'return_rules', value: { exchangeDays: 30, refundDays: 14, nonReturnable: ['socks', 'underwear'] } },
   {
     key: 'custom_print_fees',
-    value: { baseCents: 800, patches: { none: 0, ucl: 500, cpl: 400, aff: 400, champions: 500, 'f1-paddock': 500 } },
+    value: { baseCents: 400, patches: { none: 0, ucl: 500, cpl: 400, aff: 400, champions: 500, 'f1-paddock': 500 } },
   },
   { key: 'team_discount_rule', value: { minItems: 5, percent: 10, categories: ['jerseys', 'f1'] } },
   {
@@ -89,9 +89,8 @@ const SHIPPING_METHODS = [
 
 /** Starting rates; inserted only when missing so admin changes survive re-seeding. */
 const SHIPPING_RATES = [
-  { methodId: 'pp_rider', provinceCode: '12', feeCents: 250, freeOverCents: 5000, etaI18n: { en: 'Same or next day' }, needsReview: false },
-  // Placeholder until the owner confirms the courier price.
-  { methodId: 'province_courier', provinceCode: null, feeCents: 300, freeOverCents: null, etaI18n: { en: '2–3 days' }, needsReview: true },
+  { methodId: 'pp_rider', provinceCode: '12', feeCents: 200, freeOverCents: 5000, etaI18n: { en: 'Same or next day' }, needsReview: false },
+  { methodId: 'province_courier', provinceCode: null, feeCents: 200, freeOverCents: null, etaI18n: { en: '2–3 days' }, needsReview: false },
   { methodId: 'pickup', provinceCode: null, feeCents: 0, freeOverCents: null, etaI18n: { en: 'Ready the same day' }, needsReview: false },
 ];
 

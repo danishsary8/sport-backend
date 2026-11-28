@@ -69,8 +69,8 @@ describe('POST /v1/checkout/quote', () => {
     const quote = await agent.post('/v1/checkout/quote').send({ fulfillment: 'delivery', provinceCode: '17', shippingMethodId: 'province_courier' }).expect(200);
     const options = Object.fromEntries(quote.body.shippingOptions.map((o: { methodId: string }) => [o.methodId, o]));
     expect(options.pp_rider).toMatchObject({ available: false, feeCents: null });
-    expect(options.province_courier).toMatchObject({ available: true, feeCents: 300 });
-    expect(quote.body.cart.pricing.shippingCents).toBe(300);
+    expect(options.province_courier).toMatchObject({ available: true, feeCents: 200 });
+    expect(quote.body.cart.pricing.shippingCents).toBe(200);
   });
 
   it('shows the free threshold per option, as this bag would pay it', async () => {

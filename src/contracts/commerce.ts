@@ -57,6 +57,7 @@ export const cartView = z.strictObject({
   pricing: breakdown,
   promoCode: z.string().nullable(),
   checkoutReady: z.boolean(),
+  deliveryFromCents: cents.nullable(),
   notices: z.array(z.string()),
 });
 export const cartResponse = z.strictObject({ cart: cartView });

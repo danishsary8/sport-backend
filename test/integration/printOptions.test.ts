@@ -23,7 +23,7 @@ describe('GET /v1/catalog/print-options', () => {
   it('lists the print fees, patches and fonts', async () => {
     const res = await request(memberApp(database).app).get('/v1/catalog/print-options').expect(200);
     expect(catalog.printOptions.safeParse(res.body).success).toBe(true);
-    expect(res.body.baseCents).toBe(800);
+    expect(res.body.baseCents).toBe(400);
     expect(res.body.patches.map((p: { id: string }) => p.id)).toEqual(['none', 'ucl', 'cpl', 'aff', 'champions', 'f1-paddock']);
     expect(res.body.patches.find((p: { id: string }) => p.id === 'ucl')).toEqual({ id: 'ucl', label: 'Champions League', feeCents: 500 });
     expect(res.body.fonts).toHaveLength(3);

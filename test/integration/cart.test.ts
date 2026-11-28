@@ -75,7 +75,7 @@ describe('guest cart', () => {
     const lines = printed.body.cart.lines as Line[];
     expect(lines).toHaveLength(2);
     expect(lines.find((l) => !l.customPrint)!.qty).toBe(4);
-    expect(lines.find((l) => l.customPrint)).toMatchObject({ printFeeCents: 1200, customPrint: { name: 'DARA', number: 10, patch: 'cpl' } });
+    expect(lines.find((l) => l.customPrint)).toMatchObject({ printFeeCents: 800, customPrint: { name: 'DARA', number: 10, patch: 'cpl' } });
   });
 
   it('refuses printing on products that cannot be printed', async () => {
@@ -136,10 +136,23 @@ describe('guest cart', () => {
 });
 
 describe('delivery options', () => {
+  it('says the delivery price before a method is chosen (the lowest delivery fee; pickup is free)', async () => {
+    const agent = request.agent(ctx.app);
+    await agent.post('/v1/cart/items').send({ variantId: v.jerseyM, qty: 1 });
+    expect((await agent.get('/v1/cart')).body.cart.deliveryFromCents).toBe(200);
+    const q = (t: string, p: unknown[] = []) => database.pool.query(t, p);
+    await q("update shipping_rates set fee_cents = 150 where method_id = 'pp_rider'");
+    try {
+      expect((await agent.get('/v1/cart')).body.cart.deliveryFromCents).toBe(150);
+    } finally {
+      await q("update shipping_rates set fee_cents = 200 where method_id = 'pp_rider'");
+    }
+  });
+
   it('prices courier, pickup and unavailable choices', async () => {
     const agent = request.agent(ctx.app);
     await agent.post('/v1/cart/items').send({ variantId: v.jerseyM, qty: 1 });
-    expect((await agent.get('/v1/cart?provinceCode=17&shippingMethodId=province_courier')).body.cart.pricing.shippingCents).toBe(300);
+    expect((await agent.get('/v1/cart?provinceCode=17&shippingMethodId=province_courier')).body.cart.pricing.shippingCents).toBe(200);
     expect((await agent.get('/v1/cart?fulfillment=pickup&pickupBranchId=sensok')).body.cart.pricing.shippingCents).toBe(0);
     const bad = (await agent.get('/v1/cart?provinceCode=17&shippingMethodId=pp_rider')).body.cart;
     expect(bad.pricing.shippingCents).toBeNull();

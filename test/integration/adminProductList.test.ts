@@ -47,3 +47,32 @@ describe('GET /v1/admin/products (management list)', () => {
     expect(res.body.product.images[0].url).toMatch(/^\/assets\//);
   });
 });
+
+describe('sub-type filters', () => {
+  const get = (query: Record<string, string>) => request(ctx.app).get('/v1/admin/products').query({ pageSize: 100, ...query }).set(bearer(admin)).expect(200);
+  const count = async (where: string) => Number((await q(`select count(*)::int as n from products p join categories c on c.id = p.category_id where ${where}`)).rows[0].n);
+
+  it('filters by league, kit type, surface and garment type', async () => {
+    expect((await get({ category: 'jerseys', league: 'Premier League' })).body.total).toBe(await count("c.slug = 'jerseys' and p.attributes->>'league' = 'Premier League'"));
+    expect((await get({ category: 'jerseys', kitType: 'Away' })).body.total).toBe(await count("c.slug = 'jerseys' and p.attributes->>'kitType' = 'Away'"));
+    expect((await get({ category: 'boots', surface: 'FG' })).body.total).toBe(await count("c.slug = 'boots' and p.attributes->>'surface' = 'FG'"));
+    expect((await get({ category: 'f1', garmentType: 'jacket' })).body.total).toBe(await count("c.slug = 'f1' and p.attributes->>'garmentType' = 'jacket'"));
+    expect((await get({ league: 'Premier League' })).body.total).toBeGreaterThan(0);
+  });
+
+  it('filters by continent and season, worked out like the shop does', async () => {
+    const sa = (await get({ category: 'jerseys', continent: 'south-america' })).body.products.map((p: { slug: string }) => p.slug);
+    expect(sa.length).toBeGreaterThan(0);
+    expect(sa.every((s: string) => /argentina|brazil/.test(s))).toBe(true);
+    expect((await get({ category: 'jerseys', season: '2026/27' })).body.total).toBe(await count("c.slug = 'jerseys' and p.attributes->>'season' = '2026/27'"));
+  });
+
+  it('lists the sub-types the category has, with counts, for every status', async () => {
+    const res = await request(ctx.app).get('/v1/admin/products/subtypes').query({ category: 'jerseys' }).set(bearer(admin)).expect(200);
+    expect(res.body.groups.map((g: { key: string }) => g.key)).toEqual(['league', 'continent', 'season', 'kitType']);
+    const season = res.body.groups.find((g: { key: string }) => g.key === 'season');
+    expect(season.options[0]).toEqual({ value: '2026/27', label: '2026–2027', count: await count("c.slug = 'jerseys' and p.attributes->>'season' = '2026/27'") });
+    const boots = await request(ctx.app).get('/v1/admin/products/subtypes').query({ category: 'boots' }).set(bearer(admin)).expect(200);
+    expect(boots.body.groups.map((g: { key: string }) => g.key)).toEqual(['surface']);
+  });
+});

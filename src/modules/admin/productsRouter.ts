@@ -20,6 +20,7 @@ import { assetUrl } from '../catalog/view.js';
 import { requireRole } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import { escapeLike } from '../catalog/listing.js';
+import { bySeasonDesc, continentSql, CONTINENTS, seasonLabel, seasonSql } from '../catalog/derived.js';
 import { sizeSort } from '../catalog/sizes.js';
 import { skuBase } from '../catalog/sku.js';
 import type { Tx } from '../stock/service.js';
@@ -99,13 +100,33 @@ const listSchema = z.object({
   q: z.string().trim().max(100).optional(),
   status: z.enum(PRODUCT_STATUSES).optional(),
   category: z.string().trim().max(80).optional(),
+  // Sub-types (one value each): stored attributes, and the season/continent the shop works out.
+  league: z.string().trim().max(80).optional(),
+  kitType: z.string().trim().max(80).optional(),
+  surface: z.string().trim().max(80).optional(),
+  garmentType: z.string().trim().max(80).optional(),
+  season: z.string().trim().max(20).optional(),
+  continent: z.string().trim().max(40).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 /** The product list's filters as SQL over `products` and `categories`; shared by the list and the CSV export. */
-export function productFilter({ q, status, category, ids }: { q?: string; status?: (typeof PRODUCT_STATUSES)[number]; category?: string; ids?: string[] }): SQL | undefined {
+type ProductFilterInput = {
+  q?: string;
+  status?: (typeof PRODUCT_STATUSES)[number];
+  category?: string;
+  ids?: string[];
+} & Partial<Record<(typeof SUBTYPE_KEYS)[number], string>>;
+
+export function productFilter({ q, status, category, ids, ...subtypes }: ProductFilterInput): SQL | undefined {
   const conditions: SQL[] = [];
+  for (const key of ['league', 'kitType', 'surface', 'garmentType'] as const) {
+    if (subtypes[key]) conditions.push(sql`${products.attributes}->>${key} = ${subtypes[key]}`);
+  }
+  // Worked out per product exactly as the shop's listing does (derived.ts uses the alias p).
+  if (subtypes.season) conditions.push(sql`exists (select 1 from products p where p.id = ${products.id} and ${seasonSql} = ${subtypes.season})`);
+  if (subtypes.continent) conditions.push(sql`exists (select 1 from products p where p.id = ${products.id} and ${continentSql} = ${subtypes.continent})`);
   if (ids) conditions.push(inArray(products.id, ids));
   if (status) conditions.push(eq(products.status, status));
   if (category) conditions.push(eq(categories.slug, category));
@@ -115,6 +136,18 @@ export function productFilter({ q, status, category, ids }: { q?: string; status
   }
   return conditions.length ? and(...conditions) : undefined;
 }
+
+/** Sub-type filters, in the order the admin offers them. */
+const SUBTYPE_KEYS = ['league', 'continent', 'season', 'kitType', 'surface', 'garmentType'] as const;
+const SUBTYPE_TITLES: Record<(typeof SUBTYPE_KEYS)[number], string> = {
+  league: 'League',
+  continent: 'Continent',
+  season: 'Season',
+  kitType: 'Kit',
+  surface: 'Surface',
+  garmentType: 'Type',
+};
+const GARMENT_NAMES: Record<string, string> = { jersey: 'Team jerseys', jacket: 'Paddock jackets' };
 
 const exportSchema = listSchema.omit({ page: true, pageSize: true }).extend({
   format: z.enum(['prices', 'products']).default('prices'),
@@ -213,8 +246,8 @@ export function adminProductsRouter(ctx: AppContext): Router {
   });
 
   router.get('/admin/products', ...admin, validate({ query: listSchema }), async (req, res) => {
-    const { q, status, category, page, pageSize } = req.query as unknown as z.infer<typeof listSchema>;
-    const where = productFilter({ q, status, category });
+    const { page, pageSize, ...filters } = req.query as unknown as z.infer<typeof listSchema>;
+    const where = productFilter(filters);
     // What a manager needs to see at a glance: photos, price range, how many sizes and how much stock.
     const firstImage = (n: number) => sql<string | null>`(select i.path from product_images i where i.product_id = ${products.id} order by i.sort, i.id offset ${n} limit 1)`;
     const [rows, [total]] = await Promise.all([
@@ -271,6 +304,26 @@ export function adminProductsRouter(ctx: AppContext): Router {
       res.json(result);
     },
   );
+
+  // The sub-types a category's products have (every status), with counts, for the admin's Type filter.
+  router.get('/admin/products/subtypes', ...admin, validate({ query: z.object({ category: z.string().trim().min(1).max(80) }) }), async (req, res) => {
+    const { category } = req.query as { category: string };
+    const rows = await db.execute<Record<(typeof SUBTYPE_KEYS)[number], string | null>>(sql`
+      select p.attributes->>'league' as league, p.attributes->>'kitType' as "kitType", p.attributes->>'surface' as surface,
+        p.attributes->>'garmentType' as "garmentType", ${seasonSql} as season, ${continentSql} as continent
+      from products p join categories c on c.id = p.category_id where c.slug = ${category}`);
+    const label = (key: (typeof SUBTYPE_KEYS)[number], v: string) =>
+      key === 'season' ? seasonLabel(v) : key === 'continent' ? (CONTINENTS.find((c) => c.value === v)?.label ?? v) : key === 'garmentType' ? (GARMENT_NAMES[v] ?? v) : v;
+    const order = (key: (typeof SUBTYPE_KEYS)[number]) => (a: { value: string; label: string }, b: { value: string; label: string }) =>
+      key === 'season' ? bySeasonDesc(a.value, b.value) : key === 'continent' ? CONTINENTS.findIndex((c) => c.value === a.value) - CONTINENTS.findIndex((c) => c.value === b.value) : a.label.localeCompare(b.label);
+    const groups = SUBTYPE_KEYS.map((key) => {
+      const counts = new Map<string, number>();
+      for (const r of rows.rows) if (r[key]) counts.set(r[key]!, (counts.get(r[key]!) ?? 0) + 1);
+      const options = [...counts].map(([value, count]) => ({ value, label: label(key, value), count })).sort(order(key));
+      return { key, title: SUBTYPE_TITLES[key], options };
+    }).filter((g) => g.options.length > 0);
+    res.json({ groups });
+  });
 
   router.get('/admin/products/:id', ...admin, async (req, res) => {
     const id = String(req.params.id);
